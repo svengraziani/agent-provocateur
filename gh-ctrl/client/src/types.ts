@@ -1,0 +1,58 @@
+export interface Repo {
+  id: number
+  owner: string
+  name: string
+  fullName: string
+  description: string | null
+  color: string
+  createdAt: string | number | null
+}
+
+export interface GHPR {
+  number: number
+  title: string
+  state: string
+  reviewDecision: 'APPROVED' | 'REVIEW_REQUIRED' | 'CHANGES_REQUESTED' | null
+  mergeable: 'MERGEABLE' | 'CONFLICTING' | 'UNKNOWN'
+  headRefName: string
+  author: { login: string }
+  updatedAt: string
+  labels: { name: string }[]
+  isDraft: boolean
+}
+
+export interface GHIssue {
+  number: number
+  title: string
+  state: string
+  labels: { name: string }[]
+  assignees: { login: string }[]
+  updatedAt: string
+  author: { login: string }
+}
+
+export interface RepoStats {
+  openPRs: number
+  openIssues: number
+  conflicts: number
+  needsReview: number
+  approved: number
+  drafts: number
+  claudeIssues: number
+}
+
+export interface RepoData {
+  fullName: string
+  prs: GHPR[]
+  issues: GHIssue[]
+  stats: RepoStats
+  conflicts: GHPR[]
+  needsReview: GHPR[]
+  claudeIssues: GHIssue[]
+  error: string | null
+}
+
+export interface DashboardEntry {
+  repo: Repo
+  data: RepoData
+}

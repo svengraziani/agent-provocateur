@@ -1,0 +1,20 @@
+{
+  "name": "gh-ctrl",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"bun run dev:server\" \"bun run dev:client\"",
+    "dev:server": "bun --watch src/index.ts",
+    "dev:client": "cd client && bun run dev",
+    "build": "cd client && bun run build",
+    "start": "bun src/index.ts"
+  },
+  "dependencies": {
+    "hono": "^4.4.0",
+    "drizzle-orm": "^0.31.0",
+    "concurrently": "^8.2.0"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.22.0",
+    "@types/bun": "latest"
+  }
+}

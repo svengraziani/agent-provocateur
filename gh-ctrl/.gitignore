@@ -1,0 +1,8 @@
+node_modules/
+dist/
+client/dist/
+client/node_modules/
+*.db
+*.db-wal
+*.db-shm
+bun.lockb
