@@ -1,4 +1,4 @@
-import type { Repo, DashboardEntry, RepoData } from './types'
+import type { Repo, DashboardEntry, RepoData, GHLabel, BranchesData } from './types'
 
 const BASE = '/api'
 
@@ -37,6 +37,12 @@ export const api = {
   getRepoData: (owner: string, name: string) =>
     request<RepoData>(`/github/repo/${owner}/${name}`),
 
+  getLabels: (owner: string, name: string) =>
+    request<GHLabel[]>(`/github/labels/${owner}/${name}`),
+
+  getBranches: (owner: string, name: string) =>
+    request<BranchesData>(`/github/branches/${owner}/${name}`),
+
   triggerClaude: (params: {
     fullName: string
     number: number
@@ -44,6 +50,51 @@ export const api = {
     message?: string
   }) =>
     request<{ ok: boolean }>('/github/trigger-claude', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    }),
+
+  postComment: (params: {
+    fullName: string
+    number: number
+    type: 'pr' | 'issue'
+    comment: string
+  }) =>
+    request<{ ok: boolean }>('/github/comment', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    }),
+
+  addLabel: (params: {
+    fullName: string
+    number: number
+    type: 'pr' | 'issue'
+    label: string
+  }) =>
+    request<{ ok: boolean }>('/github/label', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    }),
+
+  removeLabel: (params: {
+    fullName: string
+    number: number
+    type: 'pr' | 'issue'
+    label: string
+  }) =>
+    request<{ ok: boolean }>('/github/label', {
+      method: 'DELETE',
+      body: JSON.stringify(params),
+    }),
+
+  createPR: (params: {
+    fullName: string
+    head: string
+    base: string
+    title: string
+    prBody?: string
+  }) =>
+    request<{ ok: boolean; url: string }>('/github/create-pr', {
       method: 'POST',
       body: JSON.stringify(params),
     }),

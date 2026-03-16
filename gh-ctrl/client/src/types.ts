@@ -31,6 +31,17 @@ export interface GHIssue {
   author: { login: string }
 }
 
+export interface GHLabel {
+  name: string
+  color: string
+  description: string
+}
+
+export interface BranchesData {
+  branches: string[]
+  defaultBranch: string
+}
+
 export interface RepoStats {
   openPRs: number
   openIssues: number
