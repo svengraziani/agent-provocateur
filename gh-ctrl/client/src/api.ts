@@ -1,4 +1,4 @@
-import type { Repo, DashboardEntry, RepoData, GHLabel, BranchesData } from './types'
+import type { Repo, DashboardEntry, RepoData, GHLabel, BranchesData, IssueDetail } from './types'
 
 const BASE = '/api'
 
@@ -103,5 +103,19 @@ export const api = {
     request<{ ok: boolean }>('/github/label-trigger', {
       method: 'POST',
       body: JSON.stringify({ fullName, number }),
+    }),
+
+  getIssue: (owner: string, name: string, number: number) =>
+    request<IssueDetail>(`/github/issue/${owner}/${name}/${number}`),
+
+  createIssue: (params: {
+    fullName: string
+    title: string
+    issueBody?: string
+    labels?: string[]
+  }) =>
+    request<{ ok: boolean; url: string }>('/github/create-issue', {
+      method: 'POST',
+      body: JSON.stringify(params),
     }),
 }

@@ -242,6 +242,47 @@ app.post('/label-trigger', async (c) => {
   return c.json({ ok: true })
 })
 
+// GET /api/github/issue/:owner/:name/:number — fetch issue details
+app.get('/issue/:owner/:name/:number', async (c) => {
+  const owner = c.req.param('owner')
+  const name = c.req.param('name')
+  const number = c.req.param('number')
+  const fullName = `${owner}/${name}`
+
+  const result = gh([
+    'issue', 'view', number, '--repo', fullName,
+    '--json', 'number,title,body,state,labels,assignees,author,url,createdAt,comments',
+  ])
+
+  if (result.error) return c.json({ error: result.error }, 500)
+  return c.json(result.data)
+})
+
+// POST /api/github/create-issue — create a new issue
+app.post('/create-issue', async (c) => {
+  const body = await c.req.json()
+  const { fullName, title, issueBody, labels } = body
+
+  if (!fullName || !title) {
+    return c.json({ error: 'Missing required fields: fullName, title' }, 400)
+  }
+
+  const args = ['issue', 'create', '--repo', fullName, '--title', title]
+  if (issueBody) args.push('--body', issueBody)
+  if (labels && labels.length > 0) {
+    args.push('--label', labels.join(','))
+  }
+
+  const proc = Bun.spawnSync(['gh', ...args], { env: { ...process.env } })
+
+  if (proc.exitCode !== 0) {
+    return c.json({ error: proc.stderr.toString() }, 500)
+  }
+
+  const url = proc.stdout.toString().trim()
+  return c.json({ ok: true, url })
+})
+
 // POST /api/github/create-pr — create a PR from a branch
 app.post('/create-pr', async (c) => {
   const body = await c.req.json()

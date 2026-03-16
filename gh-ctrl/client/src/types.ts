@@ -67,3 +67,16 @@ export interface DashboardEntry {
   repo: Repo
   data: RepoData
 }
+
+export interface IssueDetail {
+  number: number
+  title: string
+  body: string
+  state: string
+  labels: { name: string; color: string }[]
+  assignees: { login: string }[]
+  author: { login: string }
+  url: string
+  createdAt: string
+  comments: { author: { login: string }; body: string; createdAt: string }[]
+}

@@ -43,6 +43,14 @@ export function RepoCard({ entry, onToast }: Props) {
     setModalState({ mode: 'create-pr', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, head })
   }
 
+  const openCreateIssue = () => {
+    setModalState({ mode: 'create-issue', fullName: repo.fullName, owner: repo.owner, repoName: repo.name })
+  }
+
+  const openIssueDetail = (number: number) => {
+    setModalState({ mode: 'issue-detail', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, number })
+  }
+
   const toggleBranches = async () => {
     if (!showBranches && branches.length === 0) {
       setBranchesLoading(true)
@@ -83,6 +91,9 @@ export function RepoCard({ entry, onToast }: Props) {
               <div className="card-repo-name">{repo.name}</div>
               <div className="card-repo-full">{repo.fullName}</div>
             </div>
+            <button className="btn btn-ghost btn-sm" onClick={openCreateIssue} title="Create new issue">
+              + Issue
+            </button>
           </div>
 
           {data.error && (
@@ -156,6 +167,7 @@ export function RepoCard({ entry, onToast }: Props) {
                   onClaude={() => handleTriggerClaude(issue.number, 'issue')}
                   onComment={() => openComment(issue.number, 'issue')}
                   onLabel={() => openLabel(issue.number, 'issue', issue.labels.map((l) => l.name))}
+                  onDetail={() => openIssueDetail(issue.number)}
                 />
               ))}
             </div>
@@ -197,6 +209,7 @@ export function RepoCard({ entry, onToast }: Props) {
                   onClaude={() => handleTriggerClaude(issue.number, 'issue')}
                   onComment={() => openComment(issue.number, 'issue')}
                   onLabel={() => openLabel(issue.number, 'issue', issue.labels.map((l) => l.name))}
+                  onDetail={() => openIssueDetail(issue.number)}
                 />
               ))}
             </div>
@@ -242,7 +255,7 @@ export function RepoCard({ entry, onToast }: Props) {
 }
 
 function ItemRow({
-  number, title, labels, badge, onClaude, onComment, onLabel,
+  number, title, labels, badge, onClaude, onComment, onLabel, onDetail,
 }: {
   number: number
   title: string
@@ -251,12 +264,19 @@ function ItemRow({
   onClaude: () => void
   onComment: () => void
   onLabel: () => void
+  onDetail?: () => void
 }) {
   return (
     <div className="list-item">
       <div className="list-item-left">
         <span className="list-item-number">#{number}</span>
-        <span className="list-item-title">{title}</span>
+        {onDetail ? (
+          <button className="list-item-title list-item-title-btn" onClick={onDetail} title="View details">
+            {title}
+          </button>
+        ) : (
+          <span className="list-item-title">{title}</span>
+        )}
         {labels.map((l) => (
           <span key={l} className="inline-label">{l}</span>
         ))}
