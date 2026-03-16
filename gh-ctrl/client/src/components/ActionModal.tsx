@@ -8,6 +8,7 @@ export type ModalState =
   | { mode: 'create-pr'; fullName: string; owner: string; repoName: string; head: string }
   | { mode: 'create-issue'; fullName: string; owner: string; repoName: string }
   | { mode: 'issue-detail'; fullName: string; owner: string; repoName: string; number: number }
+  | { mode: 'trigger-claude'; fullName: string; number: number; type: 'pr' | 'issue' }
   | null
 
 interface Props {
@@ -38,6 +39,9 @@ export function ActionModal({ state, onClose, onSuccess, onError }: Props) {
         )}
         {state.mode === 'issue-detail' && (
           <IssueDetailView state={state} onClose={onClose} onError={onError} />
+        )}
+        {state.mode === 'trigger-claude' && (
+          <TriggerClaudeForm state={state} onClose={onClose} onSuccess={onSuccess} onError={onError} />
         )}
       </div>
     </div>
@@ -388,6 +392,63 @@ function CreateIssueForm({ state, onClose, onSuccess, onError }: {
         <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
         <button type="submit" className="btn btn-primary" disabled={submitting || !title.trim()}>
           {submitting ? 'Creating...' : 'Create Issue'}
+        </button>
+      </div>
+    </form>
+  )
+}
+
+function TriggerClaudeForm({ state, onClose, onSuccess, onError }: {
+  state: Extract<ModalState, { mode: 'trigger-claude' }>
+  onClose: () => void
+  onSuccess: (msg: string) => void
+  onError: (msg: string) => void
+}) {
+  const [message, setMessage] = useState('@claude ')
+  const [submitting, setSubmitting] = useState(false)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  useEffect(() => {
+    const el = textareaRef.current
+    if (el) {
+      el.focus()
+      el.setSelectionRange(el.value.length, el.value.length)
+    }
+  }, [])
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!message.trim()) return
+    setSubmitting(true)
+    try {
+      await api.triggerClaude({ fullName: state.fullName, number: state.number, type: state.type, message: message.trim() })
+      onSuccess(`@claude triggered on ${state.type} #${state.number}`)
+      onClose()
+    } catch (err: any) {
+      onError(`Failed: ${err.message}`)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <div className="modal-title">
+        Trigger Claude on {state.type} #{state.number}
+        <span className="modal-subtitle">{state.fullName}</span>
+      </div>
+      <textarea
+        ref={textareaRef}
+        className="input modal-textarea"
+        value={message}
+        onChange={(e) => setMessage(e.target.value)}
+        placeholder="@claude ..."
+        rows={5}
+      />
+      <div className="modal-actions">
+        <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
+        <button type="submit" className="btn btn-claude" disabled={submitting || !message.trim()}>
+          {submitting ? 'Triggering...' : 'Trigger @claude'}
         </button>
       </div>
     </form>
