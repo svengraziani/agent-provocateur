@@ -1,8 +1,11 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import type { DashboardEntry } from '../types'
 import { BaseNode } from './BaseNode'
+import { ActionModal } from './ActionModal'
+import type { ModalState } from './ActionModal'
 import { ConstructDialog } from './ConstructDialog'
 import { CreateBaseDialog } from './CreateBaseDialog'
+import { CloseIcon, RelocateIcon, RefreshIcon } from './Icons'
 
 interface Props {
   entries: DashboardEntry[]
@@ -27,6 +30,32 @@ const MAP_PADDING = 100
 const ZOOM_MIN = 0.25
 const ZOOM_MAX = 2.5
 const ZOOM_FACTOR = 1.15
+
+// Seeded PRNG (LCG) for stable terrain layout across renders
+function seededRng(seed: number) {
+  let s = seed >>> 0
+  return () => {
+    s = (Math.imul(s, 1664525) + 1013904223) >>> 0
+    return s / 0xffffffff
+  }
+}
+
+type TerrainType = 'tree' | 'rock' | 'crystal'
+interface TerrainItem { id: number; x: number; y: number; type: TerrainType; scale: number }
+
+const TERRAIN_ITEMS: TerrainItem[] = (() => {
+  const rng = seededRng(0xCAFE1234)
+  const types: TerrainType[] = ['tree', 'tree', 'tree', 'rock', 'rock', 'crystal']
+  return Array.from({ length: 60 }, (_, i) => ({
+    id: i,
+    x: rng() * 2500 + 150,
+    y: rng() * 2500 + 150,
+    type: types[Math.floor(rng() * types.length)],
+    scale: 0.75 + rng() * 0.55,
+  }))
+})()
+
+const ORE_ROUTES = [1, 2, 3, 4, 5]
 
 function getDefaultPositions(entries: DashboardEntry[]): Record<number, Position> {
   const positions: Record<number, Position> = {}
@@ -70,6 +99,7 @@ export function BattlefieldView({ entries, loading, onRefresh, onReposChange, on
   const [constructTarget, setConstructTarget] = useState<DashboardEntry | null>(null)
   const [isRelocateMode, setIsRelocateMode] = useState(false)
   const [showCreateBase, setShowCreateBase] = useState(false)
+  const [modalState, setModalState] = useState<ModalState>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const zoomRef = useRef(zoom)
   const offsetRef = useRef(offset)
@@ -78,11 +108,15 @@ export function BattlefieldView({ entries, loading, onRefresh, onReposChange, on
 
   // Update positions when entries change (new repos)
   useEffect(() => {
+    if (entries.length === 0) return
     setPositions(prev => {
+      const stored = loadPositions()
       const defaults = getDefaultPositions(entries)
-      const merged = { ...defaults, ...prev }
+      // Priority: in-memory (prev) > stored (localStorage) > defaults
+      const merged = { ...defaults, ...stored, ...prev }
       const valid: Record<number, Position> = {}
       entries.forEach(e => { valid[e.repo.id] = merged[e.repo.id] ?? defaults[e.repo.id] })
+      savePositions(valid)
       return valid
     })
   }, [entries])
@@ -207,13 +241,13 @@ export function BattlefieldView({ entries, loading, onRefresh, onReposChange, on
             onClick={onRefresh}
             disabled={loading}
           >
-            {loading ? '◌ SCANNING...' : '&#x27F3; SCAN'}
+            {loading ? '◌ SCANNING...' : <><RefreshIcon size={12} /> SCAN</>}
           </button>
           <button
             className={`hud-btn${isRelocateMode ? ' active' : ''}`}
             onClick={() => { setIsRelocateMode(v => !v); setRelocatingId(null); setRelocatingStart(null) }}
           >
-            {isRelocateMode ? '✕ CANCEL RELOCATE' : '&#x2295; RELOCATE BASE'}
+            {isRelocateMode ? <><CloseIcon size={10} /> CANCEL RELOCATE</> : <><RelocateIcon size={12} /> RELOCATE BASE</>}
           </button>
           <button
             className="hud-btn hud-btn-new-base"
@@ -235,6 +269,35 @@ export function BattlefieldView({ entries, loading, onRefresh, onReposChange, on
       >
         {/* Terrain grid — inside map layer so it pans/zooms with the bases */}
         <div className="battlefield-terrain" />
+
+        {/* Terrain elements: trees, rocks, crystals */}
+        {TERRAIN_ITEMS.map((item) => (
+          <div
+            key={item.id}
+            className="terrain-el"
+            style={{ left: item.x, top: item.y, transform: `scale(${item.scale})` }}
+          >
+            {item.type === 'tree' && (
+              <div className="terrain-tree">
+                <div className="terrain-tree-layer" />
+                <div className="terrain-tree-layer" />
+                <div className="terrain-tree-layer" />
+                <div className="terrain-tree-trunk" />
+              </div>
+            )}
+            {item.type === 'rock' && <div className="terrain-rock" />}
+            {item.type === 'crystal' && <div className="terrain-crystal" />}
+          </div>
+        ))}
+
+        {/* Ore collectors — animated harvester vehicles */}
+        {ORE_ROUTES.map((route) => (
+          <div key={route} className="ore-collector" data-route={String(route)}>
+            <div className="ore-collector-body" />
+            <div className="ore-collector-tracks" />
+          </div>
+        ))}
+
         {entries.map((entry) => {
           const pos = positions[entry.repo.id] ?? { x: 0, y: 0 }
           return (
@@ -247,6 +310,7 @@ export function BattlefieldView({ entries, loading, onRefresh, onReposChange, on
               onConstruct={() => setConstructTarget(entry)}
               onStartRelocate={(mouseX, mouseY) => handleStartRelocate(entry.repo.id, mouseX, mouseY)}
               onToast={onToast}
+              onModalOpen={setModalState}
             />
           )
         })}
@@ -278,6 +342,14 @@ export function BattlefieldView({ entries, loading, onRefresh, onReposChange, on
           &#x2295; RELOCATE MODE — Drag a base to reposition it. Click again to cancel.
         </div>
       )}
+
+      {/* Action modal — rendered outside the transformed map to ensure correct fixed positioning */}
+      <ActionModal
+        state={modalState}
+        onClose={() => setModalState(null)}
+        onSuccess={(msg) => onToast(msg, 'success')}
+        onError={(msg) => onToast(msg, 'error')}
+      />
 
       {/* Construction dialog */}
       {constructTarget && (

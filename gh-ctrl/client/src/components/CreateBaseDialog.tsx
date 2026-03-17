@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { api } from '../api'
+import { CloseIcon, LockIcon, GlobeIcon } from './Icons'
 
 interface Props {
   onClose: () => void
@@ -78,7 +79,7 @@ export function CreateBaseDialog({ onClose, onSuccess, onError }: Props) {
             <span className="construct-icon">&#x25a0;&#x25a0;</span>
             <span className="construct-title">ESTABLISH NEW BASE</span>
             <span className="construct-subtitle">// NEW GITHUB REPOSITORY</span>
-            <button className="construct-close" onClick={onClose}>✕</button>
+            <button className="construct-close" onClick={onClose}><CloseIcon size={12} /></button>
           </div>
           <pre className="construct-boot">
             {bootText}
@@ -125,7 +126,7 @@ export function CreateBaseDialog({ onClose, onSuccess, onError }: Props) {
                 className={`create-base-vis-btn${visibility === 'private' ? ' selected' : ''}`}
                 onClick={() => setVisibility('private')}
               >
-                <span className="create-base-vis-icon">&#x1F512;</span>
+                <span className="create-base-vis-icon"><LockIcon size={16} /></span>
                 <span className="create-base-vis-label">PRIVATE</span>
                 <span className="create-base-vis-desc">Only you and collaborators</span>
               </button>
@@ -134,7 +135,7 @@ export function CreateBaseDialog({ onClose, onSuccess, onError }: Props) {
                 className={`create-base-vis-btn${visibility === 'public' ? ' selected' : ''}`}
                 onClick={() => setVisibility('public')}
               >
-                <span className="create-base-vis-icon">&#x1F30D;</span>
+                <span className="create-base-vis-icon"><GlobeIcon size={16} /></span>
                 <span className="create-base-vis-label">PUBLIC</span>
                 <span className="create-base-vis-desc">Visible to everyone</span>
               </button>
