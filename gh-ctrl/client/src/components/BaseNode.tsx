@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react'
-import type { DashboardEntry } from '../types'
+import type { DashboardEntry, GHPR, GHIssue } from '../types'
 import { ActionModal } from './ActionModal'
 import type { ModalState } from './ActionModal'
 
@@ -138,6 +138,8 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
   onModalOpen: (state: ModalState) => void
 }) {
   const { repo, data } = entry
+  const [showAllPRs, setShowAllPRs] = useState(false)
+  const [showAllIssues, setShowAllIssues] = useState(false)
   const panelX = position.x + 145
   const panelY = position.y
 
@@ -149,12 +151,12 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
     return () => window.removeEventListener('keydown', handleKey)
   }, [onClose])
 
-  const claudeIssueNums = new Set(data.claudeIssues.map(i => i.number))
-  const regularIssues = data.issues.filter(i => !claudeIssueNums.has(i.number))
-
-  const conflictNums = new Set(data.conflicts.map(p => p.number))
-  const reviewNums = new Set(data.needsReview.map(p => p.number))
-  const otherPRs = data.prs.filter(pr => !conflictNums.has(pr.number) && !reviewNums.has(pr.number))
+  const activeClaudeSet = new Set(data.activeClaudeIssues ?? [])
+  const conflictSet = new Set(data.conflicts.map((p) => p.number))
+  const reviewSet = new Set(data.needsReview.map((p) => p.number))
+  const claudeSet = new Set(data.claudeIssues.map((i) => i.number))
+  const remainingPRs = data.prs.filter((p) => !conflictSet.has(p.number) && !reviewSet.has(p.number))
+  const remainingIssues = data.issues.filter((i) => !claudeSet.has(i.number))
 
   return (
     <div
@@ -172,6 +174,13 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
         >
           {repo.fullName} &#x2197;
         </a>
+        <button
+          className="bdp-action-btn"
+          onClick={() => onModalOpen({ mode: 'create-issue', fullName: repo.fullName, owner: repo.owner, repoName: repo.name })}
+          title="Create new issue"
+        >
+          + Issue
+        </button>
         <button className="bdp-close" onClick={onClose}>✕</button>
       </div>
 
@@ -185,31 +194,17 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
       {data.conflicts.length > 0 && (
         <div className="bdp-section">
           <div className="bdp-section-title conflict">&#x26a0; CONFLICTS</div>
-          {data.conflicts.slice(0, 4).map(pr => (
-            <div key={pr.number} className="bdp-item">
-              <span className="bdp-num">#{pr.number}</span>
-              <button
-                className="bdp-text-btn"
-                onClick={() => onModalOpen({ mode: 'pr-detail', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, number: pr.number })}
-              >
-                {pr.title}
-              </button>
-              <a
-                href={`https://github.com/${repo.fullName}/pull/${pr.number}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="bdp-gh-link"
-                onClick={(e) => e.stopPropagation()}
-              >
-                ↗
-              </a>
-              <button
-                className="bdp-claude-btn"
-                onClick={() => onModalOpen({ mode: 'trigger-claude', fullName: repo.fullName, number: pr.number, type: 'pr' })}
-              >
-                @claude
-              </button>
-            </div>
+          {data.conflicts.slice(0, 4).map((pr: GHPR) => (
+            <BdpItemRow
+              key={pr.number}
+              number={pr.number}
+              title={pr.title}
+              previewUrl={pr.previewUrl}
+              type="pr"
+              repo={repo}
+              onModalOpen={onModalOpen}
+              labels={pr.labels}
+            />
           ))}
           {data.conflicts.length > 4 && <div className="bdp-more">+{data.conflicts.length - 4} more</div>}
         </div>
@@ -218,31 +213,17 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
       {data.needsReview.length > 0 && (
         <div className="bdp-section">
           <div className="bdp-section-title review">&#x25cf; NEEDS REVIEW</div>
-          {data.needsReview.slice(0, 4).map(pr => (
-            <div key={pr.number} className="bdp-item">
-              <span className="bdp-num">#{pr.number}</span>
-              <button
-                className="bdp-text-btn"
-                onClick={() => onModalOpen({ mode: 'pr-detail', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, number: pr.number })}
-              >
-                {pr.title}
-              </button>
-              <a
-                href={`https://github.com/${repo.fullName}/pull/${pr.number}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="bdp-gh-link"
-                onClick={(e) => e.stopPropagation()}
-              >
-                ↗
-              </a>
-              <button
-                className="bdp-claude-btn"
-                onClick={() => onModalOpen({ mode: 'trigger-claude', fullName: repo.fullName, number: pr.number, type: 'pr' })}
-              >
-                @claude
-              </button>
-            </div>
+          {data.needsReview.slice(0, 4).map((pr: GHPR) => (
+            <BdpItemRow
+              key={pr.number}
+              number={pr.number}
+              title={pr.title}
+              previewUrl={pr.previewUrl}
+              type="pr"
+              repo={repo}
+              onModalOpen={onModalOpen}
+              labels={pr.labels}
+            />
           ))}
           {data.needsReview.length > 4 && <div className="bdp-more">+{data.needsReview.length - 4} more</div>}
         </div>
@@ -251,105 +232,131 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
       {data.claudeIssues.length > 0 && (
         <div className="bdp-section">
           <div className="bdp-section-title claude">&#x2605; CLAUDE ISSUES</div>
-          {data.claudeIssues.slice(0, 4).map(issue => (
-            <div key={issue.number} className="bdp-item">
-              <span className="bdp-num">#{issue.number}</span>
-              <button
-                className="bdp-text-btn"
-                onClick={() => onModalOpen({ mode: 'issue-detail', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, number: issue.number })}
-              >
-                {issue.title}
-              </button>
-              <a
-                href={`https://github.com/${repo.fullName}/issues/${issue.number}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="bdp-gh-link"
-                onClick={(e) => e.stopPropagation()}
-              >
-                ↗
-              </a>
-              <button
-                className="bdp-claude-btn"
-                onClick={() => onModalOpen({ mode: 'trigger-claude', fullName: repo.fullName, number: issue.number, type: 'issue' })}
-              >
-                @claude
-              </button>
-            </div>
+          {data.claudeIssues.slice(0, 4).map((issue: GHIssue) => (
+            <BdpItemRow
+              key={issue.number}
+              number={issue.number}
+              title={issue.title}
+              type="issue"
+              repo={repo}
+              onModalOpen={onModalOpen}
+              labels={issue.labels}
+              isClaudeActive={activeClaudeSet.has(issue.number)}
+            />
           ))}
           {data.claudeIssues.length > 4 && <div className="bdp-more">+{data.claudeIssues.length - 4} more</div>}
         </div>
       )}
 
-      {regularIssues.length > 0 && (
+      {remainingPRs.length > 0 && (
         <div className="bdp-section">
-          <div className="bdp-section-title">&#x25c6; ISSUES</div>
-          {regularIssues.slice(0, 4).map(issue => (
-            <div key={issue.number} className="bdp-item">
-              <span className="bdp-num">#{issue.number}</span>
-              <button
-                className="bdp-text-btn"
-                onClick={() => onModalOpen({ mode: 'issue-detail', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, number: issue.number })}
-              >
-                {issue.title}
-              </button>
-              <a
-                href={`https://github.com/${repo.fullName}/issues/${issue.number}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="bdp-gh-link"
-                onClick={(e) => e.stopPropagation()}
-              >
-                ↗
-              </a>
-              <button
-                className="bdp-claude-btn"
-                onClick={() => onModalOpen({ mode: 'trigger-claude', fullName: repo.fullName, number: issue.number, type: 'issue' })}
-              >
-                @claude
-              </button>
-            </div>
+          <button className="bdp-toggle" onClick={() => setShowAllPRs((v) => !v)}>
+            <span>{showAllPRs ? '▾' : '▸'}</span> All PRs ({remainingPRs.length})
+          </button>
+          {showAllPRs && remainingPRs.slice(0, 5).map((pr: GHPR) => (
+            <BdpItemRow
+              key={pr.number}
+              number={pr.number}
+              title={pr.title}
+              previewUrl={pr.previewUrl}
+              type="pr"
+              repo={repo}
+              onModalOpen={onModalOpen}
+              labels={pr.labels}
+            />
           ))}
-          {regularIssues.length > 4 && <div className="bdp-more">+{regularIssues.length - 4} more</div>}
         </div>
       )}
 
-      {otherPRs.length > 0 && (
+      {remainingIssues.length > 0 && (
         <div className="bdp-section">
-          <div className="bdp-section-title">OPEN PRS</div>
-          {otherPRs.slice(0, 4).map(pr => (
-            <div key={pr.number} className="bdp-item">
-              <span className="bdp-num">#{pr.number}</span>
-              <button
-                className="bdp-text-btn"
-                onClick={() => onModalOpen({ mode: 'pr-detail', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, number: pr.number })}
-              >
-                {pr.title}
-              </button>
-              <a
-                href={`https://github.com/${repo.fullName}/pull/${pr.number}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="bdp-gh-link"
-                onClick={(e) => e.stopPropagation()}
-              >
-                ↗
-              </a>
-              <button
-                className="bdp-claude-btn"
-                onClick={() => onModalOpen({ mode: 'trigger-claude', fullName: repo.fullName, number: pr.number, type: 'pr' })}
-              >
-                @claude
-              </button>
-            </div>
+          <button className="bdp-toggle" onClick={() => setShowAllIssues((v) => !v)}>
+            <span>{showAllIssues ? '▾' : '▸'}</span> All Issues ({remainingIssues.length})
+          </button>
+          {showAllIssues && remainingIssues.slice(0, 5).map((issue: GHIssue) => (
+            <BdpItemRow
+              key={issue.number}
+              number={issue.number}
+              title={issue.title}
+              type="issue"
+              repo={repo}
+              onModalOpen={onModalOpen}
+              labels={issue.labels}
+              isClaudeActive={activeClaudeSet.has(issue.number)}
+            />
           ))}
-          {otherPRs.length > 4 && <div className="bdp-more">+{otherPRs.length - 4} more</div>}
         </div>
       )}
 
       {data.error && (
         <div className="bdp-error">&#x26A0; {data.error}</div>
       )}
+    </div>
+  )
+}
+
+function BdpItemRow({ number, title, type, repo, onModalOpen, previewUrl, labels, isClaudeActive }: {
+  number: number
+  title: string
+  type: 'pr' | 'issue'
+  repo: DashboardEntry['repo']
+  onModalOpen: (state: ModalState) => void
+  previewUrl?: string | null
+  labels: { name: string; color: string }[]
+  isClaudeActive?: boolean
+}) {
+  return (
+    <div className="bdp-item">
+      <div className="bdp-item-left">
+        <span className="bdp-num">#{number}</span>
+        {isClaudeActive && (
+          <span className="claude-active-indicator spinning" title="Claude is working on this">⟳</span>
+        )}
+        <button
+          className="bdp-text-btn"
+          onClick={() => onModalOpen(
+            type === 'issue'
+              ? { mode: 'issue-detail', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, number }
+              : { mode: 'pr-detail', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, number }
+          )}
+          title="View details"
+        >
+          {title}
+        </button>
+      </div>
+      <div className="bdp-item-right">
+        {previewUrl && (
+          <a
+            href={previewUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="bdp-icon-btn"
+            title="Open preview"
+          >
+            &#x1F517;
+          </a>
+        )}
+        <button
+          className="bdp-icon-btn"
+          title="Manage labels"
+          onClick={() => onModalOpen({ mode: 'label', fullName: repo.fullName, number, type, currentLabels: labels.map((l) => l.name) })}
+        >
+          &#x1F3F7;
+        </button>
+        <button
+          className="bdp-icon-btn"
+          title="Post comment"
+          onClick={() => onModalOpen({ mode: 'comment', fullName: repo.fullName, number, type })}
+        >
+          &#x1F4AC;
+        </button>
+        <button
+          className="bdp-claude-btn"
+          onClick={() => onModalOpen({ mode: 'trigger-claude', fullName: repo.fullName, number, type })}
+        >
+          @claude
+        </button>
+      </div>
     </div>
   )
 }
