@@ -1163,6 +1163,33 @@ select.input {
   color: var(--crt-red);
 }
 
+.hud-zoom-sep {
+  width: 1px;
+  height: 14px;
+  background: rgba(57, 211, 83, 0.25);
+  margin: 0 4px;
+}
+
+.hud-zoom-btn {
+  padding: 2px 7px;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.hud-zoom-level {
+  font-size: 10px;
+  color: var(--text-2);
+  min-width: 34px;
+  text-align: center;
+  cursor: pointer;
+  user-select: none;
+  letter-spacing: 0.5px;
+}
+
+.hud-zoom-level:hover {
+  color: var(--crt-green);
+}
+
 /* Relocate mode banner */
 .battlefield-relocate-banner {
   position: absolute;
@@ -1544,9 +1571,25 @@ select.input {
 .bdp-item {
   display: flex;
   align-items: center;
-  gap: 6px;
+  justify-content: space-between;
+  gap: 4px;
   padding: 3px 0;
   font-size: 11px;
+}
+
+.bdp-item-left {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
+
+.bdp-item-right {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
 }
 
 .bdp-num {
@@ -1555,13 +1598,125 @@ select.input {
   flex-shrink: 0;
 }
 
-.bdp-text {
+
+.bdp-text-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-size: 11px;
   color: var(--text);
+  cursor: pointer;
   flex: 1;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-align: left;
+  transition: color 0.15s;
+}
+
+.bdp-text-btn:hover {
+  color: var(--crt-green);
+  text-decoration: underline;
+  text-decoration-color: rgba(57, 211, 83, 0.5);
+}
+
+.bdp-gh-link {
+  color: var(--text-3);
+  font-size: 10px;
+  text-decoration: none;
+  flex-shrink: 0;
+  padding: 0 2px;
+  transition: color 0.15s;
+  line-height: 1;
+}
+
+.bdp-gh-link:hover {
+  color: var(--blue);
+  text-decoration: none;
+}
+
+.bdp-more {
+  font-size: 9px;
+  color: var(--text-3);
+  letter-spacing: 0.5px;
+  padding: 2px 0;
+  text-align: right;
+}
+
+.bdp-text-btn {
+  background: none;
+  border: none;
+  color: var(--text);
+  cursor: pointer;
+  font-family: var(--font-mono);
   font-size: 11px;
+  padding: 0;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  flex: 1;
+}
+
+.bdp-text-btn:hover {
+  color: var(--crt-green);
+  text-decoration: underline;
+}
+
+.bdp-icon-btn {
+  background: none;
+  border: 1px solid rgba(57, 211, 83, 0.2);
+  color: var(--text-3);
+  font-size: 9px;
+  padding: 2px 4px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s;
+  line-height: 1;
+}
+
+.bdp-icon-btn:hover {
+  color: var(--text);
+  border-color: rgba(57, 211, 83, 0.5);
+  background: rgba(57, 211, 83, 0.08);
+}
+
+.bdp-action-btn {
+  background: rgba(57, 211, 83, 0.08);
+  border: 1px solid rgba(57, 211, 83, 0.3);
+  color: var(--crt-green);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  padding: 2px 6px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s;
+  letter-spacing: 0.5px;
+}
+
+.bdp-action-btn:hover {
+  background: rgba(57, 211, 83, 0.18);
+}
+
+.bdp-toggle {
+  background: none;
+  border: none;
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 2px 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 3px;
+  letter-spacing: 0.5px;
+}
+
+.bdp-toggle:hover {
+  color: var(--text);
 }
 
 .bdp-claude-btn {
