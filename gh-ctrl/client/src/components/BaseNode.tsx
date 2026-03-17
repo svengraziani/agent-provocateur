@@ -4,6 +4,54 @@ import type { ModalState } from './ActionModal'
 import { CloseIcon, LinkIcon, LabelIcon, CommentIcon, RefreshIcon, ExternalLinkIcon } from './Icons'
 import { api } from '../api'
 
+function prBuildingColor(pr: GHPR, repoColor: string): string {
+  if (pr.mergeable === 'CONFLICTING' || pr.reviewDecision === 'CHANGES_REQUESTED') return '#f85149'
+  if (pr.reviewDecision === 'APPROVED') return '#3fb950'
+  if (pr.reviewDecision === 'REVIEW_REQUIRED') return '#f0883e'
+  if (pr.isDraft) return '#6e7681'
+  return repoColor
+}
+
+function prStatusLabel(pr: GHPR): string {
+  if (pr.mergeable === 'CONFLICTING') return 'CONFLICT'
+  if (pr.reviewDecision === 'CHANGES_REQUESTED') return 'CHANGES'
+  if (pr.reviewDecision === 'APPROVED') return 'APPROVED'
+  if (pr.reviewDecision === 'REVIEW_REQUIRED') return 'REVIEW'
+  if (pr.isDraft) return 'DRAFT'
+  return 'OPEN'
+}
+
+function PRBuilding({ pr, repoColor, style, onClick }: {
+  pr: GHPR
+  repoColor: string
+  style: React.CSSProperties
+  onClick: () => void
+}) {
+  const color = prBuildingColor(pr, repoColor)
+  const statusLabel = prStatusLabel(pr)
+  const shortTitle = pr.title.length > 10 ? pr.title.slice(0, 10) + '…' : pr.title
+
+  return (
+    <div
+      className="pr-building"
+      style={{ ...style, '--pr-color': color } as React.CSSProperties}
+      onClick={(e) => { e.stopPropagation(); onClick() }}
+      title={`#${pr.number}: ${pr.title} [${statusLabel}]`}
+    >
+      <div className="pr-building-roof" />
+      <div className="pr-building-body">
+        <div className="pr-building-window" />
+        <div className="pr-building-door" />
+      </div>
+      <div className="pr-building-label">
+        <span className="pr-building-num">#{pr.number}</span>
+        <span className="pr-building-status">{statusLabel}</span>
+        <span className="pr-building-title">{shortTitle}</span>
+      </div>
+    </div>
+  )
+}
+
 interface Position {
   x: number
   y: number
@@ -56,6 +104,22 @@ export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, on
 
   return (
     <>
+      {/* PR Buildings — positioned to the right of the base in a 2-column grid */}
+      {data.prs.slice(0, 8).map((pr, idx) => {
+        const col = idx % 2
+        const row = Math.floor(idx / 2)
+        const prX = position.x + 148 + col * 62
+        const prY = position.y + row * 68
+        return (
+          <PRBuilding
+            key={pr.number}
+            pr={pr}
+            repoColor={repo.color}
+            style={{ left: prX, top: prY }}
+            onClick={() => onModalOpen({ mode: 'pr-detail', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, number: pr.number })}
+          />
+        )
+      })}
       <div
         className={`base-node ${statusClass}${isBeingRelocated ? ' relocating' : ''}${isRelocateMode ? ' relocate-mode' : ''}`}
         style={{

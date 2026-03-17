@@ -1601,6 +1601,100 @@ select.input {
   display: block;
 }
 
+/* ---- PR Buildings (outposts positioned to the right of the base) ---- */
+.pr-building {
+  position: absolute;
+  width: 55px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 1;
+  transition: transform 0.15s, filter 0.15s;
+  user-select: none;
+}
+
+.pr-building:hover {
+  transform: scale(1.1);
+  filter: brightness(1.4);
+  z-index: 10;
+}
+
+.pr-building-roof {
+  width: 0;
+  height: 0;
+  border-left: 18px solid transparent;
+  border-right: 18px solid transparent;
+  border-bottom: 11px solid var(--pr-color, #39ff14);
+  filter: brightness(0.75);
+}
+
+.pr-building-body {
+  width: 32px;
+  height: 26px;
+  background: rgba(13, 17, 23, 0.92);
+  border: 1px solid var(--pr-color, #39ff14);
+  border-top: none;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  padding: 0 4px 2px;
+  box-shadow:
+    2px 2px 0 color-mix(in srgb, var(--pr-color, #39ff14) 12%, #000),
+    0 0 8px color-mix(in srgb, var(--pr-color, #39ff14) 15%, transparent);
+}
+
+.pr-building-window {
+  width: 6px;
+  height: 6px;
+  background: var(--pr-color, #39ff14);
+  opacity: 0.65;
+  box-shadow: 0 0 4px var(--pr-color, #39ff14);
+}
+
+.pr-building-door {
+  width: 7px;
+  height: 11px;
+  background: color-mix(in srgb, var(--pr-color, #39ff14) 20%, #000);
+  border: 1px solid var(--pr-color, #39ff14);
+  border-bottom: none;
+}
+
+.pr-building-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 3px;
+  gap: 1px;
+}
+
+.pr-building-num {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-weight: 700;
+  color: var(--pr-color, #39ff14);
+  line-height: 1;
+}
+
+.pr-building-status {
+  font-family: var(--font-mono);
+  font-size: 7px;
+  color: var(--pr-color, #39ff14);
+  opacity: 0.8;
+  line-height: 1;
+}
+
+.pr-building-title {
+  font-family: var(--font-mono);
+  font-size: 7px;
+  color: #6e7681;
+  line-height: 1;
+  max-width: 55px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* ---- Base Detail Panel ---- */
 .base-detail-panel {
   position: absolute;
