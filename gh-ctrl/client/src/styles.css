@@ -1410,6 +1410,7 @@ select.input {
 .beacon-claude {
   color: var(--purple);
   text-shadow: 0 0 6px var(--purple);
+  font-size: 20px;
 }
 
 /* Building graphic */
