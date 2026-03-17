@@ -310,7 +310,7 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
       {remainingIssues.length > 0 && (
         <div className="bdp-section">
           <button className="bdp-toggle" onClick={() => setShowAllIssues((v) => !v)}>
-            <span>{showAllIssues ? '▾' : '▸'}</span> All Issues ({remainingIssues.length})
+            <span>{showAllIssues ? '▾' : '▸'}</span> All Issues ({remainingIssues.length}) <span className="untouched-count-badge" title="Issues with no @claude interaction">● {remainingIssues.length} untouched</span>
           </button>
           {showAllIssues && remainingIssues.slice(0, 5).map((issue: GHIssue) => (
             <BdpItemRow
@@ -322,6 +322,7 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
               onModalOpen={onModalOpen}
               labels={issue.labels}
               isClaudeActive={activeClaudeSet.has(issue.number)}
+              isUntouched
             />
           ))}
         </div>
@@ -377,7 +378,7 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
   )
 }
 
-function BdpItemRow({ number, title, type, repo, onModalOpen, previewUrl, labels, isClaudeActive }: {
+function BdpItemRow({ number, title, type, repo, onModalOpen, previewUrl, labels, isClaudeActive, isUntouched }: {
   number: number
   title: string
   type: 'pr' | 'issue'
@@ -386,15 +387,19 @@ function BdpItemRow({ number, title, type, repo, onModalOpen, previewUrl, labels
   previewUrl?: string | null
   labels: { name: string; color: string }[]
   isClaudeActive?: boolean
+  isUntouched?: boolean
 }) {
   return (
-    <div className="bdp-item">
+    <div className={`bdp-item${isUntouched ? ' untouched-issue' : ''}`}>
       <div className="bdp-item-left">
         <span className="bdp-num">#{number}</span>
         {isClaudeActive && (
           <span className="claude-active-indicator spinning" title="Claude is working on this">
             <RefreshIcon size={12} />
           </span>
+        )}
+        {isUntouched && (
+          <span className="untouched-indicator" title="No @claude interaction yet">●</span>
         )}
         <button
           className="bdp-text-btn"
