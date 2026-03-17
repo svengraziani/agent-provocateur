@@ -176,19 +176,45 @@ app.get('/labels/:owner/:name', async (c) => {
   return c.json(result.data || [])
 })
 
-// GET /api/github/branches/:owner/:name — list branches for a repo
+// GET /api/github/branches/:owner/:name — list branches for a repo, sorted by commit date desc
 app.get('/branches/:owner/:name', async (c) => {
   const owner = c.req.param('owner')
   const name = c.req.param('name')
-  const fullName = `${owner}/${name}`
 
-  const branchResult = gh(['api', `repos/${fullName}/branches?per_page=100`, '--jq', '[.[].name]'])
-  const repoResult = gh(['repo', 'view', fullName, '--json', 'defaultBranchRef'])
+  const graphqlQuery = `{
+    repository(owner: "${owner}", name: "${name}") {
+      defaultBranchRef { name }
+      refs(refPrefix: "refs/heads/", first: 100) {
+        nodes {
+          name
+          target {
+            ... on Commit {
+              committedDate
+            }
+          }
+        }
+      }
+    }
+  }`
 
-  if (branchResult.error) return c.json({ error: branchResult.error }, 500)
+  const result = gh(['api', 'graphql', '-f', `query=${graphqlQuery}`])
+  if (result.error) return c.json({ error: result.error }, 500)
 
-  const branches: string[] = branchResult.data || []
-  const defaultBranch: string = repoResult.data?.defaultBranchRef?.name || 'main'
+  const repo = result.data?.data?.repository
+  if (!repo) return c.json({ error: 'Failed to fetch branches' }, 500)
+
+  const defaultBranch: string = repo.defaultBranchRef?.name || 'main'
+  const branches: { name: string; committedDate: string }[] = (repo.refs?.nodes || [])
+    .map((node: any) => ({
+      name: node.name,
+      committedDate: node.target?.committedDate || '',
+    }))
+    .sort((a: any, b: any) => {
+      if (!a.committedDate && !b.committedDate) return 0
+      if (!a.committedDate) return 1
+      if (!b.committedDate) return -1
+      return new Date(b.committedDate).getTime() - new Date(a.committedDate).getTime()
+    })
 
   return c.json({ branches, defaultBranch })
 })
