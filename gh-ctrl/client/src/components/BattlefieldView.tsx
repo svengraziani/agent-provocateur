@@ -26,7 +26,7 @@ const ISO_MAP_OFFSET_Y = 120  // y anchor for the top of the diamond
 const MAP_PADDING = 100
 const ZOOM_MIN = 0.25
 const ZOOM_MAX = 2.5
-const ZOOM_STEP = 0.15
+const ZOOM_FACTOR = 1.15
 
 function getDefaultPositions(entries: DashboardEntry[]): Record<number, Position> {
   const positions: Record<number, Position> = {}
@@ -112,9 +112,11 @@ export function BattlefieldView({ entries, loading, onRefresh, onReposChange, on
 
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault()
-    const delta = -Math.sign(e.deltaY) * ZOOM_STEP
+    // Use actual deltaY magnitude for smooth trackpad support; clamp to avoid huge jumps
+    const clampedDelta = Math.max(-100, Math.min(100, e.deltaY))
+    const factor = Math.pow(ZOOM_FACTOR, -clampedDelta / 100)
     setZoom(prevZoom => {
-      const newZoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, prevZoom + delta))
+      const newZoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, prevZoom * factor))
       // Zoom toward cursor position
       const cursorX = e.clientX
       const cursorY = e.clientY
@@ -128,7 +130,7 @@ export function BattlefieldView({ entries, loading, onRefresh, onReposChange, on
 
   const handleZoomIn = useCallback(() => {
     setZoom(prev => {
-      const newZoom = Math.min(ZOOM_MAX, prev + ZOOM_STEP)
+      const newZoom = Math.min(ZOOM_MAX, prev * ZOOM_FACTOR)
       const cx = window.innerWidth / 2
       const cy = window.innerHeight / 2
       setOffset(prevOffset => ({
@@ -141,7 +143,7 @@ export function BattlefieldView({ entries, loading, onRefresh, onReposChange, on
 
   const handleZoomOut = useCallback(() => {
     setZoom(prev => {
-      const newZoom = Math.max(ZOOM_MIN, prev - ZOOM_STEP)
+      const newZoom = Math.max(ZOOM_MIN, prev / ZOOM_FACTOR)
       const cx = window.innerWidth / 2
       const cy = window.innerHeight / 2
       setOffset(prevOffset => ({
