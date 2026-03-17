@@ -81,8 +81,7 @@ export default function App() {
     <div className="app-layout">
       <aside className="sidebar">
         <div className="sidebar-logo">
-          <img src="/logo.svg" alt="V&C Command Center" className="sidebar-logo-img" />
-          <span>V&amp;C</span>
+          <img src="/logo-transparent.png" alt="V&C Command Center" className="sidebar-logo-img" />
         </div>
 
         <nav className="sidebar-nav">

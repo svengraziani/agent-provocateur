@@ -1,16 +1,87 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
-  <!-- Dark background -->
-  <rect width="64" height="64" rx="8" fill="#080b08"/>
-  <!-- Radar circle outer -->
-  <circle cx="32" cy="32" r="28" fill="none" stroke="#1a4d1a" stroke-width="1"/>
-  <!-- Radar circle inner -->
-  <circle cx="32" cy="32" r="20" fill="none" stroke="#1a4d1a" stroke-width="1"/>
-  <circle cx="32" cy="32" r="12" fill="none" stroke="#1a4d1a" stroke-width="1"/>
-  <!-- Radar scan lines -->
-  <line x1="4" y1="32" x2="60" y2="32" stroke="#1a4d1a" stroke-width="0.5"/>
-  <line x1="32" y1="4" x2="32" y2="60" stroke="#1a4d1a" stroke-width="0.5"/>
-  <!-- Terminal prompt >_ symbol in neon green -->
-  <text x="32" y="37" font-family="monospace" font-size="16" font-weight="bold" fill="#39ff6e" text-anchor="middle" dominant-baseline="middle">&#62;_</text>
+  <defs>
+    <radialGradient id="radar-glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"   stop-color="#0e2a0e"/>
+      <stop offset="60%"  stop-color="#081808"/>
+      <stop offset="100%" stop-color="#040c04"/>
+    </radialGradient>
+    <radialGradient id="center-glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"   stop-color="#1a5a1a"/>
+      <stop offset="100%" stop-color="#081808"/>
+    </radialGradient>
+    <!-- Sweep sector -->
+    <linearGradient id="sweep" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"   stop-color="#39ff6e" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#39ff6e" stop-opacity="0.18"/>
+    </linearGradient>
+    <filter id="soft-glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="1.2" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="text-glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="1.5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <clipPath id="circle-clip">
+      <circle cx="32" cy="32" r="27"/>
+    </clipPath>
+  </defs>
+
+  <!-- Outer badge background -->
+  <rect width="64" height="64" rx="10" fill="#06100a"/>
+
+  <!-- Radar screen background -->
+  <circle cx="32" cy="32" r="27" fill="url(#radar-glow)"/>
+
+  <!-- Sweep sector (radar scan) -->
+  <path d="M32 32 L32 5 A27 27 0 0 1 59 32 Z" fill="url(#sweep)" clip-path="url(#circle-clip)"/>
+
+  <!-- Grid lines -->
+  <line x1="5"  y1="32" x2="59" y2="32" stroke="#153515" stroke-width="0.5"/>
+  <line x1="32" y1="5"  x2="32" y2="59" stroke="#153515" stroke-width="0.5"/>
+  <line x1="12.6" y1="12.6" x2="51.4" y2="51.4" stroke="#112511" stroke-width="0.4"/>
+  <line x1="51.4" y1="12.6" x2="12.6" y2="51.4" stroke="#112511" stroke-width="0.4"/>
+
+  <!-- Radar rings -->
+  <circle cx="32" cy="32" r="27" fill="none" stroke="#1e4d1e" stroke-width="0.8"/>
+  <circle cx="32" cy="32" r="20" fill="none" stroke="#1e4d1e" stroke-width="0.7"/>
+  <circle cx="32" cy="32" r="13" fill="none" stroke="#245424" stroke-width="0.7"/>
+  <circle cx="32" cy="32" r="6"  fill="none" stroke="#2a6a2a" stroke-width="0.7"/>
+
+  <!-- Inner center fill -->
+  <circle cx="32" cy="32" r="6" fill="url(#center-glow)"/>
+
   <!-- Outer glow ring -->
-  <circle cx="32" cy="32" r="29" fill="none" stroke="#39ff6e" stroke-width="0.8" opacity="0.4"/>
+  <circle cx="32" cy="32" r="27.5" fill="none" stroke="#39ff6e" stroke-width="0.7" opacity="0.5" filter="url(#soft-glow)"/>
+
+  <!-- Tick marks on outer ring -->
+  <line x1="32" y1="5"   x2="32" y2="9"   stroke="#39ff6e" stroke-width="1.2" stroke-linecap="round" opacity="0.9"/>
+  <line x1="32" y1="55"  x2="32" y2="59"  stroke="#39ff6e" stroke-width="1.2" stroke-linecap="round" opacity="0.9"/>
+  <line x1="5"  y1="32"  x2="9"  y2="32"  stroke="#39ff6e" stroke-width="1.2" stroke-linecap="round" opacity="0.9"/>
+  <line x1="55" y1="32"  x2="59" y2="32"  stroke="#39ff6e" stroke-width="1.2" stroke-linecap="round" opacity="0.9"/>
+
+  <!-- Military star at top (inside radar, above center) -->
+  <!-- 5-pointed star centered at 32,16 radius ~5 -->
+  <polygon
+    points="32,11.5 33.5,15.5 37.8,15.5 34.4,18.1 35.7,22.2 32,19.7 28.3,22.2 29.6,18.1 26.2,15.5 30.5,15.5"
+    fill="#39ff6e" opacity="0.85" filter="url(#soft-glow)"/>
+
+  <!-- Terminal prompt ">_" center -->
+  <text x="32" y="33.5"
+        font-family="'JetBrains Mono', monospace"
+        font-size="7" font-weight="700"
+        fill="#39ff6e"
+        text-anchor="middle" dominant-baseline="middle"
+        letter-spacing="0.5"
+        filter="url(#text-glow)">&gt;_</text>
+
+  <!-- Corner brackets (HUD overlay) -->
+  <!-- top-left -->
+  <polyline points="3,9 3,3 9,3"   fill="none" stroke="#39ff6e" stroke-width="1.4" stroke-linecap="round" opacity="0.9"/>
+  <!-- top-right -->
+  <polyline points="55,3 61,3 61,9"  fill="none" stroke="#39ff6e" stroke-width="1.4" stroke-linecap="round" opacity="0.9"/>
+  <!-- bottom-left -->
+  <polyline points="3,55 3,61 9,61"  fill="none" stroke="#39ff6e" stroke-width="1.4" stroke-linecap="round" opacity="0.9"/>
+  <!-- bottom-right -->
+  <polyline points="61,55 61,61 55,61" fill="none" stroke="#39ff6e" stroke-width="1.4" stroke-linecap="round" opacity="0.9"/>
 </svg>
