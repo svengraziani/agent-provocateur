@@ -1860,3 +1860,74 @@ select.input {
   text-align: center;
   background: rgba(57, 211, 83, 0.02);
 }
+
+.construct-field-error {
+  font-size: 10px;
+  color: var(--red);
+  margin-top: 4px;
+  letter-spacing: 0.5px;
+}
+
+/* HUD new base button */
+.hud-btn-new-base {
+  border-color: rgba(88, 166, 255, 0.5);
+  color: var(--blue);
+}
+
+.hud-btn-new-base:hover {
+  border-color: var(--blue);
+  background: rgba(88, 166, 255, 0.08);
+  color: var(--blue);
+}
+
+/* Create base visibility selector */
+.create-base-visibility {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.create-base-vis-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 8px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-2);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: var(--font-mono);
+  color: var(--text-2);
+}
+
+.create-base-vis-btn:hover {
+  background: rgba(57, 211, 83, 0.04);
+  border-color: rgba(57, 211, 83, 0.3);
+  color: var(--text);
+}
+
+.create-base-vis-btn.selected {
+  background: rgba(57, 211, 83, 0.08);
+  border-color: rgba(57, 211, 83, 0.6);
+  color: var(--green);
+}
+
+.create-base-vis-icon {
+  font-size: 20px;
+}
+
+.create-base-vis-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+}
+
+.create-base-vis-desc {
+  font-size: 9px;
+  letter-spacing: 0.5px;
+  opacity: 0.7;
+  text-align: center;
+}
