@@ -219,6 +219,23 @@ a:hover { text-decoration: underline; }
   font-family: var(--font-display);
   font-weight: 600;
   font-size: 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.repo-github-link {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-3);
+  text-decoration: none;
+  transition: color 0.15s;
+  line-height: 1;
+}
+
+.repo-github-link:hover {
+  color: var(--blue);
+  text-decoration: none;
 }
 
 .card-repo-full {
