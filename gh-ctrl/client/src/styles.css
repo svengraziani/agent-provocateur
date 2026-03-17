@@ -422,6 +422,15 @@ a:hover { text-decoration: underline; }
   animation: spin 0.7s linear infinite;
 }
 
+.claude-active-indicator {
+  display: inline-block;
+  color: var(--purple);
+  font-size: 12px;
+  animation: spin 1s linear infinite;
+  margin-right: 2px;
+  vertical-align: middle;
+}
+
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }

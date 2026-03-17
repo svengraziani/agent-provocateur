@@ -21,6 +21,26 @@ function gh(args: string[]): GHResult {
 
 const CLAUDE_LABELS = ['claude', 'ai', 'ai-fix', 'ai-feature']
 
+const CLAUDE_BRANCH_RE = /^claude\/issue-(\d+)-/
+
+function fetchActiveClaudeIssues(fullName: string): number[] {
+  const result = gh([
+    'run', 'list', '--repo', fullName,
+    '--json', 'status,headBranch',
+    '--limit', '30',
+  ])
+  if (result.error || !result.data) return []
+
+  const activeIssues = new Set<number>()
+  for (const run of result.data) {
+    if (run.status === 'in_progress' || run.status === 'queued' || run.status === 'waiting') {
+      const match = run.headBranch?.match(CLAUDE_BRANCH_RE)
+      if (match) activeIssues.add(Number(match[1]))
+    }
+  }
+  return Array.from(activeIssues)
+}
+
 function fetchRepoData(fullName: string) {
   const prResult = gh([
     'pr', 'list', '--repo', fullName, '--json',
@@ -43,6 +63,7 @@ function fetchRepoData(fullName: string) {
       conflicts: [],
       needsReview: [],
       claudeIssues: [],
+      activeClaudeIssues: [],
       error: prResult.error || issueResult.error,
     }
   }
@@ -62,6 +83,8 @@ function fetchRepoData(fullName: string) {
     )
   )
 
+  const activeClaudeIssues = fetchActiveClaudeIssues(fullName)
+
   return {
     fullName,
     prs,
@@ -78,6 +101,7 @@ function fetchRepoData(fullName: string) {
     conflicts,
     needsReview,
     claudeIssues,
+    activeClaudeIssues,
     error: null,
   }
 }
