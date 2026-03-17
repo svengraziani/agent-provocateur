@@ -1,4 +1,6 @@
 :root {
+  --sidebar-width: 220px;
+
   /* V&C Brand palette */
   --bg-primary:    #0a1510;
   --bg-secondary:  #0d1a1a;
@@ -53,7 +55,7 @@ a:hover { text-decoration: underline; }
 /* Layout */
 .app-layout {
   display: grid;
-  grid-template-columns: 220px 1fr;
+  grid-template-columns: var(--sidebar-width) 1fr;
   min-height: 100vh;
 }
 
@@ -1889,6 +1891,7 @@ select.input {
   display: flex;
   align-items: center;
   justify-content: center;
+  padding-left: var(--sidebar-width);
   backdrop-filter: blur(3px);
 }
 
