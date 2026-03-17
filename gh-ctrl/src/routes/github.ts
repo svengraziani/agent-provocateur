@@ -24,7 +24,7 @@ const CLAUDE_LABELS = ['claude', 'ai', 'ai-fix', 'ai-feature']
 function fetchRepoData(fullName: string) {
   const prResult = gh([
     'pr', 'list', '--repo', fullName, '--json',
-    'number,title,state,reviewDecision,mergeable,headRefName,author,updatedAt,labels,isDraft',
+    'number,title,state,reviewDecision,mergeable,headRefName,author,updatedAt,labels,isDraft,assignees',
     '--limit', '30',
   ])
 
