@@ -29,6 +29,32 @@ const ZOOM_MIN = 0.25
 const ZOOM_MAX = 2.5
 const ZOOM_FACTOR = 1.15
 
+// Seeded PRNG (LCG) for stable terrain layout across renders
+function seededRng(seed: number) {
+  let s = seed >>> 0
+  return () => {
+    s = (Math.imul(s, 1664525) + 1013904223) >>> 0
+    return s / 0xffffffff
+  }
+}
+
+type TerrainType = 'tree' | 'rock' | 'crystal'
+interface TerrainItem { id: number; x: number; y: number; type: TerrainType; scale: number }
+
+const TERRAIN_ITEMS: TerrainItem[] = (() => {
+  const rng = seededRng(0xCAFE1234)
+  const types: TerrainType[] = ['tree', 'tree', 'tree', 'rock', 'rock', 'crystal']
+  return Array.from({ length: 60 }, (_, i) => ({
+    id: i,
+    x: rng() * 2500 + 150,
+    y: rng() * 2500 + 150,
+    type: types[Math.floor(rng() * types.length)],
+    scale: 0.75 + rng() * 0.55,
+  }))
+})()
+
+const ORE_ROUTES = [1, 2, 3, 4, 5]
+
 function getDefaultPositions(entries: DashboardEntry[]): Record<number, Position> {
   const positions: Record<number, Position> = {}
   entries.forEach((entry, i) => {
@@ -79,11 +105,15 @@ export function BattlefieldView({ entries, loading, onRefresh, onReposChange, on
 
   // Update positions when entries change (new repos)
   useEffect(() => {
+    if (entries.length === 0) return
     setPositions(prev => {
+      const stored = loadPositions()
       const defaults = getDefaultPositions(entries)
-      const merged = { ...defaults, ...prev }
+      // Priority: in-memory (prev) > stored (localStorage) > defaults
+      const merged = { ...defaults, ...stored, ...prev }
       const valid: Record<number, Position> = {}
       entries.forEach(e => { valid[e.repo.id] = merged[e.repo.id] ?? defaults[e.repo.id] })
+      savePositions(valid)
       return valid
     })
   }, [entries])
@@ -236,6 +266,35 @@ export function BattlefieldView({ entries, loading, onRefresh, onReposChange, on
       >
         {/* Terrain grid — inside map layer so it pans/zooms with the bases */}
         <div className="battlefield-terrain" />
+
+        {/* Terrain elements: trees, rocks, crystals */}
+        {TERRAIN_ITEMS.map((item) => (
+          <div
+            key={item.id}
+            className="terrain-el"
+            style={{ left: item.x, top: item.y, transform: `scale(${item.scale})` }}
+          >
+            {item.type === 'tree' && (
+              <div className="terrain-tree">
+                <div className="terrain-tree-layer" />
+                <div className="terrain-tree-layer" />
+                <div className="terrain-tree-layer" />
+                <div className="terrain-tree-trunk" />
+              </div>
+            )}
+            {item.type === 'rock' && <div className="terrain-rock" />}
+            {item.type === 'crystal' && <div className="terrain-crystal" />}
+          </div>
+        ))}
+
+        {/* Ore collectors — animated harvester vehicles */}
+        {ORE_ROUTES.map((route) => (
+          <div key={route} className="ore-collector" data-route={String(route)}>
+            <div className="ore-collector-body" />
+            <div className="ore-collector-tracks" />
+          </div>
+        ))}
+
         {entries.map((entry) => {
           const pos = positions[entry.repo.id] ?? { x: 0, y: 0 }
           return (
