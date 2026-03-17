@@ -39,8 +39,13 @@ export interface GHLabel {
   description: string
 }
 
+export interface Branch {
+  name: string
+  committedDate: string
+}
+
 export interface BranchesData {
-  branches: string[]
+  branches: Branch[]
   defaultBranch: string
 }
 
