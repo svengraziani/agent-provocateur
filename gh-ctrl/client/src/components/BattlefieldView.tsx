@@ -17,9 +17,12 @@ interface Position {
   y: number
 }
 
-const BASE_SPACING_X = 260
-const BASE_SPACING_Y = 220
+// Isometric grid layout — diamond arrangement
+const ISO_HALF_W = 180  // half tile width (horizontal offset per col/row step)
+const ISO_HALF_H = 180  // half tile height (vertical offset per col/row step)
 const COLS = 4
+const ISO_MAP_CENTER_X = 600  // x anchor for the top of the diamond
+const ISO_MAP_OFFSET_Y = 120  // y anchor for the top of the diamond
 const MAP_PADDING = 100
 const ZOOM_MIN = 0.25
 const ZOOM_MAX = 2.5
@@ -30,9 +33,10 @@ function getDefaultPositions(entries: DashboardEntry[]): Record<number, Position
   entries.forEach((entry, i) => {
     const col = i % COLS
     const row = Math.floor(i / COLS)
+    // Isometric projection: col pushes right+down, row pushes left+down
     positions[entry.repo.id] = {
-      x: MAP_PADDING + col * BASE_SPACING_X,
-      y: MAP_PADDING + row * BASE_SPACING_Y,
+      x: ISO_MAP_CENTER_X + (col - row) * ISO_HALF_W,
+      y: ISO_MAP_OFFSET_Y + (col + row) * ISO_HALF_H,
     }
   })
   return positions
