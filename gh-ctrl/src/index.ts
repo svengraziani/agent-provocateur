@@ -4,6 +4,7 @@ import { logger } from 'hono/logger'
 import { serveStatic } from 'hono/bun'
 import reposRouter from './routes/repos'
 import githubRouter from './routes/github'
+import mapsRouter from './routes/maps'
 
 const app = new Hono()
 
@@ -12,6 +13,7 @@ app.use('*', logger())
 
 app.route('/api/repos', reposRouter)
 app.route('/api/github', githubRouter)
+app.route('/api/maps', mapsRouter)
 
 app.get('/api/health', (c) => c.json({ ok: true }))
 
