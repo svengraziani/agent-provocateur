@@ -68,6 +68,7 @@ export interface RepoData {
   needsReview: GHPR[]
   claudeIssues: GHIssue[]
   activeClaudeIssues: number[]
+  claudeIssueBranches: Record<number, string>
   error: string | null
 }
 

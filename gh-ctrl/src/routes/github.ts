@@ -52,6 +52,24 @@ function fetchNetlifyUrls(fullName: string, prs: any[]): Record<number, string> 
 
 const CLAUDE_BRANCH_RE = /^claude\/issue-(\d+)-/
 
+function fetchClaudeIssueBranches(fullName: string): Record<number, string> {
+  const result = gh(['api', `repos/${fullName}/branches?per_page=100`])
+  if (result.error || !Array.isArray(result.data)) return {}
+
+  const branchMap: Record<number, string> = {}
+  for (const branch of result.data) {
+    const match = branch.name?.match(CLAUDE_BRANCH_RE)
+    if (match) {
+      const issueNumber = Number(match[1])
+      // Keep the most recently listed branch if multiple exist for same issue
+      if (!branchMap[issueNumber]) {
+        branchMap[issueNumber] = branch.name
+      }
+    }
+  }
+  return branchMap
+}
+
 function fetchActiveClaudeIssues(fullName: string): number[] {
   const result = gh([
     'run', 'list', '--repo', fullName,
@@ -93,6 +111,7 @@ function fetchRepoData(fullName: string) {
       needsReview: [],
       claudeIssues: [],
       activeClaudeIssues: [],
+      claudeIssueBranches: {},
       error: prResult.error || issueResult.error,
     }
   }
@@ -119,6 +138,7 @@ function fetchRepoData(fullName: string) {
   )
 
   const activeClaudeIssues = fetchActiveClaudeIssues(fullName)
+  const claudeIssueBranches = fetchClaudeIssueBranches(fullName)
 
   return {
     fullName,
@@ -137,6 +157,7 @@ function fetchRepoData(fullName: string) {
     needsReview,
     claudeIssues,
     activeClaudeIssues,
+    claudeIssueBranches,
     error: null,
   }
 }
