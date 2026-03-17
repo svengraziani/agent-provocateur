@@ -132,7 +132,7 @@ export function BattlefieldView({ entries, loading, onRefresh, onToast }: Props)
 
       {/* HUD */}
       <div className="battlefield-hud">
-        <div className="hud-brand">&#x25a0; AGENT PROVOCATEUR — TACTICAL COMMAND</div>
+        <div className="hud-brand">&#x25a0; C&amp;C GITAGENTS — TACTICAL COMMAND</div>
         <div className="hud-controls">
           <span className="hud-stat">BASES: <strong>{entries.length}</strong></span>
           {totalConflicts > 0 && (
