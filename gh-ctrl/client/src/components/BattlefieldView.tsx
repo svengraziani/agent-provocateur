@@ -11,6 +11,7 @@ interface Props {
   entries: DashboardEntry[]
   loading: boolean
   onRefresh: () => void
+  onRefreshRepo: (owner: string, name: string) => Promise<void>
   onReposChange: () => void
   onToast: (message: string, type: 'success' | 'error' | 'info') => void
 }
@@ -84,7 +85,7 @@ function savePositions(positions: Record<number, Position>) {
   localStorage.setItem('battlefield-positions', JSON.stringify(positions))
 }
 
-export function BattlefieldView({ entries, loading, onRefresh, onReposChange, onToast }: Props) {
+export function BattlefieldView({ entries, loading, onRefresh, onRefreshRepo, onReposChange, onToast }: Props) {
   const [offset, setOffset] = useState<Position>({ x: 0, y: 0 })
   const [zoom, setZoom] = useState(1)
   const [isDraggingMap, setIsDraggingMap] = useState(false)
@@ -309,6 +310,7 @@ export function BattlefieldView({ entries, loading, onRefresh, onReposChange, on
               isBeingRelocated={relocatingId === entry.repo.id}
               onConstruct={() => setConstructTarget(entry)}
               onStartRelocate={(mouseX, mouseY) => handleStartRelocate(entry.repo.id, mouseX, mouseY)}
+              onRefreshRepo={onRefreshRepo}
               onToast={onToast}
               onModalOpen={setModalState}
             />
