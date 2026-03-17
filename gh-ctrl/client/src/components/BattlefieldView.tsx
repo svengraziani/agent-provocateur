@@ -78,11 +78,15 @@ export function BattlefieldView({ entries, loading, onRefresh, onReposChange, on
 
   // Update positions when entries change (new repos)
   useEffect(() => {
+    if (entries.length === 0) return
     setPositions(prev => {
+      const stored = loadPositions()
       const defaults = getDefaultPositions(entries)
-      const merged = { ...defaults, ...prev }
+      // Priority: in-memory (prev) > stored (localStorage) > defaults
+      const merged = { ...defaults, ...stored, ...prev }
       const valid: Record<number, Position> = {}
       entries.forEach(e => { valid[e.repo.id] = merged[e.repo.id] ?? defaults[e.repo.id] })
+      savePositions(valid)
       return valid
     })
   }, [entries])
