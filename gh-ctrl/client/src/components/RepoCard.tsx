@@ -22,13 +22,8 @@ export function RepoCard({ entry, onToast }: Props) {
 
   const hasConflicts = stats.conflicts > 0
 
-  const handleTriggerClaude = async (number: number, type: 'pr' | 'issue') => {
-    try {
-      await api.triggerClaude({ fullName: repo.fullName, number, type })
-      onToast(`@claude triggered on #${number}`, 'success')
-    } catch (err: any) {
-      onToast(`Failed: ${err.message}`, 'error')
-    }
+  const openTriggerClaude = (number: number, type: 'pr' | 'issue') => {
+    setModalState({ mode: 'trigger-claude', fullName: repo.fullName, number, type })
   }
 
   const openComment = (number: number, type: 'pr' | 'issue') => {
@@ -129,7 +124,7 @@ export function RepoCard({ entry, onToast }: Props) {
                   title={pr.title}
                   labels={pr.labels.map((l) => l.name)}
                   badge={<span className="badge badge-conflict">Conflict</span>}
-                  onClaude={() => handleTriggerClaude(pr.number, 'pr')}
+                  onClaude={() => openTriggerClaude(pr.number, 'pr')}
                   onComment={() => openComment(pr.number, 'pr')}
                   onLabel={() => openLabel(pr.number, 'pr', pr.labels.map((l) => l.name))}
                 />
@@ -147,7 +142,7 @@ export function RepoCard({ entry, onToast }: Props) {
                   title={pr.title}
                   labels={pr.labels.map((l) => l.name)}
                   badge={<span className="badge badge-review">Review</span>}
-                  onClaude={() => handleTriggerClaude(pr.number, 'pr')}
+                  onClaude={() => openTriggerClaude(pr.number, 'pr')}
                   onComment={() => openComment(pr.number, 'pr')}
                   onLabel={() => openLabel(pr.number, 'pr', pr.labels.map((l) => l.name))}
                 />
@@ -164,7 +159,7 @@ export function RepoCard({ entry, onToast }: Props) {
                   number={issue.number}
                   title={issue.title}
                   labels={issue.labels.map((l) => l.name)}
-                  onClaude={() => handleTriggerClaude(issue.number, 'issue')}
+                  onClaude={() => openTriggerClaude(issue.number, 'issue')}
                   onComment={() => openComment(issue.number, 'issue')}
                   onLabel={() => openLabel(issue.number, 'issue', issue.labels.map((l) => l.name))}
                   onDetail={() => openIssueDetail(issue.number)}
@@ -186,7 +181,7 @@ export function RepoCard({ entry, onToast }: Props) {
                   title={pr.title}
                   labels={pr.labels.map((l) => l.name)}
                   badge={pr.isDraft ? <span className="badge badge-draft">Draft</span> : pr.reviewDecision === 'APPROVED' ? <span className="badge badge-approved">Approved</span> : undefined}
-                  onClaude={() => handleTriggerClaude(pr.number, 'pr')}
+                  onClaude={() => openTriggerClaude(pr.number, 'pr')}
                   onComment={() => openComment(pr.number, 'pr')}
                   onLabel={() => openLabel(pr.number, 'pr', pr.labels.map((l) => l.name))}
                 />
@@ -206,7 +201,7 @@ export function RepoCard({ entry, onToast }: Props) {
                   number={issue.number}
                   title={issue.title}
                   labels={issue.labels.map((l) => l.name)}
-                  onClaude={() => handleTriggerClaude(issue.number, 'issue')}
+                  onClaude={() => openTriggerClaude(issue.number, 'issue')}
                   onComment={() => openComment(issue.number, 'issue')}
                   onLabel={() => openLabel(issue.number, 'issue', issue.labels.map((l) => l.name))}
                   onDetail={() => openIssueDetail(issue.number)}
