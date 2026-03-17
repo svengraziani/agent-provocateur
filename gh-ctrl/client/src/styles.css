@@ -2433,3 +2433,68 @@ select.input {
   text-decoration: none;
   opacity: 0.85;
 }
+
+/* Voice input */
+.voice-input-group {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.voice-btn {
+  align-self: flex-end;
+  background: rgba(57, 255, 20, 0.06);
+  border: 1px solid rgba(57, 255, 20, 0.3);
+  border-radius: 4px;
+  color: var(--text-2);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  padding: 4px 10px;
+  transition: all 0.15s;
+  line-height: 1.4;
+}
+
+.voice-btn:hover {
+  background: rgba(57, 255, 20, 0.12);
+  border-color: rgba(57, 255, 20, 0.6);
+  color: var(--green);
+}
+
+.voice-btn.recording {
+  background: rgba(248, 81, 73, 0.12);
+  border-color: var(--red);
+  color: var(--red);
+  animation: voice-pulse 1s ease-in-out infinite;
+}
+
+.voice-btn-construct {
+  align-self: flex-start;
+  background: transparent;
+  border: 1px solid rgba(57, 255, 20, 0.25);
+  color: rgba(57, 255, 20, 0.5);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 1px;
+  padding: 4px 10px;
+  text-transform: uppercase;
+  transition: all 0.15s;
+}
+
+.voice-btn-construct:hover {
+  border-color: rgba(57, 255, 20, 0.6);
+  color: rgba(57, 255, 20, 0.9);
+}
+
+.voice-btn-construct.recording {
+  border-color: var(--crt-red, var(--red));
+  color: var(--crt-red, var(--red));
+  animation: voice-pulse 1s ease-in-out infinite;
+}
+
+@keyframes voice-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
