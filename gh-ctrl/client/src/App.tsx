@@ -80,7 +80,7 @@ export default function App() {
   return (
     <div className="app-layout">
       <aside className="sidebar">
-        <div className="sidebar-logo">Agent Provocateur 🍆</div>
+        <div className="sidebar-logo">V&amp;C - Gitaltert</div>
 
         <nav className="sidebar-nav">
           <button

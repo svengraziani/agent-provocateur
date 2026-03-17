@@ -1163,6 +1163,33 @@ select.input {
   color: var(--crt-red);
 }
 
+.hud-zoom-sep {
+  width: 1px;
+  height: 14px;
+  background: rgba(57, 211, 83, 0.25);
+  margin: 0 4px;
+}
+
+.hud-zoom-btn {
+  padding: 2px 7px;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.hud-zoom-level {
+  font-size: 10px;
+  color: var(--text-2);
+  min-width: 34px;
+  text-align: center;
+  cursor: pointer;
+  user-select: none;
+  letter-spacing: 0.5px;
+}
+
+.hud-zoom-level:hover {
+  color: var(--crt-green);
+}
+
 /* Relocate mode banner */
 .battlefield-relocate-banner {
   position: absolute;
@@ -1571,13 +1598,50 @@ select.input {
   flex-shrink: 0;
 }
 
-.bdp-text {
+
+.bdp-text-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-size: 11px;
   color: var(--text);
+  cursor: pointer;
   flex: 1;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  font-size: 11px;
+  text-align: left;
+  transition: color 0.15s;
+}
+
+.bdp-text-btn:hover {
+  color: var(--crt-green);
+  text-decoration: underline;
+  text-decoration-color: rgba(57, 211, 83, 0.5);
+}
+
+.bdp-gh-link {
+  color: var(--text-3);
+  font-size: 10px;
+  text-decoration: none;
+  flex-shrink: 0;
+  padding: 0 2px;
+  transition: color 0.15s;
+  line-height: 1;
+}
+
+.bdp-gh-link:hover {
+  color: var(--blue);
+  text-decoration: none;
+}
+
+.bdp-more {
+  font-size: 9px;
+  color: var(--text-3);
+  letter-spacing: 0.5px;
+  padding: 2px 0;
+  text-align: right;
 }
 
 .bdp-text-btn {
