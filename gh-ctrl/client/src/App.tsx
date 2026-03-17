@@ -7,7 +7,12 @@ import { ToastArea, useToast } from './components/Toast'
 
 type View = 'dashboard' | 'settings'
 
-const REFRESH_INTERVAL = 2 * 60 * 1000 // 2 minutes
+const DEFAULT_REFRESH_INTERVAL = 2 * 60 * 1000 // 2 minutes
+
+function getStoredRefreshInterval(): number {
+  const stored = localStorage.getItem('refreshInterval')
+  return stored ? parseInt(stored, 10) : DEFAULT_REFRESH_INTERVAL
+}
 
 export default function App() {
   const [view, setView] = useState<View>('dashboard')
@@ -15,7 +20,13 @@ export default function App() {
   const [entries, setEntries] = useState<DashboardEntry[]>([])
   const [loading, setLoading] = useState(false)
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null)
+  const [refreshInterval, setRefreshInterval] = useState<number>(getStoredRefreshInterval)
   const { toasts, addToast } = useToast()
+
+  const handleRefreshIntervalChange = useCallback((ms: number) => {
+    localStorage.setItem('refreshInterval', String(ms))
+    setRefreshInterval(ms)
+  }, [])
 
   const loadRepos = useCallback(async () => {
     try {
@@ -47,9 +58,9 @@ export default function App() {
   useEffect(() => {
     const interval = setInterval(() => {
       loadDashboard()
-    }, REFRESH_INTERVAL)
+    }, refreshInterval)
     return () => clearInterval(interval)
-  }, [loadDashboard])
+  }, [loadDashboard, refreshInterval])
 
   const handleReposChange = () => {
     loadRepos()
@@ -128,6 +139,8 @@ export default function App() {
             repos={repos}
             onReposChange={handleReposChange}
             onToast={addToast}
+            refreshInterval={refreshInterval}
+            onRefreshIntervalChange={handleRefreshIntervalChange}
           />
         )}
       </main>
