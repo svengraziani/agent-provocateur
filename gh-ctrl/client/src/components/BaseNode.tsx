@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from 'react'
 import type { DashboardEntry, GHPR, GHIssue } from '../types'
 import { ActionModal } from './ActionModal'
 import type { ModalState } from './ActionModal'
+import { CloseIcon, LinkIcon, LabelIcon, CommentIcon, RefreshIcon, ExternalLinkIcon } from './Icons'
 
 interface Position {
   x: number
@@ -102,7 +103,7 @@ export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, on
         <div className="base-stats-mini">
           <span className="bsm green" title="Open PRs">▲{stats.openPRs}</span>
           <span className="bsm blue" title="Open Issues">◆{stats.openIssues}</span>
-          {stats.conflicts > 0 && <span className="bsm red" title="Conflicts">✕{stats.conflicts}</span>}
+          {stats.conflicts > 0 && <span className="bsm red" title="Conflicts"><CloseIcon size={10} />{stats.conflicts}</span>}
           {stats.needsReview > 0 && <span className="bsm amber" title="Needs Review">◎{stats.needsReview}</span>}
         </div>
 
@@ -172,7 +173,7 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
           rel="noopener noreferrer"
           className="bdp-title"
         >
-          {repo.fullName} &#x2197;
+          {repo.fullName} <ExternalLinkIcon size={11} />
         </a>
         <button
           className="bdp-action-btn"
@@ -181,7 +182,7 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
         >
           + Issue
         </button>
-        <button className="bdp-close" onClick={onClose}>✕</button>
+        <button className="bdp-close" onClick={onClose}><CloseIcon size={12} /></button>
       </div>
 
       <div className="bdp-stats">
@@ -310,7 +311,9 @@ function BdpItemRow({ number, title, type, repo, onModalOpen, previewUrl, labels
       <div className="bdp-item-left">
         <span className="bdp-num">#{number}</span>
         {isClaudeActive && (
-          <span className="claude-active-indicator spinning" title="Claude is working on this">⟳</span>
+          <span className="claude-active-indicator spinning" title="Claude is working on this">
+            <RefreshIcon size={12} />
+          </span>
         )}
         <button
           className="bdp-text-btn"
@@ -333,7 +336,7 @@ function BdpItemRow({ number, title, type, repo, onModalOpen, previewUrl, labels
             className="bdp-icon-btn"
             title="Open preview"
           >
-            &#x1F517;
+            <LinkIcon size={12} />
           </a>
         )}
         <button
@@ -341,14 +344,14 @@ function BdpItemRow({ number, title, type, repo, onModalOpen, previewUrl, labels
           title="Manage labels"
           onClick={() => onModalOpen({ mode: 'label', fullName: repo.fullName, number, type, currentLabels: labels.map((l) => l.name) })}
         >
-          &#x1F3F7;
+          <LabelIcon size={12} />
         </button>
         <button
           className="bdp-icon-btn"
           title="Post comment"
           onClick={() => onModalOpen({ mode: 'comment', fullName: repo.fullName, number, type })}
         >
-          &#x1F4AC;
+          <CommentIcon size={12} />
         </button>
         <button
           className="bdp-claude-btn"

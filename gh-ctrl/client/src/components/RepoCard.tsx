@@ -3,6 +3,7 @@ import type { DashboardEntry, GHPR, GHIssue } from '../types'
 import { api } from '../api'
 import { ActionModal } from './ActionModal'
 import type { ModalState } from './ActionModal'
+import { LinkIcon, LabelIcon, CommentIcon, BranchIcon, RefreshIcon } from './Icons'
 
 interface Props {
   entry: DashboardEntry
@@ -251,7 +252,7 @@ export function RepoCard({ entry, onToast }: Props) {
                 branches.map((branch) => (
                   <div key={branch} className="list-item">
                     <div className="list-item-left">
-                      <span className="branch-icon">⎇</span>
+                      <span className="branch-icon"><BranchIcon size={12} /></span>
                       <span className="list-item-title">{branch}</span>
                       {branch === defaultBranch && (
                         <span className="badge badge-default">default</span>
@@ -308,7 +309,9 @@ function ItemRow({
       <div className="list-item-left">
         <span className="list-item-number">#{number}</span>
         {isClaudeActive && (
-          <span className="claude-active-indicator spinning" title="Claude is working on this">⟳</span>
+          <span className="claude-active-indicator spinning" title="Claude is working on this">
+            <RefreshIcon size={12} />
+          </span>
         )}
         {onDetail ? (
           <button className="list-item-title list-item-title-btn" onClick={onDetail} title="View details">
@@ -348,14 +351,14 @@ function ItemRow({
             className="btn btn-ghost btn-xs item-claude-btn"
             title="Open Netlify preview"
           >
-            &#x1F517; Preview
+            <LinkIcon size={11} /> Preview
           </a>
         )}
         <button className="btn btn-ghost btn-xs item-claude-btn" onClick={onLabel} title="Manage labels">
-          &#x1F3F7;
+          <LabelIcon size={12} />
         </button>
         <button className="btn btn-ghost btn-xs item-claude-btn" onClick={onComment} title="Post comment">
-          &#x1F4AC;
+          <CommentIcon size={12} />
         </button>
         <button className="btn btn-claude item-claude-btn" onClick={onClaude}>
           @claude
