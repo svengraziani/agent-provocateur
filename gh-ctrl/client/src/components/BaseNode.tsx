@@ -4,6 +4,102 @@ import type { ModalState } from './ActionModal'
 import { CloseIcon, LinkIcon, LabelIcon, CommentIcon, RefreshIcon, ExternalLinkIcon } from './Icons'
 import { api } from '../api'
 
+// ── Color helpers for isometric SVG buildings ─────────────────────────────────
+
+function hexToRgbParts(hex: string): [number, number, number] {
+  const c = hex.replace('#', '')
+  if (c.length !== 6) return [57, 255, 20]
+  return [parseInt(c.slice(0, 2), 16), parseInt(c.slice(2, 4), 16), parseInt(c.slice(4, 6), 16)]
+}
+
+function darkenIso(hex: string, factor: number): string {
+  const [r, g, b] = hexToRgbParts(hex)
+  return `rgb(${Math.round(r * (1 - factor))},${Math.round(g * (1 - factor))},${Math.round(b * (1 - factor))})`
+}
+
+// Resolve CSS variable color tokens to hex for SVG fills
+function resolveHexColor(cssColor: string): string {
+  const varMap: Record<string, string> = {
+    'var(--crt-red)': '#f85149',
+    'var(--crt-green)': '#39ff14',
+    'var(--crt-amber)': '#f0883e',
+    'var(--chrome-silver)': '#8a9a8a',
+    'var(--purple)': '#bc8cff',
+  }
+  return varMap[cssColor] ?? cssColor
+}
+
+// ── Isometric building SVG components ─────────────────────────────────────────
+
+// Main base: tower (narrow, tall) + foundation slab (wide, low)
+// Isometric view from upper-left: top face (diamond) + left/right side walls going down
+function IsoBaseBuilding({ color }: { color: string }) {
+  const roof  = color
+  const lWall = darkenIso(color, 0.35)
+  const rWall = darkenIso(color, 0.55)
+  const fTop  = darkenIso(color, 0.15)
+  const fLeft = darkenIso(color, 0.55)
+  const fRight = darkenIso(color, 0.70)
+  const sk = 'rgba(0,0,0,0.35)'
+  const sw = '0.5'
+
+  return (
+    <svg viewBox="0 0 72 82" width="72" height="82" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block' }}>
+      {/* Foundation top face — visible around the tower base */}
+      <polygon points="36,44 64,60 36,76 8,60" fill={fTop} stroke={sk} strokeWidth={sw} />
+
+      {/* Tower roof face — topmost, drawn before walls */}
+      <polygon points="36,11 48,18 36,25 24,18" fill={roof} stroke={sk} strokeWidth={sw} />
+
+      {/* Tower left wall */}
+      <polygon points="24,18 36,25 36,59 24,52" fill={lWall} stroke={sk} strokeWidth={sw} />
+      {/* Windows on left wall — parallelogram windows matching the wall skew */}
+      <polygon points="27,28 33,32 33,42 27,38" fill={color} opacity="0.30" />
+      <polygon points="27,41 33,44 33,53 27,49" fill={color} opacity="0.30" />
+
+      {/* Tower right wall */}
+      <polygon points="36,25 48,18 48,52 36,59" fill={rWall} stroke={sk} strokeWidth={sw} />
+      {/* Windows on right wall */}
+      <polygon points="39,32 45,28 45,38 39,42" fill={color} opacity="0.30" />
+      <polygon points="39,44 45,41 45,49 39,53" fill={color} opacity="0.30" />
+
+      {/* Foundation side walls — drawn last so they appear in front */}
+      <polygon points="8,60 36,76 36,81 8,65"  fill={fLeft}  stroke={sk} strokeWidth={sw} />
+      <polygon points="36,76 64,60 64,65 36,81" fill={fRight} stroke={sk} strokeWidth={sw} />
+
+      {/* Antenna */}
+      <line x1="36" y1="4" x2="36" y2="11" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+      <circle cx="36" cy="4" r="2.5" fill={color}>
+        <animate attributeName="opacity" values="0.9;0.3;0.9" dur="2s" repeatCount="indefinite" />
+      </circle>
+    </svg>
+  )
+}
+
+// PR building: single isometric block with windows
+function IsoPRBuilding({ color }: { color: string }) {
+  const roof  = color
+  const lWall = darkenIso(color, 0.35)
+  const rWall = darkenIso(color, 0.55)
+  const sk = 'rgba(0,0,0,0.35)'
+  const sw = '0.5'
+
+  return (
+    <svg viewBox="0 0 50 58" width="50" height="58" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block' }}>
+      {/* Roof */}
+      <polygon points="25,10 44,20 25,29 6,20" fill={roof} stroke={sk} strokeWidth={sw} />
+      {/* Left wall */}
+      <polygon points="6,20 25,29 25,55 6,46"  fill={lWall} stroke={sk} strokeWidth={sw} />
+      {/* Window left */}
+      <polygon points="11,30 18,33 18,43 11,39" fill={color} opacity="0.30" />
+      {/* Right wall */}
+      <polygon points="25,29 44,20 44,46 25,55" fill={rWall} stroke={sk} strokeWidth={sw} />
+      {/* Window right */}
+      <polygon points="30,34 37,31 37,40 30,44" fill={color} opacity="0.30" />
+    </svg>
+  )
+}
+
 interface Position {
   x: number
   y: number
@@ -24,7 +120,7 @@ interface Props {
 const PR_BUILDING_OFFSET_X = 148
 const PR_BUILDING_OFFSET_Y = -5
 const PR_BUILDING_COL_WIDTH = 80
-const PR_BUILDING_ROW_HEIGHT = 76
+const PR_BUILDING_ROW_HEIGHT = 100
 const MAX_PR_BUILDINGS = 8
 
 export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, onConstruct, onStartRelocate, onRefreshRepo, onToast, onModalOpen }: Props) {
@@ -146,14 +242,9 @@ export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, on
           )}
         </div>
 
-        {/* Building graphic */}
+        {/* Building graphic — isometric 3D */}
         <div className="base-building">
-          <div className="base-antenna" />
-          <div className="base-tower" />
-          <div className="base-wing base-wing-left" />
-          <div className="base-body" />
-          <div className="base-wing base-wing-right" />
-          <div className="base-radar spinning-radar" />
+          <IsoBaseBuilding color={repo.color} />
         </div>
 
         {/* Base info */}
@@ -503,12 +594,7 @@ function PRBuilding({ pr, position, repo, onModalOpen }: {
       title={`#${pr.number} — ${pr.title}`}
     >
       <div className="pr-bld-graphic">
-        <div className="pr-bld-roof" />
-        <div className="pr-bld-body">
-          <div className="pr-bld-win pr-bld-wl" />
-          <div className="pr-bld-door" />
-          <div className="pr-bld-win pr-bld-wr" />
-        </div>
+        <IsoPRBuilding color={resolveHexColor(prColor)} />
       </div>
       <div className="pr-bld-info">
         <span className="pr-bld-num">#{pr.number}</span>
