@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import type { DashboardEntry, GHLabel } from '../types'
 import { api } from '../api'
+import { CloseIcon } from './Icons'
 
 interface Props {
   entry: DashboardEntry
@@ -96,7 +97,7 @@ export function ConstructDialog({ entry, onClose, onSuccess, onError }: Props) {
             <span className="construct-icon">&#x25a0;&#x25a0;</span>
             <span className="construct-title">CONSTRUCTION YARD</span>
             <span className="construct-subtitle">// {entry.repo.fullName}</span>
-            <button className="construct-close" onClick={onClose}>✕</button>
+            <button className="construct-close" onClick={onClose}><CloseIcon size={12} /></button>
           </div>
           <pre className="construct-boot">
             {bootText}

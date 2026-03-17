@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import type { GHLabel, IssueDetail, PRDetail } from '../types'
 import { api } from '../api'
+import { CloseIcon } from './Icons'
 
 export type ModalState =
   | { mode: 'comment'; fullName: string; number: number; type: 'pr' | 'issue' }
@@ -25,7 +26,7 @@ export function ActionModal({ state, onClose, onSuccess, onError }: Props) {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <button className="modal-close" onClick={onClose}>✕</button>
+        <button className="modal-close" onClick={onClose}><CloseIcon size={12} /></button>
         {state.mode === 'comment' && (
           <CommentForm state={state} onClose={onClose} onSuccess={onSuccess} onError={onError} />
         )}

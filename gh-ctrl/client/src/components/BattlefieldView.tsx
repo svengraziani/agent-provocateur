@@ -3,6 +3,7 @@ import type { DashboardEntry } from '../types'
 import { BaseNode } from './BaseNode'
 import { ConstructDialog } from './ConstructDialog'
 import { CreateBaseDialog } from './CreateBaseDialog'
+import { CloseIcon, RelocateIcon, RefreshIcon } from './Icons'
 
 interface Props {
   entries: DashboardEntry[]
@@ -237,13 +238,13 @@ export function BattlefieldView({ entries, loading, onRefresh, onReposChange, on
             onClick={onRefresh}
             disabled={loading}
           >
-            {loading ? '◌ SCANNING...' : '&#x27F3; SCAN'}
+            {loading ? '◌ SCANNING...' : <><RefreshIcon size={12} /> SCAN</>}
           </button>
           <button
             className={`hud-btn${isRelocateMode ? ' active' : ''}`}
             onClick={() => { setIsRelocateMode(v => !v); setRelocatingId(null); setRelocatingStart(null) }}
           >
-            {isRelocateMode ? '✕ CANCEL RELOCATE' : '&#x2295; RELOCATE BASE'}
+            {isRelocateMode ? <><CloseIcon size={10} /> CANCEL RELOCATE</> : <><RelocateIcon size={12} /> RELOCATE BASE</>}
           </button>
           <button
             className="hud-btn hud-btn-new-base"
