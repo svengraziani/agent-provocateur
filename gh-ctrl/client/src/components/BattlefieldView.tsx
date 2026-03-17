@@ -6,6 +6,7 @@ import type { ModalState } from './ActionModal'
 import { ConstructDialog } from './ConstructDialog'
 import { CreateBaseDialog } from './CreateBaseDialog'
 import { CloseIcon, RelocateIcon, RefreshIcon } from './Icons'
+import { useSound } from '../hooks/useSound'
 
 interface Props {
   entries: DashboardEntry[]
@@ -105,6 +106,27 @@ export function BattlefieldView({ entries, loading, onRefresh, onReposChange, on
   const offsetRef = useRef(offset)
   useEffect(() => { zoomRef.current = zoom }, [zoom])
   useEffect(() => { offsetRef.current = offset }, [offset])
+
+  const { play } = useSound()
+
+  // Play sound when scan completes (loading transitions true → false)
+  const prevLoadingRef = useRef(loading)
+  useEffect(() => {
+    if (prevLoadingRef.current && !loading) {
+      play('refreshed')
+    }
+    prevLoadingRef.current = loading
+  }, [loading, play])
+
+  // Play glass_poop when conflicts are first detected
+  const totalConflicts = entries.reduce((sum, e) => sum + e.data.stats.conflicts, 0)
+  const prevConflictsRef = useRef(totalConflicts)
+  useEffect(() => {
+    if (prevConflictsRef.current === 0 && totalConflicts > 0) {
+      play('glass_poop')
+    }
+    prevConflictsRef.current = totalConflicts
+  }, [totalConflicts, play])
 
   // Update positions when entries change (new repos)
   useEffect(() => {
@@ -212,8 +234,6 @@ export function BattlefieldView({ entries, loading, onRefresh, onReposChange, on
     setRelocatingStart({ mouseX, mouseY, nodeX: pos.x, nodeY: pos.y })
   }, [positions])
 
-  const totalConflicts = entries.reduce((sum, e) => sum + e.data.stats.conflicts, 0)
-
   return (
     <div
       className="battlefield-container"
@@ -238,20 +258,20 @@ export function BattlefieldView({ entries, loading, onRefresh, onReposChange, on
           )}
           <button
             className="hud-btn"
-            onClick={onRefresh}
+            onClick={() => { play('peep'); onRefresh() }}
             disabled={loading}
           >
             {loading ? '◌ SCANNING...' : <><RefreshIcon size={12} /> SCAN</>}
           </button>
           <button
             className={`hud-btn${isRelocateMode ? ' active' : ''}`}
-            onClick={() => { setIsRelocateMode(v => !v); setRelocatingId(null); setRelocatingStart(null) }}
+            onClick={() => { play('hydraulic'); setIsRelocateMode(v => !v); setRelocatingId(null); setRelocatingStart(null) }}
           >
             {isRelocateMode ? <><CloseIcon size={10} /> CANCEL RELOCATE</> : <><RelocateIcon size={12} /> RELOCATE BASE</>}
           </button>
           <button
             className="hud-btn hud-btn-new-base"
-            onClick={() => setShowCreateBase(true)}
+            onClick={() => { play('peep'); setShowCreateBase(true) }}
           >
             &#x2b; NEW BASE
           </button>
@@ -307,10 +327,10 @@ export function BattlefieldView({ entries, loading, onRefresh, onReposChange, on
               position={pos}
               isRelocateMode={isRelocateMode}
               isBeingRelocated={relocatingId === entry.repo.id}
-              onConstruct={() => setConstructTarget(entry)}
+              onConstruct={() => { play('hydraulic'); setConstructTarget(entry) }}
               onStartRelocate={(mouseX, mouseY) => handleStartRelocate(entry.repo.id, mouseX, mouseY)}
               onToast={onToast}
-              onModalOpen={setModalState}
+              onModalOpen={(state) => { play('peep'); setModalState(state) }}
             />
           )
         })}
