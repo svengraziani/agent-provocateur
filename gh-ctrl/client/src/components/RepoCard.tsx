@@ -124,6 +124,7 @@ export function RepoCard({ entry, onToast }: Props) {
                   title={pr.title}
                   labels={pr.labels.map((l) => l.name)}
                   badge={<span className="badge badge-conflict">Conflict</span>}
+                  previewUrl={pr.previewUrl}
                   onClaude={() => openTriggerClaude(pr.number, 'pr')}
                   onComment={() => openComment(pr.number, 'pr')}
                   onLabel={() => openLabel(pr.number, 'pr', pr.labels.map((l) => l.name))}
@@ -142,6 +143,7 @@ export function RepoCard({ entry, onToast }: Props) {
                   title={pr.title}
                   labels={pr.labels.map((l) => l.name)}
                   badge={<span className="badge badge-review">Review</span>}
+                  previewUrl={pr.previewUrl}
                   onClaude={() => openTriggerClaude(pr.number, 'pr')}
                   onComment={() => openComment(pr.number, 'pr')}
                   onLabel={() => openLabel(pr.number, 'pr', pr.labels.map((l) => l.name))}
@@ -181,6 +183,7 @@ export function RepoCard({ entry, onToast }: Props) {
                   title={pr.title}
                   labels={pr.labels.map((l) => l.name)}
                   badge={pr.isDraft ? <span className="badge badge-draft">Draft</span> : pr.reviewDecision === 'APPROVED' ? <span className="badge badge-approved">Approved</span> : undefined}
+                  previewUrl={pr.previewUrl}
                   onClaude={() => openTriggerClaude(pr.number, 'pr')}
                   onComment={() => openComment(pr.number, 'pr')}
                   onLabel={() => openLabel(pr.number, 'pr', pr.labels.map((l) => l.name))}
@@ -250,12 +253,13 @@ export function RepoCard({ entry, onToast }: Props) {
 }
 
 function ItemRow({
-  number, title, labels, badge, onClaude, onComment, onLabel, onDetail,
+  number, title, labels, badge, previewUrl, onClaude, onComment, onLabel, onDetail,
 }: {
   number: number
   title: string
   labels: string[]
   badge?: React.ReactNode
+  previewUrl?: string | null
   onClaude: () => void
   onComment: () => void
   onLabel: () => void
@@ -278,6 +282,17 @@ function ItemRow({
       </div>
       <div className="list-item-right">
         {badge}
+        {previewUrl && (
+          <a
+            href={previewUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn btn-ghost btn-xs item-claude-btn"
+            title="Open Netlify preview"
+          >
+            &#x1F517; Preview
+          </a>
+        )}
         <button className="btn btn-ghost btn-xs item-claude-btn" onClick={onLabel} title="Manage labels">
           &#x1F3F7;
         </button>

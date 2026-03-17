@@ -19,6 +19,7 @@ export interface GHPR {
   updatedAt: string
   labels: { name: string }[]
   isDraft: boolean
+  previewUrl?: string | null
 }
 
 export interface GHIssue {

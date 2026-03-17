@@ -21,6 +21,35 @@ function gh(args: string[]): GHResult {
 
 const CLAUDE_LABELS = ['claude', 'ai', 'ai-fix', 'ai-feature']
 
+function fetchNetlifyUrls(fullName: string, prs: any[]): Record<number, string> {
+  if (prs.length === 0) return {}
+
+  const deploymentsResult = gh(['api', `repos/${fullName}/deployments?per_page=50`])
+  if (deploymentsResult.error || !deploymentsResult.data?.length) return {}
+
+  const prsByRef = new Map<string, number>(prs.map((pr: any) => [pr.headRefName, pr.number]))
+  const urlsByPrNumber: Record<number, string> = {}
+
+  const previewDeployments = deploymentsResult.data.filter((d: any) => {
+    const env = (d.environment || '').toLowerCase()
+    return env.includes('preview') || env.includes('deploy-preview') || env.includes('staging')
+  })
+
+  for (const deployment of previewDeployments) {
+    const prNumber = prsByRef.get(deployment.ref)
+    if (!prNumber || urlsByPrNumber[prNumber]) continue
+
+    const statusResult = gh(['api', `repos/${fullName}/deployments/${deployment.id}/statuses?per_page=1`])
+    if (!statusResult.error && statusResult.data?.length > 0) {
+      const status = statusResult.data[0]
+      const url = status.environment_url || status.target_url
+      if (url) urlsByPrNumber[prNumber] = url
+    }
+  }
+
+  return urlsByPrNumber
+}
+
 function fetchRepoData(fullName: string) {
   const prResult = gh([
     'pr', 'list', '--repo', fullName, '--json',
@@ -50,12 +79,18 @@ function fetchRepoData(fullName: string) {
   const prs = prResult.data || []
   const issues = issueResult.data || []
 
-  const conflicts = prs.filter((pr: any) => pr.mergeable === 'CONFLICTING')
-  const needsReview = prs.filter(
+  const previewUrls = fetchNetlifyUrls(fullName, prs)
+  const enrichedPrs = prs.map((pr: any) => ({
+    ...pr,
+    previewUrl: previewUrls[pr.number] || null,
+  }))
+
+  const conflicts = enrichedPrs.filter((pr: any) => pr.mergeable === 'CONFLICTING')
+  const needsReview = enrichedPrs.filter(
     (pr: any) => pr.reviewDecision === 'REVIEW_REQUIRED' || pr.reviewDecision === null
   ).filter((pr: any) => !pr.isDraft)
-  const approved = prs.filter((pr: any) => pr.reviewDecision === 'APPROVED')
-  const drafts = prs.filter((pr: any) => pr.isDraft)
+  const approved = enrichedPrs.filter((pr: any) => pr.reviewDecision === 'APPROVED')
+  const drafts = enrichedPrs.filter((pr: any) => pr.isDraft)
   const claudeIssues = issues.filter((issue: any) =>
     issue.labels?.some((label: any) =>
       CLAUDE_LABELS.includes(label.name?.toLowerCase())
@@ -64,10 +99,10 @@ function fetchRepoData(fullName: string) {
 
   return {
     fullName,
-    prs,
+    prs: enrichedPrs,
     issues,
     stats: {
-      openPRs: prs.length,
+      openPRs: enrichedPrs.length,
       openIssues: issues.length,
       conflicts: conflicts.length,
       needsReview: needsReview.length,
