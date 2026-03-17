@@ -68,6 +68,24 @@ export interface DashboardEntry {
   data: RepoData
 }
 
+export interface PRDetail {
+  number: number
+  title: string
+  body: string
+  state: string
+  labels: { name: string; color: string }[]
+  assignees: { login: string }[]
+  author: { login: string }
+  url: string
+  createdAt: string
+  reviewDecision: 'APPROVED' | 'REVIEW_REQUIRED' | 'CHANGES_REQUESTED' | null
+  mergeable: 'MERGEABLE' | 'CONFLICTING' | 'UNKNOWN'
+  headRefName: string
+  baseRefName: string
+  isDraft: boolean
+  comments: { author: { login: string }; body: string; createdAt: string }[]
+}
+
 export interface IssueDetail {
   number: number
   title: string

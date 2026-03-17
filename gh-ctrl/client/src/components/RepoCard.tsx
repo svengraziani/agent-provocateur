@@ -46,6 +46,10 @@ export function RepoCard({ entry, onToast }: Props) {
     setModalState({ mode: 'issue-detail', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, number })
   }
 
+  const openPRDetail = (number: number) => {
+    setModalState({ mode: 'pr-detail', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, number })
+  }
+
   const toggleBranches = async () => {
     if (!showBranches && branches.length === 0) {
       setBranchesLoading(true)
@@ -127,6 +131,7 @@ export function RepoCard({ entry, onToast }: Props) {
                   onClaude={() => openTriggerClaude(pr.number, 'pr')}
                   onComment={() => openComment(pr.number, 'pr')}
                   onLabel={() => openLabel(pr.number, 'pr', pr.labels.map((l) => l.name))}
+                  onDetail={() => openPRDetail(pr.number)}
                 />
               ))}
             </div>
@@ -145,6 +150,7 @@ export function RepoCard({ entry, onToast }: Props) {
                   onClaude={() => openTriggerClaude(pr.number, 'pr')}
                   onComment={() => openComment(pr.number, 'pr')}
                   onLabel={() => openLabel(pr.number, 'pr', pr.labels.map((l) => l.name))}
+                  onDetail={() => openPRDetail(pr.number)}
                 />
               ))}
             </div>
@@ -184,6 +190,7 @@ export function RepoCard({ entry, onToast }: Props) {
                   onClaude={() => openTriggerClaude(pr.number, 'pr')}
                   onComment={() => openComment(pr.number, 'pr')}
                   onLabel={() => openLabel(pr.number, 'pr', pr.labels.map((l) => l.name))}
+                  onDetail={() => openPRDetail(pr.number)}
                 />
               ))}
             </div>
