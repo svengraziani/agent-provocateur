@@ -386,7 +386,12 @@ function BdpItemRow({ number, title, type, repo, onModalOpen, previewUrl, labels
       <div className="bdp-item-left">
         <span className="bdp-num">#{number}</span>
         {isClaudeActive && (
-          <span className="claude-active-indicator spinning" title="Claude is working on this">⟳</span>
+          <span className="claude-active-indicator spinning" title="Claude is working on this">
+            <RefreshIcon size={12} />
+          </span>
+        )}
+        {isUntouched && (
+          <span className="untouched-indicator" title="No @claude interaction yet">●</span>
         )}
         <button
           className="bdp-text-btn"
@@ -409,7 +414,7 @@ function BdpItemRow({ number, title, type, repo, onModalOpen, previewUrl, labels
             className="bdp-icon-btn"
             title="Open preview"
           >
-            &#x1F517;
+            <LinkIcon size={12} />
           </a>
         )}
         <button
@@ -417,14 +422,14 @@ function BdpItemRow({ number, title, type, repo, onModalOpen, previewUrl, labels
           title="Manage labels"
           onClick={() => onModalOpen({ mode: 'label', fullName: repo.fullName, number, type, currentLabels: labels.map((l) => l.name) })}
         >
-          &#x1F3F7;
+          <LabelIcon size={12} />
         </button>
         <button
           className="bdp-icon-btn"
           title="Post comment"
           onClick={() => onModalOpen({ mode: 'comment', fullName: repo.fullName, number, type })}
         >
-          &#x1F4AC;
+          <CommentIcon size={12} />
         </button>
         <button
           className="bdp-claude-btn"
