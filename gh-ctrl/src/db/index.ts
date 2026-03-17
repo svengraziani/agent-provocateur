@@ -16,4 +16,16 @@ sqlite.exec(`
   )
 `)
 
+sqlite.exec(`
+  CREATE TABLE IF NOT EXISTS maps (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    width INTEGER NOT NULL DEFAULT 20,
+    height INTEGER NOT NULL DEFAULT 20,
+    tiles TEXT NOT NULL DEFAULT '{}',
+    created_at INTEGER DEFAULT (unixepoch()),
+    updated_at INTEGER DEFAULT (unixepoch())
+  )
+`)
+
 export const db = drizzle(sqlite, { schema })

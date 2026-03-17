@@ -9,3 +9,13 @@ export const repos = sqliteTable('repos', {
   color:       text('color').default('#00ff88'),
   createdAt:   integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
 })
+
+export const maps = sqliteTable('maps', {
+  id:        integer('id').primaryKey({ autoIncrement: true }),
+  name:      text('name').notNull(),
+  width:     integer('width').notNull().default(20),
+  height:    integer('height').notNull().default(20),
+  tiles:     text('tiles').notNull().default('{}'),
+  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
+})
