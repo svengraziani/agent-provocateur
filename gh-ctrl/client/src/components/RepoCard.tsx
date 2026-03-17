@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import type { DashboardEntry, GHPR, GHIssue } from '../types'
+import type { DashboardEntry, GHPR, GHIssue, Branch } from '../types'
 import { api } from '../api'
 import { ActionModal } from './ActionModal'
 import type { ModalState } from './ActionModal'
+import { LinkIcon, LabelIcon, CommentIcon, BranchIcon, RefreshIcon } from './Icons'
 
 interface Props {
   entry: DashboardEntry
@@ -16,7 +17,7 @@ export function RepoCard({ entry, onToast }: Props) {
   const [showAllPRs, setShowAllPRs] = useState(false)
   const [showAllIssues, setShowAllIssues] = useState(false)
   const [showBranches, setShowBranches] = useState(false)
-  const [branches, setBranches] = useState<string[]>([])
+  const [branches, setBranches] = useState<Branch[]>([])
   const [defaultBranch, setDefaultBranch] = useState('main')
   const [branchesLoading, setBranchesLoading] = useState(false)
 
@@ -220,7 +221,7 @@ export function RepoCard({ entry, onToast }: Props) {
             <div className="card-section">
               <button className="section-toggle" onClick={() => setShowAllIssues((v) => !v)}>
                 <span>{showAllIssues ? '▾' : '▸'}</span>
-                All Issues ({remainingIssues.length} more)
+                All Issues ({remainingIssues.length} more) <span className="untouched-count-badge" title="Issues with no @claude interaction">● {remainingIssues.length} untouched</span>
               </button>
               {showAllIssues && remainingIssues.map((issue: GHIssue) => (
                 <ItemRow
@@ -230,6 +231,7 @@ export function RepoCard({ entry, onToast }: Props) {
                   labels={issue.labels}
                   assignees={issue.assignees}
                   isClaudeActive={activeClaudeSet.has(issue.number)}
+                  isUntouched
                   onClaude={() => openTriggerClaude(issue.number, 'issue')}
                   onComment={() => openComment(issue.number, 'issue')}
                   onLabel={() => openLabel(issue.number, 'issue', issue.labels.map((l) => l.name))}
@@ -249,19 +251,24 @@ export function RepoCard({ entry, onToast }: Props) {
                 <div className="no-items">No branches found</div>
               ) : (
                 branches.map((branch) => (
-                  <div key={branch} className="list-item">
+                  <div key={branch.name} className="list-item">
                     <div className="list-item-left">
-                      <span className="branch-icon">⎇</span>
-                      <span className="list-item-title">{branch}</span>
-                      {branch === defaultBranch && (
+                      <span className="branch-icon"><BranchIcon size={12} /></span>
+                      <span className="list-item-title">{branch.name}</span>
+                      {branch.name === defaultBranch && (
                         <span className="badge badge-default">default</span>
                       )}
                     </div>
                     <div className="list-item-right">
-                      {branch !== defaultBranch && (
+                      {branch.committedDate && (
+                        <span className="branch-date" title={branch.committedDate}>
+                          {new Date(branch.committedDate).toLocaleDateString()}
+                        </span>
+                      )}
+                      {branch.name !== defaultBranch && (
                         <button
                           className="btn btn-ghost btn-sm item-claude-btn"
-                          onClick={() => openCreatePR(branch)}
+                          onClick={() => openCreatePR(branch.name)}
                         >
                           Open PR
                         </button>
@@ -289,7 +296,7 @@ function labelTextColor(hex: string): string {
 }
 
 function ItemRow({
-  number, title, labels, assignees, badge, previewUrl, isClaudeActive, onClaude, onComment, onLabel, onDetail,
+  number, title, labels, assignees, badge, previewUrl, isClaudeActive, isUntouched, onClaude, onComment, onLabel, onDetail,
 }: {
   number: number
   title: string
@@ -298,17 +305,23 @@ function ItemRow({
   badge?: React.ReactNode
   previewUrl?: string | null
   isClaudeActive?: boolean
+  isUntouched?: boolean
   onClaude: () => void
   onComment: () => void
   onLabel: () => void
   onDetail?: () => void
 }) {
   return (
-    <div className="list-item">
+    <div className={`list-item${isUntouched ? ' untouched-issue' : ''}`}>
       <div className="list-item-left">
         <span className="list-item-number">#{number}</span>
         {isClaudeActive && (
-          <span className="claude-active-indicator spinning" title="Claude is working on this">⟳</span>
+          <span className="claude-active-indicator spinning" title="Claude is working on this">
+            <RefreshIcon size={12} />
+          </span>
+        )}
+        {isUntouched && (
+          <span className="untouched-indicator" title="No @claude interaction yet">●</span>
         )}
         {onDetail ? (
           <button className="list-item-title list-item-title-btn" onClick={onDetail} title="View details">
@@ -348,14 +361,14 @@ function ItemRow({
             className="btn btn-ghost btn-xs item-claude-btn"
             title="Open Netlify preview"
           >
-            &#x1F517; Preview
+            <LinkIcon size={11} /> Preview
           </a>
         )}
         <button className="btn btn-ghost btn-xs item-claude-btn" onClick={onLabel} title="Manage labels">
-          &#x1F3F7;
+          <LabelIcon size={12} />
         </button>
         <button className="btn btn-ghost btn-xs item-claude-btn" onClick={onComment} title="Post comment">
-          &#x1F4AC;
+          <CommentIcon size={12} />
         </button>
         <button className="btn btn-claude item-claude-btn" onClick={onClaude}>
           @claude
