@@ -1049,18 +1049,28 @@ select.input {
   background: #050809;
 }
 
-/* Terrain — dark pixel grid */
+/* Terrain — isometric grid floor */
 .battlefield-terrain {
   position: absolute;
   inset: 0;
-  background-image:
-    linear-gradient(var(--terrain-grid) 1px, transparent 1px),
-    linear-gradient(90deg, var(--terrain-grid) 1px, transparent 1px),
-    radial-gradient(circle, var(--terrain-dot) 1px, transparent 1px);
-  background-size: 40px 40px, 40px 40px, 40px 40px;
-  background-position: 0 0, 0 0, 20px 20px;
+  overflow: hidden;
   pointer-events: none;
   z-index: 0;
+}
+
+/* Isometric grid: regular square grid rotated into orthographic isometric projection */
+.battlefield-terrain::before {
+  content: '';
+  position: absolute;
+  inset: -200%;
+  background-image:
+    radial-gradient(circle, rgba(57, 211, 83, 0.18) 1.5px, transparent 1.5px),
+    linear-gradient(rgba(57, 211, 83, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(57, 211, 83, 0.07) 1px, transparent 1px);
+  background-size: 64px 64px;
+  background-position: 32px 32px, 0 0, 0 0;
+  transform: rotateX(60deg) rotateZ(45deg);
+  transform-origin: center center;
 }
 
 /* CRT scanlines */
@@ -1221,21 +1231,71 @@ select.input {
   align-items: center;
   gap: 6px;
   padding: 10px 8px 8px;
-  background: rgba(13, 17, 23, 0.88);
-  border: 1px solid var(--base-color, var(--crt-green));
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+  background: rgba(13, 17, 23, 0.92);
+  /* Directional borders: lit top/left, shadowed right/bottom for 3D illusion */
+  border-top: 1px solid var(--base-color, var(--crt-green));
+  border-left: 1px solid var(--base-color, var(--crt-green));
+  border-right: 1px solid color-mix(in srgb, var(--base-color, var(--crt-green)) 30%, #000);
+  border-bottom: 1px solid color-mix(in srgb, var(--base-color, var(--crt-green)) 30%, #000);
+  /* Stacked diagonal shadows going down-right for depth */
+  box-shadow:
+    3px 3px 0 color-mix(in srgb, var(--base-color, var(--crt-green)) 18%, #000),
+    6px 6px 0 color-mix(in srgb, var(--base-color, var(--crt-green)) 8%, #000),
+    9px 9px 0 rgba(0, 0, 0, 0.5),
+    0 0 14px rgba(0, 0, 0, 0.5);
   transition: box-shadow 0.2s, border-color 0.2s;
   font-family: var(--font-mono);
 }
 
+/* Right wall of the 3D isometric block */
+.base-node::before {
+  content: '';
+  position: absolute;
+  top: 7px;
+  left: 100%;
+  width: 9px;
+  height: 100%;
+  background: color-mix(in srgb, var(--base-color, var(--crt-green)) 6%, rgba(0, 0, 0, 0.88));
+  border-top: 1px solid color-mix(in srgb, var(--base-color, var(--crt-green)) 30%, transparent);
+  border-right: 1px solid rgba(0, 0, 0, 0.5);
+  transform: skewY(30deg);
+  transform-origin: top left;
+  pointer-events: none;
+}
+
+/* Bottom wall of the 3D isometric block */
+.base-node::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 7px;
+  width: 100%;
+  height: 9px;
+  background: color-mix(in srgb, var(--base-color, var(--crt-green)) 4%, rgba(0, 0, 0, 0.85));
+  border-left: 1px solid color-mix(in srgb, var(--base-color, var(--crt-green)) 20%, transparent);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.5);
+  transform: skewX(30deg);
+  transform-origin: top left;
+  pointer-events: none;
+}
+
 .base-node:hover {
-  box-shadow: 0 0 16px var(--base-color, var(--crt-green)), 0 0 4px var(--base-color, var(--crt-green));
+  box-shadow:
+    3px 3px 0 color-mix(in srgb, var(--base-color, var(--crt-green)) 30%, #000),
+    6px 6px 0 color-mix(in srgb, var(--base-color, var(--crt-green)) 15%, #000),
+    9px 9px 0 rgba(0, 0, 0, 0.5),
+    0 0 20px var(--base-color, var(--crt-green)),
+    0 0 6px var(--base-color, var(--crt-green));
   z-index: 5;
 }
 
 .base-node.base-conflict {
   border-color: var(--crt-red) !important;
-  box-shadow: 0 0 12px rgba(248, 81, 73, 0.35);
+  box-shadow:
+    3px 3px 0 rgba(248, 81, 73, 0.3),
+    6px 6px 0 rgba(248, 81, 73, 0.15),
+    9px 9px 0 rgba(0, 0, 0, 0.5),
+    0 0 14px rgba(248, 81, 73, 0.4);
   animation: construct-glow 1.5s ease-in-out infinite;
   --base-color: var(--crt-red);
 }
@@ -1260,9 +1320,14 @@ select.input {
 }
 
 .base-node.relocating {
-  opacity: 0.8;
+  opacity: 0.85;
   z-index: 20;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 0 20px var(--base-color, var(--crt-green));
+  box-shadow:
+    4px 4px 0 color-mix(in srgb, var(--base-color, var(--crt-green)) 35%, #000),
+    8px 8px 0 color-mix(in srgb, var(--base-color, var(--crt-green)) 18%, #000),
+    12px 12px 0 rgba(0, 0, 0, 0.5),
+    0 16px 40px rgba(0, 0, 0, 0.7),
+    0 0 24px var(--base-color, var(--crt-green));
 }
 
 /* Beacons */
@@ -1303,6 +1368,10 @@ select.input {
   width: 70px;
   height: 56px;
   margin: 4px 0 2px;
+  /* Subtle perspective tilt for 3D depth on the building */
+  transform: perspective(200px) rotateX(6deg);
+  transform-origin: bottom center;
+  transform-style: preserve-3d;
 }
 
 .base-antenna {
