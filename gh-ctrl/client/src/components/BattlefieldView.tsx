@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
-import type { DashboardEntry } from '../types'
+import type { DashboardEntry, GameMap, MapTile } from '../types'
+import { api } from '../api'
 import { BaseNode } from './BaseNode'
 import { ActionModal } from './ActionModal'
 import type { ModalState } from './ActionModal'
@@ -12,6 +13,7 @@ interface Props {
   entries: DashboardEntry[]
   loading: boolean
   onRefresh: () => void
+  onRefreshRepo: (owner: string, name: string) => Promise<void>
   onReposChange: () => void
   onToast: (message: string, type: 'success' | 'error' | 'info') => void
 }
@@ -58,6 +60,239 @@ const TERRAIN_ITEMS: TerrainItem[] = (() => {
 
 const ORE_ROUTES = [1, 2, 3, 4, 5]
 
+// ── Map tile rendering ────────────────────────────────────────────────────────
+
+const MAP_TILE_W = 64
+const MAP_TILE_H = 32
+const MAP_TILE_DEPTH = 14
+
+function hexToRgb(hex: string): [number, number, number] {
+  const c = hex.replace('#', '')
+  if (c.length !== 6) return [80, 80, 80]
+  return [parseInt(c.slice(0, 2), 16), parseInt(c.slice(2, 4), 16), parseInt(c.slice(4, 6), 16)]
+}
+
+function darkenHex(hex: string, factor: number): string {
+  const [r, g, b] = hexToRgb(hex)
+  return `rgb(${Math.round(r * (1 - factor))},${Math.round(g * (1 - factor))},${Math.round(b * (1 - factor))})`
+}
+
+function loadActiveMapId(): number | null {
+  try {
+    const stored = localStorage.getItem('battlefield-active-map-id')
+    return stored ? parseInt(stored, 10) : null
+  } catch {
+    return null
+  }
+}
+
+function saveActiveMapId(id: number | null) {
+  if (id === null) {
+    localStorage.removeItem('battlefield-active-map-id')
+  } else {
+    localStorage.setItem('battlefield-active-map-id', String(id))
+  }
+}
+
+// ── BattlefieldMapCanvas ──────────────────────────────────────────────────────
+
+function BattlefieldMapCanvas({ map }: { map: GameMap }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+
+  const canvasW = (map.width + map.height) * (MAP_TILE_W / 2)
+  const canvasH = (map.width + map.height) * (MAP_TILE_H / 2) + MAP_TILE_DEPTH + 10
+  const offsetX = map.height * (MAP_TILE_W / 2)
+  const offsetY = 10
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+    let tiles: Record<string, MapTile> = {}
+    try { tiles = JSON.parse(map.tiles) } catch { /* empty */ }
+
+    const w2 = MAP_TILE_W / 2
+    const h2 = MAP_TILE_H / 2
+
+    for (let row = 0; row < map.height; row++) {
+      for (let col = 0; col < map.width; col++) {
+        const key = `${col},${row}`
+        const tile = tiles[key]
+        if (!tile) continue
+
+        const sx = (col - row) * w2 + offsetX
+        const sy = (col + row) * h2 + offsetY
+        const color = tile.color
+
+        // Top face
+        ctx.beginPath()
+        ctx.moveTo(sx, sy)
+        ctx.lineTo(sx + w2, sy + h2)
+        ctx.lineTo(sx, sy + MAP_TILE_H)
+        ctx.lineTo(sx - w2, sy + h2)
+        ctx.closePath()
+        ctx.fillStyle = color
+        ctx.fill()
+        ctx.strokeStyle = 'rgba(0,0,0,0.25)'
+        ctx.lineWidth = 0.5
+        ctx.stroke()
+
+        // Left face
+        ctx.beginPath()
+        ctx.moveTo(sx - w2, sy + h2)
+        ctx.lineTo(sx, sy + MAP_TILE_H)
+        ctx.lineTo(sx, sy + MAP_TILE_H + MAP_TILE_DEPTH)
+        ctx.lineTo(sx - w2, sy + h2 + MAP_TILE_DEPTH)
+        ctx.closePath()
+        ctx.fillStyle = darkenHex(color, 0.35)
+        ctx.fill()
+        ctx.strokeStyle = 'rgba(0,0,0,0.25)'
+        ctx.stroke()
+
+        // Right face
+        ctx.beginPath()
+        ctx.moveTo(sx, sy + MAP_TILE_H)
+        ctx.lineTo(sx + w2, sy + h2)
+        ctx.lineTo(sx + w2, sy + h2 + MAP_TILE_DEPTH)
+        ctx.lineTo(sx, sy + MAP_TILE_H + MAP_TILE_DEPTH)
+        ctx.closePath()
+        ctx.fillStyle = darkenHex(color, 0.55)
+        ctx.fill()
+        ctx.strokeStyle = 'rgba(0,0,0,0.25)'
+        ctx.stroke()
+      }
+    }
+  }, [map, canvasW, canvasH, offsetX, offsetY])
+
+  return (
+    <canvas
+      ref={canvasRef}
+      width={canvasW}
+      height={canvasH}
+      style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none' }}
+    />
+  )
+}
+
+// ── LoadBattlefieldMapDialog ──────────────────────────────────────────────────
+
+function MapMiniPreview({ map }: { map: GameMap }) {
+  const ref = useRef<HTMLCanvasElement>(null)
+  const W = 120
+  const H = 72
+
+  useEffect(() => {
+    const canvas = ref.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    ctx.fillStyle = '#0a1510'
+    ctx.fillRect(0, 0, W, H)
+
+    let tiles: Record<string, MapTile> = {}
+    try { tiles = JSON.parse(map.tiles) } catch { /* empty */ }
+
+    const scale = Math.min(W / (map.width * MAP_TILE_W * 0.8), H / (map.height * MAP_TILE_H * 1.4)) * 0.7
+    const tw = MAP_TILE_W * scale
+    const th = MAP_TILE_H * scale
+    const depth = MAP_TILE_DEPTH * scale
+    const ox = W / 2
+    const oy = th * 1.5
+
+    for (let row = 0; row < map.height; row++) {
+      for (let col = 0; col < map.width; col++) {
+        const key = `${col},${row}`
+        const tile = tiles[key]
+        if (!tile) continue
+        const sx = (col - row) * (tw / 2) + ox
+        const sy = (col + row) * (th / 2) + oy
+        const color = tile.color
+
+        ctx.beginPath()
+        ctx.moveTo(sx, sy)
+        ctx.lineTo(sx + tw / 2, sy + th / 2)
+        ctx.lineTo(sx, sy + th)
+        ctx.lineTo(sx - tw / 2, sy + th / 2)
+        ctx.closePath()
+        ctx.fillStyle = color
+        ctx.fill()
+
+        ctx.beginPath()
+        ctx.moveTo(sx - tw / 2, sy + th / 2)
+        ctx.lineTo(sx, sy + th)
+        ctx.lineTo(sx, sy + th + depth)
+        ctx.lineTo(sx - tw / 2, sy + th / 2 + depth)
+        ctx.closePath()
+        ctx.fillStyle = darkenHex(color, 0.35)
+        ctx.fill()
+
+        ctx.beginPath()
+        ctx.moveTo(sx, sy + th)
+        ctx.lineTo(sx + tw / 2, sy + th / 2)
+        ctx.lineTo(sx + tw / 2, sy + th / 2 + depth)
+        ctx.lineTo(sx, sy + th + depth)
+        ctx.closePath()
+        ctx.fillStyle = darkenHex(color, 0.55)
+        ctx.fill()
+      }
+    }
+  }, [map])
+
+  return <canvas ref={ref} width={W} height={H} style={{ display: 'block', borderRadius: 4 }} />
+}
+
+interface LoadBattlefieldMapDialogProps {
+  maps: GameMap[]
+  activeMapId: number | null
+  onLoad: (map: GameMap) => void
+  onClose: () => void
+}
+
+function LoadBattlefieldMapDialog({ maps, activeMapId, onLoad, onClose }: LoadBattlefieldMapDialogProps) {
+  return (
+    <div className="map-dialog-overlay" onClick={onClose}>
+      <div className="map-dialog map-dialog-load" onClick={e => e.stopPropagation()}>
+        <div className="map-dialog-title">&#x25a0; SELECT MAP FOR BATTLEFIELD</div>
+        {maps.length === 0 ? (
+          <div className="map-dialog-empty">No saved maps. Create one in the Map Editor first.</div>
+        ) : (
+          <div className="map-load-list">
+            {maps.map(m => (
+              <div
+                key={m.id}
+                className={`map-load-item${activeMapId === m.id ? ' active' : ''}`}
+                onClick={() => { onLoad(m); onClose() }}
+              >
+                <div className="map-load-preview">
+                  <MapMiniPreview map={m} />
+                </div>
+                <div className="map-load-info">
+                  <div className="map-load-name">{m.name}</div>
+                  <div className="map-load-meta">{m.width}×{m.height} tiles</div>
+                  <div className="map-load-meta">
+                    {m.updatedAt
+                      ? `Saved ${new Date(typeof m.updatedAt === 'number' ? m.updatedAt * 1000 : m.updatedAt).toLocaleDateString()}`
+                      : 'Not saved yet'}
+                  </div>
+                </div>
+                {activeMapId === m.id && <span className="hud-stat" style={{ color: 'var(--green-neon)', fontSize: 11 }}>ACTIVE</span>}
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="map-dialog-actions">
+          <button className="hud-btn" onClick={onClose}>CLOSE</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function getDefaultPositions(entries: DashboardEntry[]): Record<number, Position> {
   const positions: Record<number, Position> = {}
   entries.forEach((entry, i) => {
@@ -85,7 +320,7 @@ function savePositions(positions: Record<number, Position>) {
   localStorage.setItem('battlefield-positions', JSON.stringify(positions))
 }
 
-export function BattlefieldView({ entries, loading, onRefresh, onReposChange, onToast }: Props) {
+export function BattlefieldView({ entries, loading, onRefresh, onRefreshRepo, onReposChange, onToast }: Props) {
   const [offset, setOffset] = useState<Position>({ x: 0, y: 0 })
   const [zoom, setZoom] = useState(1)
   const [isDraggingMap, setIsDraggingMap] = useState(false)
@@ -101,6 +336,9 @@ export function BattlefieldView({ entries, loading, onRefresh, onReposChange, on
   const [isRelocateMode, setIsRelocateMode] = useState(false)
   const [showCreateBase, setShowCreateBase] = useState(false)
   const [modalState, setModalState] = useState<ModalState>(null)
+  const [activeMap, setActiveMap] = useState<GameMap | null>(null)
+  const [allMaps, setAllMaps] = useState<GameMap[]>([])
+  const [showMapSelector, setShowMapSelector] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const zoomRef = useRef(zoom)
   const offsetRef = useRef(offset)
@@ -119,14 +357,38 @@ export function BattlefieldView({ entries, loading, onRefresh, onReposChange, on
   }, [loading, play])
 
   // Play glass_poop when conflicts are first detected
-  const totalConflicts = entries.reduce((sum, e) => sum + e.data.stats.conflicts, 0)
-  const prevConflictsRef = useRef(totalConflicts)
+  const prevConflictsRef = useRef(0)
   useEffect(() => {
-    if (prevConflictsRef.current === 0 && totalConflicts > 0) {
+    if (prevConflictsRef.current === 0 && entries.reduce((sum, e) => sum + e.data.stats.conflicts, 0) > 0) {
       play('glass_poop')
     }
-    prevConflictsRef.current = totalConflicts
-  }, [totalConflicts, play])
+    prevConflictsRef.current = entries.reduce((sum, e) => sum + e.data.stats.conflicts, 0)
+  }, [entries, play])
+
+  // Load persisted active map on mount
+  useEffect(() => {
+    const savedId = loadActiveMapId()
+    if (savedId !== null) {
+      api.getMap(savedId).then(setActiveMap).catch(() => saveActiveMapId(null))
+    }
+  }, [])
+
+  // Load all maps when selector opens
+  useEffect(() => {
+    if (showMapSelector) {
+      api.listMaps().then(setAllMaps).catch(() => {})
+    }
+  }, [showMapSelector])
+
+  const handleLoadMap = useCallback((map: GameMap) => {
+    setActiveMap(map)
+    saveActiveMapId(map.id)
+  }, [])
+
+  const handleClearMap = useCallback(() => {
+    setActiveMap(null)
+    saveActiveMapId(null)
+  }, [])
 
   // Update positions when entries change (new repos)
   useEffect(() => {
@@ -234,6 +496,10 @@ export function BattlefieldView({ entries, loading, onRefresh, onReposChange, on
     setRelocatingStart({ mouseX, mouseY, nodeX: pos.x, nodeY: pos.y })
   }, [positions])
 
+  const totalConflicts = entries.reduce((sum, e) => sum + e.data.stats.conflicts, 0)
+  const totalRunningActions = entries.reduce((sum, e) => sum + (e.data.stats.runningActions ?? 0), 0)
+
+
   return (
     <div
       className="battlefield-container"
@@ -256,6 +522,9 @@ export function BattlefieldView({ entries, loading, onRefresh, onReposChange, on
           {totalConflicts > 0 && (
             <span className="hud-stat hud-alert blink">&#x26a0; CONFLICTS: <strong>{totalConflicts}</strong></span>
           )}
+          {totalRunningActions > 0 && (
+            <span className="hud-stat hud-actions spinning-process" title="Running GitHub Actions across all bases">&#x2699; PROCESSES: <strong>{totalRunningActions}</strong></span>
+          )}
           <button
             className="hud-btn"
             onClick={() => { play('peep'); onRefresh() }}
@@ -276,6 +545,23 @@ export function BattlefieldView({ entries, loading, onRefresh, onReposChange, on
             &#x2b; NEW BASE
           </button>
           <span className="hud-zoom-sep" />
+          <button
+            className="hud-btn"
+            onClick={() => setShowMapSelector(true)}
+            title="Load a map from the Map Editor"
+          >
+            &#x25a6; {activeMap ? activeMap.name : 'LOAD MAP'}
+          </button>
+          {activeMap && (
+            <button
+              className="hud-btn"
+              onClick={handleClearMap}
+              title="Clear loaded map"
+            >
+              &#x2715; MAP
+            </button>
+          )}
+          <span className="hud-zoom-sep" />
           <button className="hud-btn hud-zoom-btn" onClick={handleZoomOut} disabled={zoom <= ZOOM_MIN} title="Zoom out">−</button>
           <span className="hud-zoom-level" title="Click to reset zoom" onClick={handleZoomReset}>{Math.round(zoom * 100)}%</span>
           <button className="hud-btn hud-zoom-btn" onClick={handleZoomIn} disabled={zoom >= ZOOM_MAX} title="Zoom in">+</button>
@@ -288,10 +574,13 @@ export function BattlefieldView({ entries, loading, onRefresh, onReposChange, on
         style={{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${zoom})`, transformOrigin: '0 0' }}
       >
         {/* Terrain grid — inside map layer so it pans/zooms with the bases */}
-        <div className="battlefield-terrain" />
+        {!activeMap && <div className="battlefield-terrain" />}
 
-        {/* Terrain elements: trees, rocks, crystals */}
-        {TERRAIN_ITEMS.map((item) => (
+        {/* Map canvas — shown when a map is loaded */}
+        {activeMap && <BattlefieldMapCanvas map={activeMap} />}
+
+        {/* Terrain elements: trees, rocks, crystals — shown when no map is loaded */}
+        {!activeMap && TERRAIN_ITEMS.map((item) => (
           <div
             key={item.id}
             className="terrain-el"
@@ -310,8 +599,8 @@ export function BattlefieldView({ entries, loading, onRefresh, onReposChange, on
           </div>
         ))}
 
-        {/* Ore collectors — animated harvester vehicles */}
-        {ORE_ROUTES.map((route) => (
+        {/* Ore collectors — shown when no map is loaded */}
+        {!activeMap && ORE_ROUTES.map((route) => (
           <div key={route} className="ore-collector" data-route={String(route)}>
             <div className="ore-collector-body" />
             <div className="ore-collector-tracks" />
@@ -329,6 +618,7 @@ export function BattlefieldView({ entries, loading, onRefresh, onReposChange, on
               isBeingRelocated={relocatingId === entry.repo.id}
               onConstruct={() => { play('hydraulic'); setConstructTarget(entry) }}
               onStartRelocate={(mouseX, mouseY) => handleStartRelocate(entry.repo.id, mouseX, mouseY)}
+              onRefreshRepo={onRefreshRepo}
               onToast={onToast}
               onModalOpen={(state) => { play('peep'); setModalState(state) }}
             />
@@ -391,6 +681,16 @@ export function BattlefieldView({ entries, loading, onRefresh, onReposChange, on
             onReposChange()
           }}
           onError={(msg) => onToast(msg, 'error')}
+        />
+      )}
+
+      {/* Map selector dialog */}
+      {showMapSelector && (
+        <LoadBattlefieldMapDialog
+          maps={allMaps}
+          activeMapId={activeMap?.id ?? null}
+          onLoad={handleLoadMap}
+          onClose={() => setShowMapSelector(false)}
         />
       )}
     </div>
