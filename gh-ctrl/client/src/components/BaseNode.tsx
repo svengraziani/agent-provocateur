@@ -1,7 +1,8 @@
 import { useState, useCallback, useEffect } from 'react'
-import type { DashboardEntry, GHPR, GHIssue } from '../types'
-import { ActionModal } from './ActionModal'
+import type { DashboardEntry, GHPR, GHIssue, Branch } from '../types'
 import type { ModalState } from './ActionModal'
+import { CloseIcon, LinkIcon, LabelIcon, CommentIcon, RefreshIcon, ExternalLinkIcon } from './Icons'
+import { api } from '../api'
 
 interface Position {
   x: number
@@ -16,17 +17,22 @@ interface Props {
   onConstruct: () => void
   onStartRelocate: (mouseX: number, mouseY: number) => void
   onToast: (message: string, type: 'success' | 'error' | 'info') => void
+  onModalOpen: (state: ModalState) => void
 }
 
-export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, onConstruct, onStartRelocate, onToast }: Props) {
+export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, onConstruct, onStartRelocate, onToast, onModalOpen }: Props) {
   const { repo, data } = entry
   const { stats } = data
   const [showDetail, setShowDetail] = useState(false)
-  const [modalState, setModalState] = useState<ModalState>(null)
 
   const hasConflicts = stats.conflicts > 0
   const hasReviews = stats.needsReview > 0
   const hasClaudeActive = (data.activeClaudeIssues?.length ?? 0) > 0
+
+  // Detect PRs created by Claude (branch starts with "claude/") when no active work remains
+  const claudeDonePRs = hasClaudeActive
+    ? []
+    : data.prs.filter((pr) => pr.headRefName?.startsWith('claude/'))
 
   const statusClass = hasConflicts
     ? 'base-conflict'
@@ -50,13 +56,6 @@ export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, on
 
   return (
     <>
-      <ActionModal
-        state={modalState}
-        onClose={() => setModalState(null)}
-        onSuccess={(msg) => onToast(msg, 'success')}
-        onError={(msg) => onToast(msg, 'error')}
-      />
-
       <div
         className={`base-node ${statusClass}${isBeingRelocated ? ' relocating' : ''}${isRelocateMode ? ' relocate-mode' : ''}`}
         style={{
@@ -85,6 +84,18 @@ export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, on
               &#x2605;
             </span>
           )}
+          {claudeDonePRs.length > 0 && (
+            <a
+              className="beacon-claude-done"
+              href={`https://github.com/${repo.fullName}/pulls?q=is%3Aopen+head%3Aclaude%2F`}
+              target="_blank"
+              rel="noopener noreferrer"
+              title={`Claude created ${claudeDonePRs.length} PR(s) — click to review`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              &#x2605; PR READY
+            </a>
+          )}
         </div>
 
         {/* Building graphic */}
@@ -102,7 +113,7 @@ export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, on
         <div className="base-stats-mini">
           <span className="bsm green" title="Open PRs">▲{stats.openPRs}</span>
           <span className="bsm blue" title="Open Issues">◆{stats.openIssues}</span>
-          {stats.conflicts > 0 && <span className="bsm red" title="Conflicts">✕{stats.conflicts}</span>}
+          {stats.conflicts > 0 && <span className="bsm red" title="Conflicts"><CloseIcon size={10} />{stats.conflicts}</span>}
           {stats.needsReview > 0 && <span className="bsm amber" title="Needs Review">◎{stats.needsReview}</span>}
         </div>
 
@@ -124,7 +135,7 @@ export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, on
           entry={entry}
           position={position}
           onClose={() => setShowDetail(false)}
-          onModalOpen={setModalState}
+          onModalOpen={onModalOpen}
         />
       )}
     </>
@@ -140,8 +151,28 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
   const { repo, data } = entry
   const [showAllPRs, setShowAllPRs] = useState(false)
   const [showAllIssues, setShowAllIssues] = useState(false)
+  const [showBranches, setShowBranches] = useState(false)
+  const [branches, setBranches] = useState<Branch[]>([])
+  const [defaultBranch, setDefaultBranch] = useState('main')
+  const [branchesLoading, setBranchesLoading] = useState(false)
   const panelX = position.x + 145
   const panelY = position.y
+
+  const toggleBranches = async () => {
+    if (!showBranches && branches.length === 0) {
+      setBranchesLoading(true)
+      try {
+        const result = await api.getBranches(repo.owner, repo.name)
+        setBranches(result.branches)
+        setDefaultBranch(result.defaultBranch)
+      } catch {
+        // silently fail — branches section will show empty
+      } finally {
+        setBranchesLoading(false)
+      }
+    }
+    setShowBranches((v) => !v)
+  }
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -172,7 +203,7 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
           rel="noopener noreferrer"
           className="bdp-title"
         >
-          {repo.fullName} &#x2197;
+          {repo.fullName} <ExternalLinkIcon size={11} />
         </a>
         <button
           className="bdp-action-btn"
@@ -181,7 +212,7 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
         >
           + Issue
         </button>
-        <button className="bdp-close" onClick={onClose}>✕</button>
+        <button className="bdp-close" onClick={onClose}><CloseIcon size={12} /></button>
       </div>
 
       <div className="bdp-stats">
@@ -271,7 +302,7 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
       {remainingIssues.length > 0 && (
         <div className="bdp-section">
           <button className="bdp-toggle" onClick={() => setShowAllIssues((v) => !v)}>
-            <span>{showAllIssues ? '▾' : '▸'}</span> All Issues ({remainingIssues.length})
+            <span>{showAllIssues ? '▾' : '▸'}</span> All Issues ({remainingIssues.length}) <span className="untouched-count-badge" title="Issues with no @claude interaction">● {remainingIssues.length} untouched</span>
           </button>
           {showAllIssues && remainingIssues.slice(0, 5).map((issue: GHIssue) => (
             <BdpItemRow
@@ -283,10 +314,54 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
               onModalOpen={onModalOpen}
               labels={issue.labels}
               isClaudeActive={activeClaudeSet.has(issue.number)}
+              isUntouched
             />
           ))}
         </div>
       )}
+
+      <div className="bdp-section">
+        <button className="bdp-toggle" onClick={toggleBranches}>
+          <span>{showBranches ? '▾' : '▸'}</span>
+          {' '}&#x2387; BRANCHES {branchesLoading ? '(loading...)' : branches.length > 0 ? `(${branches.length})` : ''}
+        </button>
+        {showBranches && !branchesLoading && (
+          branches.length === 0 ? (
+            <div className="bdp-more">No branches found</div>
+          ) : (
+            branches.slice(0, 8).map((branch) => (
+              <div key={branch.name} className="bdp-item">
+                <div className="bdp-item-left">
+                  <span className="branch-icon">⎇</span>
+                  <span className="bdp-text-btn" style={{ cursor: 'default' }}>{branch.name}</span>
+                  {branch.name === defaultBranch && (
+                    <span className="bdp-branch-default">default</span>
+                  )}
+                </div>
+                <div className="bdp-item-right">
+                  {branch.committedDate && (
+                    <span className="bdp-branch-date" title={branch.committedDate}>
+                      {new Date(branch.committedDate).toLocaleDateString()}
+                    </span>
+                  )}
+                  {branch.name !== defaultBranch && (
+                    <button
+                      className="bdp-icon-btn"
+                      title="Open PR for this branch"
+                      onClick={() => onModalOpen({ mode: 'create-pr', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, head: branch.name })}
+                    >
+                      PR
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))
+          )
+        )}
+        {showBranches && !branchesLoading && branches.length > 8 && (
+          <div className="bdp-more">+{branches.length - 8} more</div>
+        )}
+      </div>
 
       {data.error && (
         <div className="bdp-error">&#x26A0; {data.error}</div>
@@ -295,7 +370,7 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
   )
 }
 
-function BdpItemRow({ number, title, type, repo, onModalOpen, previewUrl, labels, isClaudeActive }: {
+function BdpItemRow({ number, title, type, repo, onModalOpen, previewUrl, labels, isClaudeActive, isUntouched }: {
   number: number
   title: string
   type: 'pr' | 'issue'
@@ -304,13 +379,19 @@ function BdpItemRow({ number, title, type, repo, onModalOpen, previewUrl, labels
   previewUrl?: string | null
   labels: { name: string; color: string }[]
   isClaudeActive?: boolean
+  isUntouched?: boolean
 }) {
   return (
-    <div className="bdp-item">
+    <div className={`bdp-item${isUntouched ? ' untouched-issue' : ''}`}>
       <div className="bdp-item-left">
         <span className="bdp-num">#{number}</span>
         {isClaudeActive && (
-          <span className="claude-active-indicator spinning" title="Claude is working on this">⟳</span>
+          <span className="claude-active-indicator spinning" title="Claude is working on this">
+            <RefreshIcon size={12} />
+          </span>
+        )}
+        {isUntouched && (
+          <span className="untouched-indicator" title="No @claude interaction yet">●</span>
         )}
         <button
           className="bdp-text-btn"
@@ -333,7 +414,7 @@ function BdpItemRow({ number, title, type, repo, onModalOpen, previewUrl, labels
             className="bdp-icon-btn"
             title="Open preview"
           >
-            &#x1F517;
+            <LinkIcon size={12} />
           </a>
         )}
         <button
@@ -341,14 +422,14 @@ function BdpItemRow({ number, title, type, repo, onModalOpen, previewUrl, labels
           title="Manage labels"
           onClick={() => onModalOpen({ mode: 'label', fullName: repo.fullName, number, type, currentLabels: labels.map((l) => l.name) })}
         >
-          &#x1F3F7;
+          <LabelIcon size={12} />
         </button>
         <button
           className="bdp-icon-btn"
           title="Post comment"
           onClick={() => onModalOpen({ mode: 'comment', fullName: repo.fullName, number, type })}
         >
-          &#x1F4AC;
+          <CommentIcon size={12} />
         </button>
         <button
           className="bdp-claude-btn"

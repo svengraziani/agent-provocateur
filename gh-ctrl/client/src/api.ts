@@ -1,4 +1,4 @@
-import type { Repo, DashboardEntry, RepoData, GHLabel, BranchesData, IssueDetail, PRDetail } from './types'
+import type { Repo, DashboardEntry, RepoData, GHLabel, BranchesData, IssueDetail, PRDetail, GameMap } from './types'
 
 const BASE = '/api'
 
@@ -131,4 +131,23 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(params),
     }),
+
+  listMaps: () => request<GameMap[]>('/maps'),
+
+  createMap: (params: { name: string; width: number; height: number }) =>
+    request<GameMap>('/maps', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    }),
+
+  getMap: (id: number) => request<GameMap>(`/maps/${id}`),
+
+  saveMap: (id: number, updates: { name?: string; tiles?: string }) =>
+    request<GameMap>(`/maps/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(updates),
+    }),
+
+  deleteMap: (id: number) =>
+    request<{ ok: boolean }>(`/maps/${id}`, { method: 'DELETE' }),
 }

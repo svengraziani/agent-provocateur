@@ -39,8 +39,13 @@ export interface GHLabel {
   description: string
 }
 
+export interface Branch {
+  name: string
+  committedDate: string
+}
+
 export interface BranchesData {
-  branches: string[]
+  branches: Branch[]
   defaultBranch: string
 }
 
@@ -100,4 +105,19 @@ export interface IssueDetail {
   url: string
   createdAt: string
   comments: { author: { login: string }; body: string; createdAt: string }[]
+}
+
+export interface MapTile {
+  type: string
+  color: string
+}
+
+export interface GameMap {
+  id: number
+  name: string
+  width: number
+  height: number
+  tiles: string // JSON-encoded Record<string, MapTile> keyed by "col,row"
+  createdAt: string | number | null
+  updatedAt: string | number | null
 }

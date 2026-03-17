@@ -4,9 +4,10 @@ import { api } from './api'
 import { Dashboard } from './components/Dashboard'
 import { Settings } from './components/Settings'
 import { BattlefieldView } from './components/BattlefieldView'
+import { MapEditor } from './components/MapEditor'
 import { ToastArea, useToast } from './components/Toast'
 
-type View = 'dashboard' | 'settings' | 'battlefield'
+type View = 'dashboard' | 'settings' | 'battlefield' | 'map-editor'
 
 const DEFAULT_REFRESH_INTERVAL = 2 * 60 * 1000 // 2 minutes
 
@@ -98,6 +99,12 @@ export default function App() {
             &#x25a0; Battlefield
           </button>
           <button
+            className={`nav-btn${view === 'map-editor' ? ' active' : ''}`}
+            onClick={() => setView('map-editor')}
+          >
+            &#x25a6; Map Editor
+          </button>
+          <button
             className={`nav-btn${view === 'settings' ? ' active' : ''}`}
             onClick={() => setView('settings')}
           >
@@ -151,6 +158,9 @@ export default function App() {
             onReposChange={handleReposChange}
             onToast={addToast}
           />
+        )}
+        {view === 'map-editor' && (
+          <MapEditor onToast={addToast} />
         )}
         {view === 'settings' && (
           <Settings
