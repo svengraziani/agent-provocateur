@@ -191,8 +191,7 @@ export function BattlefieldView({ entries, loading, onRefresh, onReposChange, on
       ref={containerRef}
       style={{ cursor: isDraggingMap ? 'grabbing' : (isRelocateMode ? 'crosshair' : 'grab') }}
     >
-      {/* Terrain layers */}
-      <div className="battlefield-terrain" />
+      {/* Scanlines — fixed to viewport */}
       <div className="battlefield-scanlines" />
 
       {/* HUD */}
@@ -234,6 +233,8 @@ export function BattlefieldView({ entries, loading, onRefresh, onReposChange, on
         className="battlefield-map"
         style={{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${zoom})`, transformOrigin: '0 0' }}
       >
+        {/* Terrain grid — inside map layer so it pans/zooms with the bases */}
+        <div className="battlefield-terrain" />
         {entries.map((entry) => {
           const pos = positions[entry.repo.id] ?? { x: 0, y: 0 }
           return (
