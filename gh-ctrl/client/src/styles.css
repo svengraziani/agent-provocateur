@@ -1163,6 +1163,33 @@ select.input {
   color: var(--crt-red);
 }
 
+.hud-zoom-sep {
+  width: 1px;
+  height: 14px;
+  background: rgba(57, 211, 83, 0.25);
+  margin: 0 4px;
+}
+
+.hud-zoom-btn {
+  padding: 2px 7px;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.hud-zoom-level {
+  font-size: 10px;
+  color: var(--text-2);
+  min-width: 34px;
+  text-align: center;
+  cursor: pointer;
+  user-select: none;
+  letter-spacing: 0.5px;
+}
+
+.hud-zoom-level:hover {
+  color: var(--crt-green);
+}
+
 /* Relocate mode banner */
 .battlefield-relocate-banner {
   position: absolute;
