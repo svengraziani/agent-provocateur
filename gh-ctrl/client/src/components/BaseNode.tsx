@@ -1,6 +1,5 @@
 import { useState, useCallback, useEffect } from 'react'
 import type { DashboardEntry, GHPR, GHIssue, Branch } from '../types'
-import { ActionModal } from './ActionModal'
 import type { ModalState } from './ActionModal'
 import { CloseIcon, LinkIcon, LabelIcon, CommentIcon, RefreshIcon, ExternalLinkIcon } from './Icons'
 import { api } from '../api'
@@ -18,13 +17,13 @@ interface Props {
   onConstruct: () => void
   onStartRelocate: (mouseX: number, mouseY: number) => void
   onToast: (message: string, type: 'success' | 'error' | 'info') => void
+  onModalOpen: (state: ModalState) => void
 }
 
-export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, onConstruct, onStartRelocate, onToast }: Props) {
+export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, onConstruct, onStartRelocate, onToast, onModalOpen }: Props) {
   const { repo, data } = entry
   const { stats } = data
   const [showDetail, setShowDetail] = useState(false)
-  const [modalState, setModalState] = useState<ModalState>(null)
 
   const hasConflicts = stats.conflicts > 0
   const hasReviews = stats.needsReview > 0
@@ -57,13 +56,6 @@ export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, on
 
   return (
     <>
-      <ActionModal
-        state={modalState}
-        onClose={() => setModalState(null)}
-        onSuccess={(msg) => onToast(msg, 'success')}
-        onError={(msg) => onToast(msg, 'error')}
-      />
-
       <div
         className={`base-node ${statusClass}${isBeingRelocated ? ' relocating' : ''}${isRelocateMode ? ' relocate-mode' : ''}`}
         style={{
@@ -143,7 +135,7 @@ export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, on
           entry={entry}
           position={position}
           onClose={() => setShowDetail(false)}
-          onModalOpen={setModalState}
+          onModalOpen={onModalOpen}
         />
       )}
     </>
