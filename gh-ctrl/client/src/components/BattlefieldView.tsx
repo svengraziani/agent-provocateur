@@ -1,0 +1,278 @@
+import { useState, useRef, useCallback, useEffect } from 'react'
+import type { DashboardEntry } from '../types'
+import { BaseNode } from './BaseNode'
+import { ConstructDialog } from './ConstructDialog'
+
+interface Props {
+  entries: DashboardEntry[]
+  loading: boolean
+  onRefresh: () => void
+  onToast: (message: string, type: 'success' | 'error' | 'info') => void
+}
+
+interface Position {
+  x: number
+  y: number
+}
+
+const BASE_SPACING_X = 260
+const BASE_SPACING_Y = 220
+const COLS = 4
+const MAP_PADDING = 100
+
+function getDefaultPositions(entries: DashboardEntry[]): Record<number, Position> {
+  const positions: Record<number, Position> = {}
+  entries.forEach((entry, i) => {
+    const col = i % COLS
+    const row = Math.floor(i / COLS)
+    positions[entry.repo.id] = {
+      x: MAP_PADDING + col * BASE_SPACING_X,
+      y: MAP_PADDING + row * BASE_SPACING_Y,
+    }
+  })
+  return positions
+}
+
+function loadPositions(): Record<number, Position> {
+  try {
+    const stored = localStorage.getItem('battlefield-positions')
+    return stored ? JSON.parse(stored) : {}
+  } catch {
+    return {}
+  }
+}
+
+function savePositions(positions: Record<number, Position>) {
+  localStorage.setItem('battlefield-positions', JSON.stringify(positions))
+}
+
+export function BattlefieldView({ entries, loading, onRefresh, onToast }: Props) {
+  const [offset, setOffset] = useState<Position>({ x: 0, y: 0 })
+  const [isDraggingMap, setIsDraggingMap] = useState(false)
+  const [dragStart, setDragStart] = useState<Position>({ x: 0, y: 0 })
+  const [positions, setPositions] = useState<Record<number, Position>>(() => {
+    const stored = loadPositions()
+    const defaults = getDefaultPositions(entries)
+    return { ...defaults, ...stored }
+  })
+  const [relocatingId, setRelocatingId] = useState<number | null>(null)
+  const [relocatingStart, setRelocatingStart] = useState<{ mouseX: number; mouseY: number; nodeX: number; nodeY: number } | null>(null)
+  const [constructTarget, setConstructTarget] = useState<DashboardEntry | null>(null)
+  const [isRelocateMode, setIsRelocateMode] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  // Update positions when entries change (new repos)
+  useEffect(() => {
+    setPositions(prev => {
+      const defaults = getDefaultPositions(entries)
+      const merged = { ...defaults, ...prev }
+      const valid: Record<number, Position> = {}
+      entries.forEach(e => { valid[e.repo.id] = merged[e.repo.id] ?? defaults[e.repo.id] })
+      return valid
+    })
+  }, [entries])
+
+  const handleMapMouseDown = useCallback((e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest('.base-node')) return
+    if (isRelocateMode) return
+    setIsDraggingMap(true)
+    setDragStart({ x: e.clientX - offset.x, y: e.clientY - offset.y })
+  }, [offset, isRelocateMode])
+
+  const handleMapMouseMove = useCallback((e: React.MouseEvent) => {
+    if (isDraggingMap) {
+      setOffset({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y })
+    } else if (relocatingId !== null && relocatingStart !== null) {
+      const dx = e.clientX - relocatingStart.mouseX
+      const dy = e.clientY - relocatingStart.mouseY
+      setPositions(prev => ({
+        ...prev,
+        [relocatingId]: {
+          x: relocatingStart.nodeX + dx,
+          y: relocatingStart.nodeY + dy,
+        },
+      }))
+    }
+  }, [isDraggingMap, dragStart, relocatingId, relocatingStart])
+
+  const handleMapMouseUp = useCallback(() => {
+    setIsDraggingMap(false)
+    if (relocatingId !== null) {
+      setPositions(prev => {
+        savePositions(prev)
+        return prev
+      })
+      setRelocatingId(null)
+      setRelocatingStart(null)
+    }
+  }, [relocatingId])
+
+  const handleStartRelocate = useCallback((id: number, mouseX: number, mouseY: number) => {
+    const pos = positions[id]
+    if (!pos) return
+    setRelocatingId(id)
+    setRelocatingStart({ mouseX, mouseY, nodeX: pos.x, nodeY: pos.y })
+  }, [positions])
+
+  const totalConflicts = entries.reduce((sum, e) => sum + e.data.stats.conflicts, 0)
+
+  return (
+    <div
+      className="battlefield-container"
+      onMouseDown={handleMapMouseDown}
+      onMouseMove={handleMapMouseMove}
+      onMouseUp={handleMapMouseUp}
+      onMouseLeave={handleMapMouseUp}
+      ref={containerRef}
+      style={{ cursor: isDraggingMap ? 'grabbing' : (isRelocateMode ? 'crosshair' : 'grab') }}
+    >
+      {/* Terrain layers */}
+      <div className="battlefield-terrain" />
+      <div className="battlefield-scanlines" />
+
+      {/* HUD */}
+      <div className="battlefield-hud">
+        <div className="hud-brand">&#x25a0; AGENT PROVOCATEUR — TACTICAL COMMAND</div>
+        <div className="hud-controls">
+          <span className="hud-stat">BASES: <strong>{entries.length}</strong></span>
+          {totalConflicts > 0 && (
+            <span className="hud-stat hud-alert blink">&#x26a0; CONFLICTS: <strong>{totalConflicts}</strong></span>
+          )}
+          <button
+            className="hud-btn"
+            onClick={onRefresh}
+            disabled={loading}
+          >
+            {loading ? '◌ SCANNING...' : '&#x27F3; SCAN'}
+          </button>
+          <button
+            className={`hud-btn${isRelocateMode ? ' active' : ''}`}
+            onClick={() => { setIsRelocateMode(v => !v); setRelocatingId(null); setRelocatingStart(null) }}
+          >
+            {isRelocateMode ? '✕ CANCEL RELOCATE' : '&#x2295; RELOCATE BASE'}
+          </button>
+        </div>
+      </div>
+
+      {/* Scrollable map layer */}
+      <div
+        className="battlefield-map"
+        style={{ transform: `translate(${offset.x}px, ${offset.y}px)` }}
+      >
+        {entries.map((entry) => {
+          const pos = positions[entry.repo.id] ?? { x: 0, y: 0 }
+          return (
+            <BaseNode
+              key={entry.repo.id}
+              entry={entry}
+              position={pos}
+              isRelocateMode={isRelocateMode}
+              isBeingRelocated={relocatingId === entry.repo.id}
+              onConstruct={() => setConstructTarget(entry)}
+              onStartRelocate={(mouseX, mouseY) => handleStartRelocate(entry.repo.id, mouseX, mouseY)}
+              onToast={onToast}
+            />
+          )
+        })}
+      </div>
+
+      {/* Minimap */}
+      {entries.length > 0 && (
+        <Minimap entries={entries} positions={positions} offset={offset} onJump={setOffset} />
+      )}
+
+      {/* Empty state */}
+      {entries.length === 0 && !loading && (
+        <div className="battlefield-empty">
+          <div className="battlefield-empty-title">&#x25a0; NO BASES DETECTED</div>
+          <div className="battlefield-empty-sub">Add repositories in the Repositories panel to deploy bases.</div>
+        </div>
+      )}
+
+      {entries.length === 0 && loading && (
+        <div className="battlefield-empty">
+          <div className="battlefield-empty-title spinning-radar">&#x25CF;</div>
+          <div className="battlefield-empty-sub">SCANNING TERRITORY...</div>
+        </div>
+      )}
+
+      {/* Relocate mode banner */}
+      {isRelocateMode && (
+        <div className="battlefield-relocate-banner">
+          &#x2295; RELOCATE MODE — Drag a base to reposition it. Click again to cancel.
+        </div>
+      )}
+
+      {/* Construction dialog */}
+      {constructTarget && (
+        <ConstructDialog
+          entry={constructTarget}
+          onClose={() => setConstructTarget(null)}
+          onSuccess={(msg) => { onToast(msg, 'success'); setConstructTarget(null) }}
+          onError={(msg) => onToast(msg, 'error')}
+        />
+      )}
+    </div>
+  )
+}
+
+interface MinimapProps {
+  entries: DashboardEntry[]
+  positions: Record<number, Position>
+  offset: Position
+  onJump: (pos: Position) => void
+}
+
+function Minimap({ entries, positions, offset, onJump }: MinimapProps) {
+  const MINIMAP_W = 160
+  const MINIMAP_H = 100
+  const SCALE = 0.12
+
+  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.stopPropagation()
+    const rect = e.currentTarget.getBoundingClientRect()
+    const mx = (e.clientX - rect.left) / SCALE
+    const my = (e.clientY - rect.top) / SCALE
+    onJump({ x: -mx + window.innerWidth / 2, y: -my + window.innerHeight / 2 })
+  }
+
+  return (
+    <div
+      className="minimap"
+      style={{ width: MINIMAP_W, height: MINIMAP_H }}
+      onClick={handleClick}
+      onMouseDown={(e) => e.stopPropagation()}
+    >
+      <div className="minimap-label">MINIMAP</div>
+      {entries.map((entry) => {
+        const pos = positions[entry.repo.id]
+        if (!pos) return null
+        const mx = pos.x * SCALE
+        const my = pos.y * SCALE
+        const hasConflicts = entry.data.stats.conflicts > 0
+        return (
+          <div
+            key={entry.repo.id}
+            className={`minimap-base${hasConflicts ? ' alert' : ''}`}
+            style={{
+              left: mx,
+              top: my + 12,
+              background: entry.repo.color,
+            }}
+            title={entry.repo.name}
+          />
+        )
+      })}
+      {/* viewport indicator */}
+      <div
+        className="minimap-viewport"
+        style={{
+          left: -offset.x * SCALE,
+          top: -offset.y * SCALE + 12,
+          width: window.innerWidth * SCALE,
+          height: window.innerHeight * SCALE,
+        }}
+      />
+    </div>
+  )
+}

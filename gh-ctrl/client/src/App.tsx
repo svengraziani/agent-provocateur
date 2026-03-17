@@ -3,9 +3,10 @@ import type { Repo, DashboardEntry } from './types'
 import { api } from './api'
 import { Dashboard } from './components/Dashboard'
 import { Settings } from './components/Settings'
+import { BattlefieldView } from './components/BattlefieldView'
 import { ToastArea, useToast } from './components/Toast'
 
-type View = 'dashboard' | 'settings'
+type View = 'dashboard' | 'settings' | 'battlefield'
 
 const DEFAULT_REFRESH_INTERVAL = 2 * 60 * 1000 // 2 minutes
 
@@ -89,6 +90,12 @@ export default function App() {
             &#x25a0; Dashboard
           </button>
           <button
+            className={`nav-btn${view === 'battlefield' ? ' active' : ''}`}
+            onClick={() => setView('battlefield')}
+          >
+            &#x25a0; Battlefield
+          </button>
+          <button
             className={`nav-btn${view === 'settings' ? ' active' : ''}`}
             onClick={() => setView('settings')}
           >
@@ -128,6 +135,14 @@ export default function App() {
       <main className="main-content">
         {view === 'dashboard' && (
           <Dashboard
+            entries={entries}
+            loading={loading}
+            onRefresh={loadDashboard}
+            onToast={addToast}
+          />
+        )}
+        {view === 'battlefield' && (
+          <BattlefieldView
             entries={entries}
             loading={loading}
             onRefresh={loadDashboard}
