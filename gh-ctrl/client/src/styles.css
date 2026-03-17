@@ -1054,6 +1054,112 @@ select.input {
 }
 
 /* ============================================================
+   MARKDOWN CONTENT RENDERING
+   ============================================================ */
+
+.md-content {
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.6;
+  word-break: break-word;
+  color: var(--text);
+}
+
+.md-content .md-p {
+  margin: 0 0 8px;
+}
+
+.md-content .md-p:last-child {
+  margin-bottom: 0;
+}
+
+.md-content .md-h1,
+.md-content .md-h2,
+.md-content .md-h3,
+.md-content .md-h4,
+.md-content .md-h5,
+.md-content .md-h6 {
+  margin: 12px 0 6px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--green-primary);
+}
+
+.md-content .md-h1 { font-size: 1.4em; }
+.md-content .md-h2 { font-size: 1.25em; }
+.md-content .md-h3 { font-size: 1.1em; }
+.md-content .md-h4,
+.md-content .md-h5,
+.md-content .md-h6 { font-size: 1em; }
+
+.md-content .md-list {
+  margin: 6px 0 8px 20px;
+  padding: 0;
+}
+
+.md-content .md-list li {
+  margin-bottom: 3px;
+}
+
+.md-content .md-code-block {
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 10px 12px;
+  margin: 8px 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-x: auto;
+  white-space: pre;
+  color: var(--green-neon);
+}
+
+.md-content .md-inline-code {
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--green-neon);
+}
+
+.md-content .md-blockquote {
+  border-left: 3px solid var(--green-dark);
+  margin: 6px 0;
+  padding: 4px 10px;
+  color: var(--text-3);
+  font-style: italic;
+}
+
+.md-content .md-hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 10px 0;
+}
+
+.md-content .md-link {
+  color: var(--blue);
+  text-decoration: none;
+}
+
+.md-content .md-link:hover {
+  text-decoration: underline;
+}
+
+.md-content .md-image {
+  max-width: 100%;
+  border-radius: 4px;
+  margin: 4px 0;
+}
+
+/* Override the old pre styling when used alongside md-content */
+.issue-body-text.md-content {
+  white-space: normal;
+}
+
+/* ============================================================
    BATTLEFIELD VIEW — C&C Red Alert Style
    ============================================================ */
 
@@ -1076,6 +1182,16 @@ select.input {
 @keyframes radar-sweep {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
+}
+
+@keyframes process-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.spinning-process {
+  display: inline-block;
+  animation: process-spin 1.8s linear infinite;
 }
 
 @keyframes construct-glow {
@@ -1190,6 +1306,11 @@ select.input {
 .hud-alert {
   color: var(--crt-red);
   text-shadow: 0 0 6px var(--crt-red);
+}
+
+.hud-actions {
+  color: #56d0f5;
+  text-shadow: 0 0 6px #56d0f5;
 }
 
 .hud-btn {
@@ -1439,6 +1560,12 @@ select.input {
   font-size: 20px;
 }
 
+.beacon-actions {
+  color: #56d0f5;
+  text-shadow: 0 0 6px #56d0f5;
+  font-size: 18px;
+}
+
 /* Building graphic */
 .base-building {
   position: relative;
@@ -1575,6 +1702,7 @@ select.input {
 .bsm.blue { color: var(--blue); }
 .bsm.red { color: var(--red); }
 .bsm.amber { color: var(--amber); }
+.bsm.cyan { color: #56d0f5; }
 
 /* Construct button */
 .base-construct-btn {
@@ -1633,6 +1761,151 @@ select.input {
 
 .base-node:hover .base-scan-btn {
   display: flex;
+}
+
+/* ---- PR Buildings ---- */
+.pr-building {
+  position: absolute;
+  width: 72px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 6px 4px 5px;
+  background: rgba(13, 17, 23, 0.88);
+  border-top: 1px solid var(--pr-color, var(--crt-green));
+  border-left: 1px solid var(--pr-color, var(--crt-green));
+  border-right: 1px solid color-mix(in srgb, var(--pr-color, var(--crt-green)) 30%, #000);
+  border-bottom: 1px solid color-mix(in srgb, var(--pr-color, var(--crt-green)) 30%, #000);
+  box-shadow:
+    2px 2px 0 color-mix(in srgb, var(--pr-color, var(--crt-green)) 15%, #000),
+    4px 4px 0 color-mix(in srgb, var(--pr-color, var(--crt-green)) 6%, #000),
+    0 0 8px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  transition: box-shadow 0.15s;
+  z-index: 2;
+}
+
+.pr-building::before {
+  content: '';
+  position: absolute;
+  top: 5px;
+  left: 100%;
+  width: 5px;
+  height: 100%;
+  background: color-mix(in srgb, var(--pr-color, var(--crt-green)) 5%, rgba(0, 0, 0, 0.85));
+  border-top: 1px solid color-mix(in srgb, var(--pr-color, var(--crt-green)) 25%, transparent);
+  transform: skewY(30deg);
+  transform-origin: top left;
+  pointer-events: none;
+}
+
+.pr-building::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 5px;
+  width: 100%;
+  height: 5px;
+  background: color-mix(in srgb, var(--pr-color, var(--crt-green)) 4%, rgba(0, 0, 0, 0.82));
+  border-left: 1px solid color-mix(in srgb, var(--pr-color, var(--crt-green)) 18%, transparent);
+  transform: skewX(30deg);
+  transform-origin: top left;
+  pointer-events: none;
+}
+
+.pr-building:hover {
+  box-shadow:
+    2px 2px 0 color-mix(in srgb, var(--pr-color, var(--crt-green)) 25%, #000),
+    4px 4px 0 color-mix(in srgb, var(--pr-color, var(--crt-green)) 12%, #000),
+    0 0 14px var(--pr-color, var(--crt-green));
+  z-index: 4;
+}
+
+.pr-bld-graphic {
+  position: relative;
+  width: 46px;
+  height: 36px;
+  flex-shrink: 0;
+}
+
+.pr-bld-roof {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 26px;
+  height: 14px;
+  background: var(--bg-3);
+  border: 1px solid var(--pr-color, var(--crt-green));
+  border-bottom: none;
+}
+
+.pr-bld-body {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 22px;
+  background: var(--bg-3);
+  border: 1px solid var(--pr-color, var(--crt-green));
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 0 4px;
+}
+
+.pr-bld-win {
+  width: 7px;
+  height: 7px;
+  background: color-mix(in srgb, var(--pr-color, var(--crt-green)) 30%, var(--bg-3));
+  border: 1px solid var(--pr-color, var(--crt-green));
+  opacity: 0.75;
+  margin-bottom: 3px;
+}
+
+.pr-bld-door {
+  width: 7px;
+  height: 11px;
+  background: var(--bg);
+  border: 1px solid var(--pr-color, var(--crt-green));
+  border-bottom: none;
+}
+
+.pr-bld-info {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  justify-content: center;
+}
+
+.pr-bld-num {
+  font-size: 8px;
+  color: var(--pr-color, var(--crt-green));
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+.pr-bld-status {
+  font-size: 7px;
+  color: var(--pr-color, var(--crt-green));
+  opacity: 0.75;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.pr-bld-title {
+  font-size: 8px;
+  color: var(--text-2);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+  letter-spacing: 0.2px;
 }
 
 /* ---- Base Detail Panel ---- */
@@ -1720,6 +1993,7 @@ select.input {
 .bdp-section-title.conflict { color: var(--red); }
 .bdp-section-title.review { color: var(--amber); }
 .bdp-section-title.claude { color: var(--purple); }
+.bdp-section-title.actions { color: #56d0f5; }
 
 .bdp-item {
   display: flex;
@@ -1736,6 +2010,12 @@ select.input {
   gap: 4px;
   min-width: 0;
   flex: 1;
+}
+
+.bdp-action-run .action-status-dot {
+  color: #56d0f5;
+  font-size: 13px;
+  flex-shrink: 0;
 }
 
 .bdp-item-right {
