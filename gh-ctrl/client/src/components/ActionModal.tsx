@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import type { GHLabel, IssueDetail, PRDetail } from '../types'
 import { api } from '../api'
+import { VoiceButton } from './VoiceButton'
 
 export type ModalState =
   | { mode: 'comment'; fullName: string; number: number; type: 'pr' | 'issue' }
@@ -87,14 +88,17 @@ function CommentForm({ state, onClose, onSuccess, onError }: {
         Comment on {state.type} #{state.number}
         <span className="modal-subtitle">{state.fullName}</span>
       </div>
-      <textarea
-        ref={textareaRef}
-        className="input modal-textarea"
-        value={comment}
-        onChange={(e) => setComment(e.target.value)}
-        placeholder="Write a comment..."
-        rows={5}
-      />
+      <div className="voice-input-group">
+        <textarea
+          ref={textareaRef}
+          className="input modal-textarea"
+          value={comment}
+          onChange={(e) => setComment(e.target.value)}
+          placeholder="Write a comment..."
+          rows={5}
+        />
+        <VoiceButton onTranscript={(text) => setComment((prev) => prev ? `${prev} ${text}` : text)} />
+      </div>
       <div className="modal-actions">
         <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
         <button type="submit" className="btn btn-primary" disabled={submitting || !comment.trim()}>
@@ -441,14 +445,17 @@ function TriggerClaudeForm({ state, onClose, onSuccess, onError }: {
         Trigger Claude on {state.type} #{state.number}
         <span className="modal-subtitle">{state.fullName}</span>
       </div>
-      <textarea
-        ref={textareaRef}
-        className="input modal-textarea"
-        value={message}
-        onChange={(e) => setMessage(e.target.value)}
-        placeholder="@claude ..."
-        rows={5}
-      />
+      <div className="voice-input-group">
+        <textarea
+          ref={textareaRef}
+          className="input modal-textarea"
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          placeholder="@claude ..."
+          rows={5}
+        />
+        <VoiceButton onTranscript={(text) => setMessage((prev) => prev ? `${prev} ${text}` : text)} />
+      </div>
       <div className="modal-actions">
         <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
         <button type="submit" className="btn btn-claude" disabled={submitting || !message.trim()}>
