@@ -1578,114 +1578,12 @@ select.input {
   font-size: 18px;
 }
 
-/* Building graphic */
+/* Building graphic — isometric SVG 3D building */
 .base-building {
   position: relative;
-  width: 70px;
-  height: 56px;
-  margin: 4px 0 2px;
-  /* Subtle perspective tilt for 3D depth on the building */
-  transform: perspective(200px) rotateX(6deg);
-  transform-origin: bottom center;
-  transform-style: preserve-3d;
-}
-
-.base-antenna {
-  position: absolute;
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 2px;
-  height: 14px;
-  background: var(--base-color, var(--crt-green));
-}
-
-.base-antenna::after {
-  content: '';
-  position: absolute;
-  top: -4px;
-  left: -4px;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--base-color, var(--crt-green));
-  box-shadow: 0 0 8px var(--base-color, var(--crt-green));
-  animation: beacon-pulse 2s ease-in-out infinite;
-}
-
-.base-tower {
-  position: absolute;
-  top: 14px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 18px;
-  height: 24px;
-  background: var(--bg-3);
-  border: 1px solid var(--base-color, var(--crt-green));
-  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.5);
-}
-
-.base-tower::before {
-  content: '';
-  position: absolute;
-  top: 4px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 6px;
-  height: 6px;
-  background: var(--base-color, var(--crt-green));
-  opacity: 0.6;
-}
-
-.base-body {
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 58px;
-  height: 20px;
-  background: var(--bg-3);
-  border: 1px solid var(--base-color, var(--crt-green));
-}
-
-.base-body::before {
-  content: '';
-  position: absolute;
-  top: 4px;
-  left: 6px;
-  right: 6px;
-  height: 2px;
-  background: var(--base-color, var(--crt-green));
-  opacity: 0.3;
-}
-
-.base-wing {
-  position: absolute;
-  bottom: 0;
-  width: 8px;
-  height: 12px;
-  background: var(--bg-3);
-  border: 1px solid var(--base-color, var(--crt-green));
-}
-
-.base-wing-left {
-  left: 1px;
-}
-
-.base-wing-right {
-  right: 1px;
-}
-
-.base-radar {
-  position: absolute;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 10px;
-  height: 10px;
-  border: 1px solid var(--base-color, var(--crt-green));
-  border-radius: 50%;
-  opacity: 0.7;
+  width: 72px;
+  height: 82px;
+  margin: 0 auto 2px;
 }
 
 /* Base name + stats */
@@ -1837,53 +1735,9 @@ select.input {
 
 .pr-bld-graphic {
   position: relative;
-  width: 46px;
-  height: 36px;
+  width: 50px;
+  height: 58px;
   flex-shrink: 0;
-}
-
-.pr-bld-roof {
-  position: absolute;
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 26px;
-  height: 14px;
-  background: var(--bg-3);
-  border: 1px solid var(--pr-color, var(--crt-green));
-  border-bottom: none;
-}
-
-.pr-bld-body {
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 40px;
-  height: 22px;
-  background: var(--bg-3);
-  border: 1px solid var(--pr-color, var(--crt-green));
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  padding: 0 4px;
-}
-
-.pr-bld-win {
-  width: 7px;
-  height: 7px;
-  background: color-mix(in srgb, var(--pr-color, var(--crt-green)) 30%, var(--bg-3));
-  border: 1px solid var(--pr-color, var(--crt-green));
-  opacity: 0.75;
-  margin-bottom: 3px;
-}
-
-.pr-bld-door {
-  width: 7px;
-  height: 11px;
-  background: var(--bg);
-  border: 1px solid var(--pr-color, var(--crt-green));
-  border-bottom: none;
 }
 
 .pr-bld-info {
