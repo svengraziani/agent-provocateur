@@ -46,6 +46,10 @@ export function RepoCard({ entry, onToast }: Props) {
     setModalState({ mode: 'issue-detail', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, number })
   }
 
+  const openPRDetail = (number: number) => {
+    setModalState({ mode: 'pr-detail', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, number })
+  }
+
   const toggleBranches = async () => {
     if (!showBranches && branches.length === 0) {
       setBranchesLoading(true)
@@ -122,12 +126,13 @@ export function RepoCard({ entry, onToast }: Props) {
                   key={pr.number}
                   number={pr.number}
                   title={pr.title}
-                  labels={pr.labels.map((l) => l.name)}
+                  labels={pr.labels}
                   assignees={pr.assignees}
                   badge={<span className="badge badge-conflict">Conflict</span>}
                   onClaude={() => openTriggerClaude(pr.number, 'pr')}
                   onComment={() => openComment(pr.number, 'pr')}
                   onLabel={() => openLabel(pr.number, 'pr', pr.labels.map((l) => l.name))}
+                  onDetail={() => openPRDetail(pr.number)}
                 />
               ))}
             </div>
@@ -141,12 +146,13 @@ export function RepoCard({ entry, onToast }: Props) {
                   key={pr.number}
                   number={pr.number}
                   title={pr.title}
-                  labels={pr.labels.map((l) => l.name)}
+                  labels={pr.labels}
                   assignees={pr.assignees}
                   badge={<span className="badge badge-review">Review</span>}
                   onClaude={() => openTriggerClaude(pr.number, 'pr')}
                   onComment={() => openComment(pr.number, 'pr')}
                   onLabel={() => openLabel(pr.number, 'pr', pr.labels.map((l) => l.name))}
+                  onDetail={() => openPRDetail(pr.number)}
                 />
               ))}
             </div>
@@ -160,7 +166,7 @@ export function RepoCard({ entry, onToast }: Props) {
                   key={issue.number}
                   number={issue.number}
                   title={issue.title}
-                  labels={issue.labels.map((l) => l.name)}
+                  labels={issue.labels}
                   assignees={issue.assignees}
                   onClaude={() => openTriggerClaude(issue.number, 'issue')}
                   onComment={() => openComment(issue.number, 'issue')}
@@ -182,12 +188,13 @@ export function RepoCard({ entry, onToast }: Props) {
                   key={pr.number}
                   number={pr.number}
                   title={pr.title}
-                  labels={pr.labels.map((l) => l.name)}
+                  labels={pr.labels}
                   assignees={pr.assignees}
                   badge={pr.isDraft ? <span className="badge badge-draft">Draft</span> : pr.reviewDecision === 'APPROVED' ? <span className="badge badge-approved">Approved</span> : undefined}
                   onClaude={() => openTriggerClaude(pr.number, 'pr')}
                   onComment={() => openComment(pr.number, 'pr')}
                   onLabel={() => openLabel(pr.number, 'pr', pr.labels.map((l) => l.name))}
+                  onDetail={() => openPRDetail(pr.number)}
                 />
               ))}
             </div>
@@ -204,7 +211,7 @@ export function RepoCard({ entry, onToast }: Props) {
                   key={issue.number}
                   number={issue.number}
                   title={issue.title}
-                  labels={issue.labels.map((l) => l.name)}
+                  labels={issue.labels}
                   assignees={issue.assignees}
                   onClaude={() => openTriggerClaude(issue.number, 'issue')}
                   onComment={() => openComment(issue.number, 'issue')}
@@ -254,12 +261,22 @@ export function RepoCard({ entry, onToast }: Props) {
   )
 }
 
+function labelTextColor(hex: string): string {
+  const h = hex.replace('#', '')
+  const r = parseInt(h.substring(0, 2), 16)
+  const g = parseInt(h.substring(2, 4), 16)
+  const b = parseInt(h.substring(4, 6), 16)
+  // WCAG relative luminance
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+  return luminance > 0.5 ? '#000000' : '#ffffff'
+}
+
 function ItemRow({
   number, title, labels, assignees, badge, onClaude, onComment, onLabel, onDetail,
 }: {
   number: number
   title: string
-  labels: string[]
+  labels: { name: string; color: string }[]
   assignees?: { login: string }[]
   badge?: React.ReactNode
   onClaude: () => void
@@ -278,9 +295,19 @@ function ItemRow({
         ) : (
           <span className="list-item-title">{title}</span>
         )}
-        {labels.map((l) => (
-          <span key={l} className="inline-label">{l}</span>
-        ))}
+        {labels.map((l) => {
+          const bg = l.color ? `#${l.color.replace('#', '')}` : undefined
+          const fg = bg ? labelTextColor(bg) : undefined
+          return (
+            <span
+              key={l.name}
+              className="inline-label"
+              style={bg ? { background: bg, color: fg, borderColor: bg } : undefined}
+            >
+              {l.name}
+            </span>
+          )
+        })}
         {assignees && assignees.length > 0 && (
           <span className="assignees-list" title={`Assigned to: ${assignees.map((a) => a.login).join(', ')}`}>
             {assignees.map((a) => (

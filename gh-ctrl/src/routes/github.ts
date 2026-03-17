@@ -283,6 +283,22 @@ app.post('/create-issue', async (c) => {
   return c.json({ ok: true, url })
 })
 
+// GET /api/github/pr/:owner/:name/:number — fetch PR details
+app.get('/pr/:owner/:name/:number', async (c) => {
+  const owner = c.req.param('owner')
+  const name = c.req.param('name')
+  const number = c.req.param('number')
+  const fullName = `${owner}/${name}`
+
+  const result = gh([
+    'pr', 'view', number, '--repo', fullName,
+    '--json', 'number,title,body,state,labels,assignees,author,url,createdAt,comments,reviewDecision,mergeable,headRefName,baseRefName,isDraft',
+  ])
+
+  if (result.error) return c.json({ error: result.error }, 500)
+  return c.json(result.data)
+})
+
 // POST /api/github/create-pr — create a PR from a branch
 app.post('/create-pr', async (c) => {
   const body = await c.req.json()
