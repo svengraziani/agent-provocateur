@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react'
-import type { DashboardEntry, GHPR, GHIssue, Branch } from '../types'
+import type { DashboardEntry, GHPR, GHIssue, Branch, WorkflowRun } from '../types'
 import type { ModalState } from './ActionModal'
 import { CloseIcon, LinkIcon, LabelIcon, CommentIcon, RefreshIcon, ExternalLinkIcon } from './Icons'
 import { api } from '../api'
@@ -28,6 +28,8 @@ export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, on
   const hasConflicts = stats.conflicts > 0
   const hasReviews = stats.needsReview > 0
   const hasClaudeActive = (data.activeClaudeIssues?.length ?? 0) > 0
+  const runningWorkflows = data.runningWorkflows ?? []
+  const hasRunningActions = runningWorkflows.length > 0
 
   // Detect PRs created by Claude (branch starts with "claude/") when no active work remains
   const claudeDonePRs = hasClaudeActive
@@ -96,6 +98,14 @@ export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, on
               &#x2605; PR READY
             </a>
           )}
+          {hasRunningActions && !hasClaudeActive && (
+            <span
+              className="base-beacon beacon-actions spinning-process"
+              title={`${runningWorkflows.length} running action(s): ${runningWorkflows.map(r => r.workflowName).join(', ')}`}
+            >
+              ⚙
+            </span>
+          )}
         </div>
 
         {/* Building graphic */}
@@ -115,6 +125,7 @@ export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, on
           <span className="bsm blue" title="Open Issues">◆{stats.openIssues}</span>
           {stats.conflicts > 0 && <span className="bsm red" title="Conflicts"><CloseIcon size={10} />{stats.conflicts}</span>}
           {stats.needsReview > 0 && <span className="bsm amber" title="Needs Review">◎{stats.needsReview}</span>}
+          {hasRunningActions && <span className="bsm cyan spinning-process" title={`${runningWorkflows.length} running action(s)`}>⚙{runningWorkflows.length}</span>}
         </div>
 
         {/* Construct button (shows on hover) */}
@@ -276,6 +287,33 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
             />
           ))}
           {data.claudeIssues.length > 4 && <div className="bdp-more">+{data.claudeIssues.length - 4} more</div>}
+        </div>
+      )}
+
+      {(data.runningWorkflows?.length ?? 0) > 0 && (
+        <div className="bdp-section">
+          <div className="bdp-section-title actions">&#x2699; RUNNING ACTIONS ({data.runningWorkflows.length})</div>
+          {data.runningWorkflows.map((run: WorkflowRun) => (
+            <div key={run.databaseId} className="bdp-item bdp-action-run">
+              <div className="bdp-item-left">
+                <span className={`action-status-dot ${run.status === 'in_progress' ? 'spinning-process' : ''}`} title={run.status}>⚙</span>
+                <span className="bdp-text-btn" style={{ cursor: 'default' }}>{run.workflowName}</span>
+                <span className="bdp-branch-date">{run.headBranch}</span>
+              </div>
+              <div className="bdp-item-right">
+                <a
+                  href={`https://github.com/${repo.fullName}/actions/runs/${run.databaseId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bdp-icon-btn"
+                  title="View action run"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <ExternalLinkIcon size={11} />
+                </a>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 

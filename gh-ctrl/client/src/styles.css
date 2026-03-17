@@ -1078,6 +1078,16 @@ select.input {
   to { transform: rotate(360deg); }
 }
 
+@keyframes process-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.spinning-process {
+  display: inline-block;
+  animation: process-spin 1.8s linear infinite;
+}
+
 @keyframes construct-glow {
   0%, 100% { box-shadow: 0 0 8px var(--base-color, var(--crt-green)); }
   50% { box-shadow: 0 0 20px var(--base-color, var(--crt-green)), 0 0 40px var(--base-color, var(--crt-green)); }
@@ -1190,6 +1200,11 @@ select.input {
 .hud-alert {
   color: var(--crt-red);
   text-shadow: 0 0 6px var(--crt-red);
+}
+
+.hud-actions {
+  color: #56d0f5;
+  text-shadow: 0 0 6px #56d0f5;
 }
 
 .hud-btn {
@@ -1439,6 +1454,12 @@ select.input {
   font-size: 20px;
 }
 
+.beacon-actions {
+  color: #56d0f5;
+  text-shadow: 0 0 6px #56d0f5;
+  font-size: 18px;
+}
+
 /* Building graphic */
 .base-building {
   position: relative;
@@ -1575,6 +1596,7 @@ select.input {
 .bsm.blue { color: var(--blue); }
 .bsm.red { color: var(--red); }
 .bsm.amber { color: var(--amber); }
+.bsm.cyan { color: #56d0f5; }
 
 /* Construct button */
 .base-construct-btn {
@@ -1686,6 +1708,7 @@ select.input {
 .bdp-section-title.conflict { color: var(--red); }
 .bdp-section-title.review { color: var(--amber); }
 .bdp-section-title.claude { color: var(--purple); }
+.bdp-section-title.actions { color: #56d0f5; }
 
 .bdp-item {
   display: flex;
@@ -1702,6 +1725,12 @@ select.input {
   gap: 4px;
   min-width: 0;
   flex: 1;
+}
+
+.bdp-action-run .action-status-dot {
+  color: #56d0f5;
+  font-size: 13px;
+  flex-shrink: 0;
 }
 
 .bdp-item-right {
