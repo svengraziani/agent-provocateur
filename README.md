@@ -1,8 +1,8 @@
-# Agent Provocateur
+# V&C - Gitalert
 
 ## What is this?
 
-**Agent Provocateur** is a command center for software development teams that want to keep tabs on multiple GitHub repositories — and have an AI assistant help them with the work.
+**V&C - Gitalert** is a command center for software development teams that want to keep tabs on multiple GitHub repositories — and have an AI assistant help them with the work.
 
 Think of it as mission control: you open one dashboard, and you can immediately see the state of all your GitHub projects in one place. Which pull requests need review? Where are there code conflicts? What issues are waiting for attention? Instead of clicking through GitHub's interface for each repo one by one, everything is surfaced in a single view.
 
@@ -12,9 +12,9 @@ The twist is the AI integration. The app is wired up to **Claude** (Anthropic's 
 
 ## The Story
 
-Modern software teams juggle many repositories. A bug gets filed here, a pull request lands there, and before long you're switching between browser tabs just to keep up. **Agent Provocateur** was built to solve that problem: one screen, many repos, full situational awareness.
+Modern software teams juggle many repositories. A bug gets filed here, a pull request lands there, and before long you're switching between browser tabs just to keep up. **V&C - Gitalert** was built to solve that problem: one screen, many repos, full situational awareness.
 
-The name is a nod to the idea of having an AI "agent" that can be sent in to stir things up — reviewing code, drafting fixes, and taking action on your behalf.
+The name **V&C** stands for **Vibe and Conquer** — the idea that you stay in flow (the vibe) while the tool and AI handle the noise so you can conquer your backlog.
 
 ---
 
