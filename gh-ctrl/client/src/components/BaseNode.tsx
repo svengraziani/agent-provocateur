@@ -20,6 +20,12 @@ interface Props {
   onModalOpen: (state: ModalState) => void
 }
 
+const PR_BUILDING_OFFSET_X = 148
+const PR_BUILDING_OFFSET_Y = -5
+const PR_BUILDING_COL_WIDTH = 80
+const PR_BUILDING_ROW_HEIGHT = 76
+const MAX_PR_BUILDINGS = 8
+
 export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, onConstruct, onStartRelocate, onToast, onModalOpen }: Props) {
   const { repo, data } = entry
   const { stats } = data
@@ -54,8 +60,28 @@ export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, on
     setShowDetail(v => !v)
   }, [isRelocateMode])
 
+  const visiblePRs = data.prs.slice(0, MAX_PR_BUILDINGS)
+
   return (
     <>
+      {/* PR buildings — rendered before base so base appears on top */}
+      {visiblePRs.map((pr, i) => {
+        const col = i % 2
+        const row = Math.floor(i / 2)
+        return (
+          <PRBuilding
+            key={pr.number}
+            pr={pr}
+            position={{
+              x: position.x + PR_BUILDING_OFFSET_X + col * PR_BUILDING_COL_WIDTH,
+              y: position.y + PR_BUILDING_OFFSET_Y + row * PR_BUILDING_ROW_HEIGHT,
+            }}
+            repo={repo}
+            onModalOpen={onModalOpen}
+          />
+        )
+      })}
+
       <div
         className={`base-node ${statusClass}${isBeingRelocated ? ' relocating' : ''}${isRelocateMode ? ' relocate-mode' : ''}`}
         style={{
@@ -366,6 +392,67 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
       {data.error && (
         <div className="bdp-error">&#x26A0; {data.error}</div>
       )}
+    </div>
+  )
+}
+
+function PRBuilding({ pr, position, repo, onModalOpen }: {
+  pr: GHPR
+  position: Position
+  repo: DashboardEntry['repo']
+  onModalOpen: (state: ModalState) => void
+}) {
+  const isConflict = pr.mergeable === 'CONFLICTING'
+  const isChangesRequested = pr.reviewDecision === 'CHANGES_REQUESTED'
+  const isApproved = pr.reviewDecision === 'APPROVED'
+  const isReviewRequired = pr.reviewDecision === 'REVIEW_REQUIRED'
+
+  const prColor = isConflict || isChangesRequested
+    ? 'var(--crt-red)'
+    : isApproved
+    ? 'var(--crt-green)'
+    : isReviewRequired
+    ? 'var(--crt-amber)'
+    : pr.isDraft
+    ? 'var(--chrome-silver)'
+    : repo.color
+
+  const statusLabel = pr.isDraft ? 'DRAFT'
+    : isConflict ? 'CONFLICT'
+    : isChangesRequested ? 'CHANGES'
+    : isApproved ? 'APPROVED'
+    : isReviewRequired ? 'REVIEW'
+    : 'OPEN'
+
+  const shortTitle = pr.title.length > 14 ? pr.title.slice(0, 12) + '…' : pr.title
+
+  return (
+    <div
+      className="pr-building"
+      style={{
+        left: position.x,
+        top: position.y,
+        '--pr-color': prColor,
+      } as React.CSSProperties}
+      onClick={(e) => {
+        e.stopPropagation()
+        onModalOpen({ mode: 'pr-detail', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, number: pr.number })
+      }}
+      title={`#${pr.number} — ${pr.title}`}
+    >
+      <div className="pr-bld-graphic">
+        <div className="pr-bld-roof" />
+        <div className="pr-bld-body">
+          <div className="pr-bld-win pr-bld-wl" />
+          <div className="pr-bld-door" />
+          <div className="pr-bld-win pr-bld-wr" />
+        </div>
+      </div>
+      <div className="pr-bld-info">
+        <span className="pr-bld-num">#{pr.number}</span>
+        <span className="pr-bld-status">{statusLabel}</span>
+      </div>
+      <div className="pr-bld-title">{shortTitle}</div>
     </div>
   )
 }
