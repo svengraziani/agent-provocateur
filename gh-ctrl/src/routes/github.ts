@@ -146,13 +146,13 @@ app.post('/trigger-claude', async (c) => {
   const comment = message || '@claude Please review and help resolve this.'
   const ghType = type === 'pr' ? 'pr' : 'issue'
 
-  const result = gh([
-    ghType, 'comment',
-    String(number), '--repo', fullName, '--body', comment,
-  ])
+  const proc = Bun.spawnSync(
+    ['gh', ghType, 'comment', String(number), '--repo', fullName, '--body', comment],
+    { env: { ...process.env } }
+  )
 
-  if (result.error) {
-    return c.json({ error: result.error }, 500)
+  if (proc.exitCode !== 0) {
+    return c.json({ error: proc.stderr.toString() }, 500)
   }
 
   return c.json({ ok: true, message: `Comment posted on ${type} #${number}` })
@@ -168,10 +168,13 @@ app.post('/comment', async (c) => {
   }
 
   const ghType = type === 'pr' ? 'pr' : 'issue'
-  const result = gh([ghType, 'comment', String(number), '--repo', fullName, '--body', comment])
+  const proc = Bun.spawnSync(
+    ['gh', ghType, 'comment', String(number), '--repo', fullName, '--body', comment],
+    { env: { ...process.env } }
+  )
 
-  if (result.error) {
-    return c.json({ error: result.error }, 500)
+  if (proc.exitCode !== 0) {
+    return c.json({ error: proc.stderr.toString() }, 500)
   }
 
   return c.json({ ok: true })
