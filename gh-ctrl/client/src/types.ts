@@ -57,6 +57,15 @@ export interface RepoStats {
   approved: number
   drafts: number
   claudeIssues: number
+  runningActions: number
+}
+
+export interface WorkflowRun {
+  databaseId: number
+  name: string
+  status: 'in_progress' | 'queued' | 'waiting'
+  headBranch: string
+  workflowName: string
 }
 
 export interface RepoData {
@@ -69,6 +78,7 @@ export interface RepoData {
   claudeIssues: GHIssue[]
   activeClaudeIssues: number[]
   claudeIssueBranches: Record<number, string>
+  runningWorkflows: WorkflowRun[]
   error: string | null
 }
 

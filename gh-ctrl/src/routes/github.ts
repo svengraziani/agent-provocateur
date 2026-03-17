@@ -70,22 +70,46 @@ function fetchClaudeIssueBranches(fullName: string): Record<number, string> {
   return branchMap
 }
 
-function fetchActiveClaudeIssues(fullName: string): number[] {
+interface WorkflowRun {
+  databaseId: number
+  name: string
+  status: 'in_progress' | 'queued' | 'waiting'
+  headBranch: string
+  workflowName: string
+}
+
+interface RunningWorkflowsResult {
+  activeClaudeIssues: number[]
+  runningWorkflows: WorkflowRun[]
+}
+
+function fetchRunningWorkflows(fullName: string): RunningWorkflowsResult {
   const result = gh([
     'run', 'list', '--repo', fullName,
-    '--json', 'status,headBranch',
+    '--json', 'status,headBranch,databaseId,name,workflowName',
     '--limit', '30',
   ])
-  if (result.error || !result.data) return []
+  if (result.error || !result.data) return { activeClaudeIssues: [], runningWorkflows: [] }
 
   const activeIssues = new Set<number>()
+  const runningWorkflows: WorkflowRun[] = []
+
   for (const run of result.data) {
-    if (run.status === 'in_progress' || run.status === 'queued' || run.status === 'waiting') {
+    const status = run.status as string
+    if (status === 'in_progress' || status === 'queued' || status === 'waiting') {
+      runningWorkflows.push({
+        databaseId: run.databaseId,
+        name: run.name || '',
+        status: status as WorkflowRun['status'],
+        headBranch: run.headBranch || '',
+        workflowName: run.workflowName || run.name || '',
+      })
       const match = run.headBranch?.match(CLAUDE_BRANCH_RE)
       if (match) activeIssues.add(Number(match[1]))
     }
   }
-  return Array.from(activeIssues)
+
+  return { activeClaudeIssues: Array.from(activeIssues), runningWorkflows }
 }
 
 function fetchRepoData(fullName: string) {
@@ -106,12 +130,13 @@ function fetchRepoData(fullName: string) {
       fullName,
       prs: [],
       issues: [],
-      stats: { openPRs: 0, openIssues: 0, conflicts: 0, needsReview: 0, approved: 0, drafts: 0, claudeIssues: 0 },
+      stats: { openPRs: 0, openIssues: 0, conflicts: 0, needsReview: 0, approved: 0, drafts: 0, claudeIssues: 0, runningActions: 0 },
       conflicts: [],
       needsReview: [],
       claudeIssues: [],
       activeClaudeIssues: [],
       claudeIssueBranches: {},
+      runningWorkflows: [],
       error: prResult.error || issueResult.error,
     }
   }
@@ -137,7 +162,7 @@ function fetchRepoData(fullName: string) {
     )
   )
 
-  const activeClaudeIssues = fetchActiveClaudeIssues(fullName)
+  const { activeClaudeIssues, runningWorkflows } = fetchRunningWorkflows(fullName)
   const claudeIssueBranches = fetchClaudeIssueBranches(fullName)
 
   return {
@@ -152,12 +177,14 @@ function fetchRepoData(fullName: string) {
       approved: approved.length,
       drafts: drafts.length,
       claudeIssues: claudeIssues.length,
+      runningActions: runningWorkflows.length,
     },
     conflicts,
     needsReview,
     claudeIssues,
     activeClaudeIssues,
     claudeIssueBranches,
+    runningWorkflows,
     error: null,
   }
 }
@@ -419,11 +446,11 @@ app.post('/create-repo', async (c) => {
   }
 
   // Get authenticated user to build fullName
-  const userResult = gh(['api', 'user', '--jq', '.login'])
-  if (userResult.error || !userResult.data) {
+  const userResult = gh(['api', 'user'])
+  if (userResult.error || !userResult.data?.login) {
     return c.json({ error: 'Failed to get authenticated GitHub user' }, 500)
   }
-  const owner = userResult.data.trim ? userResult.data.trim() : String(userResult.data).trim()
+  const owner = userResult.data.login
   const fullName = `${owner}/${name}`
 
   const args = ['repo', 'create', name, `--${visibility}`]
