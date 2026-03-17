@@ -115,6 +115,22 @@ a:hover { text-decoration: underline; }
   text-shadow: var(--glow);
 }
 
+.nav-btn-feedback {
+  text-decoration: none;
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+.nav-btn-feedback:hover {
+  color: var(--text);
+}
+
+.sidebar-nav-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0;
+}
+
 .sidebar-stats {
   display: flex;
   flex-direction: column;

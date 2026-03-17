@@ -103,6 +103,19 @@ export default function App() {
           >
             &#x2699; Repositories
           </button>
+          <div className="sidebar-nav-divider" />
+          <a
+            className="nav-btn nav-btn-feedback"
+            href="mailto:?subject=Bug%20Report%3A%20Agent%20Provocateur&body=Describe%20the%20bug%20you%20encountered%3A%0A%0ASteps%20to%20reproduce%3A%0A1.%20%0A2.%20%0A3.%20%0A%0AExpected%20behavior%3A%0A%0AActual%20behavior%3A"
+          >
+            &#x1f41b; Report a Bug
+          </a>
+          <a
+            className="nav-btn nav-btn-feedback"
+            href="mailto:?subject=Feature%20Request%3A%20Agent%20Provocateur&body=Describe%20the%20feature%20you%27d%20like%3A%0A%0AUse%20case%2FMotivation%3A%0A%0AAdditional%20context%3A"
+          >
+            &#x2b50; Request a Feature
+          </a>
         </nav>
 
         <div className="sidebar-stats">
