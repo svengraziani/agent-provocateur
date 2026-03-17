@@ -17,7 +17,7 @@ export interface GHPR {
   headRefName: string
   author: { login: string }
   updatedAt: string
-  labels: { name: string }[]
+  labels: { name: string; color: string }[]
   isDraft: boolean
 }
 
@@ -25,7 +25,7 @@ export interface GHIssue {
   number: number
   title: string
   state: string
-  labels: { name: string }[]
+  labels: { name: string; color: string }[]
   assignees: { login: string }[]
   updatedAt: string
   author: { login: string }
