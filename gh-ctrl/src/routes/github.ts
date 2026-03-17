@@ -425,11 +425,11 @@ app.post('/create-repo', async (c) => {
   }
 
   // Get authenticated user to build fullName
-  const userResult = gh(['api', 'user', '--jq', '.login'])
-  if (userResult.error || !userResult.data) {
+  const userResult = gh(['api', 'user'])
+  if (userResult.error || !userResult.data?.login) {
     return c.json({ error: 'Failed to get authenticated GitHub user' }, 500)
   }
-  const owner = userResult.data.trim ? userResult.data.trim() : String(userResult.data).trim()
+  const owner = userResult.data.login
   const fullName = `${owner}/${name}`
 
   const args = ['repo', 'create', name, `--${visibility}`]
