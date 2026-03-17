@@ -1,7 +1,8 @@
 import { useState, useCallback, useEffect } from 'react'
-import type { DashboardEntry, GHPR, GHIssue } from '../types'
+import type { DashboardEntry, GHPR, GHIssue, Branch } from '../types'
 import { ActionModal } from './ActionModal'
 import type { ModalState } from './ActionModal'
+import { api } from '../api'
 
 interface Position {
   x: number
@@ -157,8 +158,28 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
   const { repo, data } = entry
   const [showAllPRs, setShowAllPRs] = useState(false)
   const [showAllIssues, setShowAllIssues] = useState(false)
+  const [showBranches, setShowBranches] = useState(false)
+  const [branches, setBranches] = useState<Branch[]>([])
+  const [defaultBranch, setDefaultBranch] = useState('main')
+  const [branchesLoading, setBranchesLoading] = useState(false)
   const panelX = position.x + 145
   const panelY = position.y
+
+  const toggleBranches = async () => {
+    if (!showBranches && branches.length === 0) {
+      setBranchesLoading(true)
+      try {
+        const result = await api.getBranches(repo.owner, repo.name)
+        setBranches(result.branches)
+        setDefaultBranch(result.defaultBranch)
+      } catch {
+        // silently fail — branches section will show empty
+      } finally {
+        setBranchesLoading(false)
+      }
+    }
+    setShowBranches((v) => !v)
+  }
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -304,6 +325,49 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
           ))}
         </div>
       )}
+
+      <div className="bdp-section">
+        <button className="bdp-toggle" onClick={toggleBranches}>
+          <span>{showBranches ? '▾' : '▸'}</span>
+          {' '}&#x2387; BRANCHES {branchesLoading ? '(loading...)' : branches.length > 0 ? `(${branches.length})` : ''}
+        </button>
+        {showBranches && !branchesLoading && (
+          branches.length === 0 ? (
+            <div className="bdp-more">No branches found</div>
+          ) : (
+            branches.slice(0, 8).map((branch) => (
+              <div key={branch.name} className="bdp-item">
+                <div className="bdp-item-left">
+                  <span className="branch-icon">⎇</span>
+                  <span className="bdp-text-btn" style={{ cursor: 'default' }}>{branch.name}</span>
+                  {branch.name === defaultBranch && (
+                    <span className="bdp-branch-default">default</span>
+                  )}
+                </div>
+                <div className="bdp-item-right">
+                  {branch.committedDate && (
+                    <span className="bdp-branch-date" title={branch.committedDate}>
+                      {new Date(branch.committedDate).toLocaleDateString()}
+                    </span>
+                  )}
+                  {branch.name !== defaultBranch && (
+                    <button
+                      className="bdp-icon-btn"
+                      title="Open PR for this branch"
+                      onClick={() => onModalOpen({ mode: 'create-pr', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, head: branch.name })}
+                    >
+                      PR
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))
+          )
+        )}
+        {showBranches && !branchesLoading && branches.length > 8 && (
+          <div className="bdp-more">+{branches.length - 8} more</div>
+        )}
+      </div>
 
       {data.error && (
         <div className="bdp-error">&#x26A0; {data.error}</div>

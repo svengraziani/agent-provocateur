@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { DashboardEntry, GHPR, GHIssue } from '../types'
+import type { DashboardEntry, GHPR, GHIssue, Branch } from '../types'
 import { api } from '../api'
 import { ActionModal } from './ActionModal'
 import type { ModalState } from './ActionModal'
@@ -16,7 +16,7 @@ export function RepoCard({ entry, onToast }: Props) {
   const [showAllPRs, setShowAllPRs] = useState(false)
   const [showAllIssues, setShowAllIssues] = useState(false)
   const [showBranches, setShowBranches] = useState(false)
-  const [branches, setBranches] = useState<string[]>([])
+  const [branches, setBranches] = useState<Branch[]>([])
   const [defaultBranch, setDefaultBranch] = useState('main')
   const [branchesLoading, setBranchesLoading] = useState(false)
 
@@ -249,19 +249,24 @@ export function RepoCard({ entry, onToast }: Props) {
                 <div className="no-items">No branches found</div>
               ) : (
                 branches.map((branch) => (
-                  <div key={branch} className="list-item">
+                  <div key={branch.name} className="list-item">
                     <div className="list-item-left">
                       <span className="branch-icon">⎇</span>
-                      <span className="list-item-title">{branch}</span>
-                      {branch === defaultBranch && (
+                      <span className="list-item-title">{branch.name}</span>
+                      {branch.name === defaultBranch && (
                         <span className="badge badge-default">default</span>
                       )}
                     </div>
                     <div className="list-item-right">
-                      {branch !== defaultBranch && (
+                      {branch.committedDate && (
+                        <span className="branch-date" title={branch.committedDate}>
+                          {new Date(branch.committedDate).toLocaleDateString()}
+                        </span>
+                      )}
+                      {branch.name !== defaultBranch && (
                         <button
                           className="btn btn-ghost btn-sm item-claude-btn"
-                          onClick={() => openCreatePR(branch)}
+                          onClick={() => openCreatePR(branch.name)}
                         >
                           Open PR
                         </button>
