@@ -2,11 +2,13 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import type { DashboardEntry } from '../types'
 import { BaseNode } from './BaseNode'
 import { ConstructDialog } from './ConstructDialog'
+import { CreateBaseDialog } from './CreateBaseDialog'
 
 interface Props {
   entries: DashboardEntry[]
   loading: boolean
   onRefresh: () => void
+  onReposChange: () => void
   onToast: (message: string, type: 'success' | 'error' | 'info') => void
 }
 
@@ -49,7 +51,7 @@ function savePositions(positions: Record<number, Position>) {
   localStorage.setItem('battlefield-positions', JSON.stringify(positions))
 }
 
-export function BattlefieldView({ entries, loading, onRefresh, onToast }: Props) {
+export function BattlefieldView({ entries, loading, onRefresh, onReposChange, onToast }: Props) {
   const [offset, setOffset] = useState<Position>({ x: 0, y: 0 })
   const [zoom, setZoom] = useState(1)
   const [isDraggingMap, setIsDraggingMap] = useState(false)
@@ -63,6 +65,7 @@ export function BattlefieldView({ entries, loading, onRefresh, onToast }: Props)
   const [relocatingStart, setRelocatingStart] = useState<{ mouseX: number; mouseY: number; nodeX: number; nodeY: number } | null>(null)
   const [constructTarget, setConstructTarget] = useState<DashboardEntry | null>(null)
   const [isRelocateMode, setIsRelocateMode] = useState(false)
+  const [showCreateBase, setShowCreateBase] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const zoomRef = useRef(zoom)
   const offsetRef = useRef(offset)
@@ -207,6 +210,12 @@ export function BattlefieldView({ entries, loading, onRefresh, onToast }: Props)
           >
             {isRelocateMode ? '✕ CANCEL RELOCATE' : '&#x2295; RELOCATE BASE'}
           </button>
+          <button
+            className="hud-btn hud-btn-new-base"
+            onClick={() => setShowCreateBase(true)}
+          >
+            &#x2b; NEW BASE
+          </button>
           <span className="hud-zoom-sep" />
           <button className="hud-btn hud-zoom-btn" onClick={handleZoomOut} disabled={zoom <= ZOOM_MIN} title="Zoom out">−</button>
           <span className="hud-zoom-level" title="Click to reset zoom" onClick={handleZoomReset}>{Math.round(zoom * 100)}%</span>
@@ -269,6 +278,19 @@ export function BattlefieldView({ entries, loading, onRefresh, onToast }: Props)
           entry={constructTarget}
           onClose={() => setConstructTarget(null)}
           onSuccess={(msg) => { onToast(msg, 'success'); setConstructTarget(null) }}
+          onError={(msg) => onToast(msg, 'error')}
+        />
+      )}
+
+      {/* Create new base dialog */}
+      {showCreateBase && (
+        <CreateBaseDialog
+          onClose={() => setShowCreateBase(false)}
+          onSuccess={(msg) => {
+            onToast(msg, 'success')
+            setShowCreateBase(false)
+            onReposChange()
+          }}
           onError={(msg) => onToast(msg, 'error')}
         />
       )}

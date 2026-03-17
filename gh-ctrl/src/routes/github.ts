@@ -358,6 +358,54 @@ app.get('/pr/:owner/:name/:number', async (c) => {
   return c.json(result.data)
 })
 
+// POST /api/github/create-repo — create a new GitHub repository and track it
+app.post('/create-repo', async (c) => {
+  const body = await c.req.json()
+  const { name, description, visibility } = body
+
+  if (!name) {
+    return c.json({ error: 'Missing required field: name' }, 400)
+  }
+
+  if (visibility !== 'public' && visibility !== 'private') {
+    return c.json({ error: 'visibility must be "public" or "private"' }, 400)
+  }
+
+  // Get authenticated user to build fullName
+  const userResult = gh(['api', 'user', '--jq', '.login'])
+  if (userResult.error || !userResult.data) {
+    return c.json({ error: 'Failed to get authenticated GitHub user' }, 500)
+  }
+  const owner = userResult.data.trim ? userResult.data.trim() : String(userResult.data).trim()
+  const fullName = `${owner}/${name}`
+
+  const args = ['repo', 'create', name, `--${visibility}`]
+  if (description) args.push('--description', description)
+
+  const proc = Bun.spawnSync(['gh', ...args], { env: { ...process.env } })
+  if (proc.exitCode !== 0) {
+    return c.json({ error: proc.stderr.toString() }, 500)
+  }
+
+  // Add the newly created repo to the tracked repos DB
+  try {
+    const result = await db.insert(repos).values({
+      owner,
+      name,
+      fullName,
+      description: description || null,
+      color: '#00ff88',
+    }).returning()
+
+    return c.json({ ok: true, repo: result[0] }, 201)
+  } catch (err: any) {
+    if (err.message?.includes('UNIQUE')) {
+      return c.json({ error: 'Repository already tracked' }, 409)
+    }
+    return c.json({ error: 'Repository created but failed to track it' }, 500)
+  }
+})
+
 // POST /api/github/create-pr — create a PR from a branch
 app.post('/create-pr', async (c) => {
   const body = await c.req.json()
