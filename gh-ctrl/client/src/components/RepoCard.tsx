@@ -127,6 +127,7 @@ export function RepoCard({ entry, onToast }: Props) {
                   number={pr.number}
                   title={pr.title}
                   labels={pr.labels}
+                  assignees={pr.assignees}
                   badge={<span className="badge badge-conflict">Conflict</span>}
                   onClaude={() => openTriggerClaude(pr.number, 'pr')}
                   onComment={() => openComment(pr.number, 'pr')}
@@ -146,6 +147,7 @@ export function RepoCard({ entry, onToast }: Props) {
                   number={pr.number}
                   title={pr.title}
                   labels={pr.labels}
+                  assignees={pr.assignees}
                   badge={<span className="badge badge-review">Review</span>}
                   onClaude={() => openTriggerClaude(pr.number, 'pr')}
                   onComment={() => openComment(pr.number, 'pr')}
@@ -165,6 +167,7 @@ export function RepoCard({ entry, onToast }: Props) {
                   number={issue.number}
                   title={issue.title}
                   labels={issue.labels}
+                  assignees={issue.assignees}
                   onClaude={() => openTriggerClaude(issue.number, 'issue')}
                   onComment={() => openComment(issue.number, 'issue')}
                   onLabel={() => openLabel(issue.number, 'issue', issue.labels.map((l) => l.name))}
@@ -186,6 +189,7 @@ export function RepoCard({ entry, onToast }: Props) {
                   number={pr.number}
                   title={pr.title}
                   labels={pr.labels}
+                  assignees={pr.assignees}
                   badge={pr.isDraft ? <span className="badge badge-draft">Draft</span> : pr.reviewDecision === 'APPROVED' ? <span className="badge badge-approved">Approved</span> : undefined}
                   onClaude={() => openTriggerClaude(pr.number, 'pr')}
                   onComment={() => openComment(pr.number, 'pr')}
@@ -208,6 +212,7 @@ export function RepoCard({ entry, onToast }: Props) {
                   number={issue.number}
                   title={issue.title}
                   labels={issue.labels}
+                  assignees={issue.assignees}
                   onClaude={() => openTriggerClaude(issue.number, 'issue')}
                   onComment={() => openComment(issue.number, 'issue')}
                   onLabel={() => openLabel(issue.number, 'issue', issue.labels.map((l) => l.name))}
@@ -267,11 +272,12 @@ function labelTextColor(hex: string): string {
 }
 
 function ItemRow({
-  number, title, labels, badge, onClaude, onComment, onLabel, onDetail,
+  number, title, labels, assignees, badge, onClaude, onComment, onLabel, onDetail,
 }: {
   number: number
   title: string
   labels: { name: string; color: string }[]
+  assignees?: { login: string }[]
   badge?: React.ReactNode
   onClaude: () => void
   onComment: () => void
@@ -302,6 +308,13 @@ function ItemRow({
             </span>
           )
         })}
+        {assignees && assignees.length > 0 && (
+          <span className="assignees-list" title={`Assigned to: ${assignees.map((a) => a.login).join(', ')}`}>
+            {assignees.map((a) => (
+              <span key={a.login} className="assignee-badge">@{a.login}</span>
+            ))}
+          </span>
+        )}
       </div>
       <div className="list-item-right">
         {badge}

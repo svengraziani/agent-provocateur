@@ -773,6 +773,24 @@ select.input {
   white-space: nowrap;
 }
 
+/* Assignee badges on list items */
+.assignees-list {
+  display: inline-flex;
+  gap: 3px;
+  flex-wrap: wrap;
+}
+
+.assignee-badge {
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: var(--bg-3);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  white-space: nowrap;
+  opacity: 0.85;
+}
+
 /* Section toggle button */
 .section-toggle {
   background: none;

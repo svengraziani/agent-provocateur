@@ -19,6 +19,7 @@ export interface GHPR {
   updatedAt: string
   labels: { name: string; color: string }[]
   isDraft: boolean
+  assignees: { login: string }[]
 }
 
 export interface GHIssue {
