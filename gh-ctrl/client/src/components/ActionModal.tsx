@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import type { GHLabel, IssueDetail, PRDetail } from '../types'
 import { api } from '../api'
+import { MarkdownContent } from './MarkdownContent'
 
 export type ModalState =
   | { mode: 'comment'; fullName: string; number: number; type: 'pr' | 'issue' }
@@ -520,7 +521,7 @@ function PRDetailView({ state, onClose, onError }: {
           </div>
           {pr.body && (
             <div className="issue-detail-body">
-              <pre className="issue-body-text">{pr.body}</pre>
+              <MarkdownContent text={pr.body} className="issue-body-text" />
             </div>
           )}
           {pr.comments.length > 0 && (
@@ -531,7 +532,7 @@ function PRDetailView({ state, onClose, onError }: {
                   <div className="issue-comment-meta">
                     <strong>{comment.author.login}</strong> · {formatDate(comment.createdAt)}
                   </div>
-                  <pre className="issue-body-text">{comment.body}</pre>
+                  <MarkdownContent text={comment.body} className="issue-body-text" />
                 </div>
               ))}
             </div>
@@ -608,7 +609,7 @@ function IssueDetailView({ state, onClose, onError }: {
           </div>
           {issue.body && (
             <div className="issue-detail-body">
-              <pre className="issue-body-text">{issue.body}</pre>
+              <MarkdownContent text={issue.body} className="issue-body-text" />
             </div>
           )}
           {issue.comments.length > 0 && (
@@ -619,7 +620,7 @@ function IssueDetailView({ state, onClose, onError }: {
                   <div className="issue-comment-meta">
                     <strong>{comment.author.login}</strong> · {formatDate(comment.createdAt)}
                   </div>
-                  <pre className="issue-body-text">{comment.body}</pre>
+                  <MarkdownContent text={comment.body} className="issue-body-text" />
                 </div>
               ))}
             </div>
