@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import type { DashboardEntry, GHLabel } from '../types'
 import { api } from '../api'
+import { VoiceButton } from './VoiceButton'
 import { CloseIcon } from './Icons'
 
 interface Props {
@@ -109,25 +110,39 @@ export function ConstructDialog({ entry, onClose, onSuccess, onError }: Props) {
         <form onSubmit={handleSubmit} className="construct-form">
           <div className="construct-field">
             <label className="construct-label">&#x25b6; MISSION OBJECTIVE:</label>
-            <input
-              ref={titleRef}
-              className="construct-input"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Enter mission title..."
-              autoComplete="off"
-            />
+            <div className="voice-input-group">
+              <input
+                ref={titleRef}
+                className="construct-input"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Enter mission title..."
+                autoComplete="off"
+              />
+              <VoiceButton
+                variant="construct"
+                onTranscript={(text) => setTitle((prev) => prev ? `${prev} ${text}` : text)}
+                title="Dictate mission title"
+              />
+            </div>
           </div>
 
           <div className="construct-field">
             <label className="construct-label">&#x25b6; INTEL REPORT:</label>
-            <textarea
-              className="construct-input construct-textarea"
-              value={issueBody}
-              onChange={(e) => setIssueBody(e.target.value)}
-              placeholder="Describe the situation... (optional)"
-              rows={4}
-            />
+            <div className="voice-input-group">
+              <textarea
+                className="construct-input construct-textarea"
+                value={issueBody}
+                onChange={(e) => setIssueBody(e.target.value)}
+                placeholder="Describe the situation... (optional)"
+                rows={4}
+              />
+              <VoiceButton
+                variant="construct"
+                onTranscript={(text) => setIssueBody((prev) => prev ? `${prev} ${text}` : text)}
+                title="Dictate intel report"
+              />
+            </div>
           </div>
 
           {!labelsLoading && availableLabels.length > 0 && (
