@@ -68,7 +68,7 @@ export default function App() {
   return (
     <div className="app-layout">
       <aside className="sidebar">
-        <div className="sidebar-logo">GH-CTRL</div>
+        <div className="sidebar-logo">Agent Provocateur 🍆</div>
 
         <nav className="sidebar-nav">
           <button
