@@ -316,7 +316,12 @@ function ItemRow({
       <div className="list-item-left">
         <span className="list-item-number">#{number}</span>
         {isClaudeActive && (
-          <span className="claude-active-indicator spinning" title="Claude is working on this">⟳</span>
+          <span className="claude-active-indicator spinning" title="Claude is working on this">
+            <RefreshIcon size={12} />
+          </span>
+        )}
+        {isUntouched && (
+          <span className="untouched-indicator" title="No @claude interaction yet">●</span>
         )}
         {onDetail ? (
           <button className="list-item-title list-item-title-btn" onClick={onDetail} title="View details">
@@ -356,14 +361,14 @@ function ItemRow({
             className="btn btn-ghost btn-xs item-claude-btn"
             title="Open Netlify preview"
           >
-            &#x1F517; Preview
+            <LinkIcon size={11} /> Preview
           </a>
         )}
         <button className="btn btn-ghost btn-xs item-claude-btn" onClick={onLabel} title="Manage labels">
-          &#x1F3F7;
+          <LabelIcon size={12} />
         </button>
         <button className="btn btn-ghost btn-xs item-claude-btn" onClick={onComment} title="Post comment">
-          &#x1F4AC;
+          <CommentIcon size={12} />
         </button>
         <button className="btn btn-claude item-claude-btn" onClick={onClaude}>
           @claude
