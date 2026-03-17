@@ -80,7 +80,10 @@ export default function App() {
   return (
     <div className="app-layout">
       <aside className="sidebar">
-        <div className="sidebar-logo">V&amp;C - Gitaltert</div>
+        <div className="sidebar-logo">
+          <img src="/logo.svg" alt="V&C Command Center" className="sidebar-logo-img" />
+          <span>V&amp;C</span>
+        </div>
 
         <nav className="sidebar-nav">
           <button

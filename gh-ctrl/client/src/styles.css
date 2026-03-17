@@ -1,14 +1,17 @@
 :root {
-  --bg: #080b10;
-  --bg-2: #0d1117;
-  --bg-3: #161b22;
-  --border: #21262d;
-  --border-2: #30363d;
-  --text: #e6edf3;
-  --text-2: #8b949e;
-  --text-3: #484f58;
+  /* Dark military terminal aesthetic inspired by V&C logo */
+  --bg: #080c08;
+  --bg-2: #0c110c;
+  --bg-3: #141c14;
+  --border: #1e2a1e;
+  --border-2: #2a3a2a;
+  --text: #d4e8d4;
+  --text-2: #7a9e7a;
+  --text-3: #3d5c3d;
 
-  --green: #39d353;
+  /* Neon green primary — matches logo's vivid terminal green */
+  --green: #39ff6e;
+  --green-dim: #1fcc4d;
   --amber: #f0883e;
   --red: #f85149;
   --blue: #58a6ff;
@@ -47,6 +50,7 @@ a:hover { text-decoration: underline; }
 .sidebar {
   background: var(--bg-2);
   border-right: 1px solid var(--border);
+  box-shadow: 2px 0 12px rgba(57, 255, 110, 0.05);
   padding: 20px 16px;
   display: flex;
   flex-direction: column;
@@ -57,11 +61,22 @@ a:hover { text-decoration: underline; }
 }
 
 .sidebar-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   font-family: var(--font-display);
   font-weight: 800;
   font-size: 22px;
   letter-spacing: 2px;
   color: var(--green);
+  text-shadow: 0 0 12px rgba(57, 255, 110, 0.4);
+}
+
+.sidebar-logo-img {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 6px rgba(57, 255, 110, 0.5));
 }
 
 .sidebar-nav {
