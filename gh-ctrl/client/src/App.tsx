@@ -52,6 +52,20 @@ export default function App() {
     }
   }, [addToast])
 
+  const loadSingleRepo = useCallback(async (owner: string, name: string) => {
+    try {
+      const data = await api.getRepoData(owner, name)
+      setEntries(prev => prev.map(e =>
+        e.repo.owner === owner && e.repo.name === name
+          ? { ...e, data }
+          : e
+      ))
+      setLastRefresh(new Date())
+    } catch (err: any) {
+      addToast(`Failed to refresh ${owner}/${name}: ${err.message}`, 'error')
+    }
+  }, [addToast])
+
   useEffect(() => {
     loadRepos()
     loadDashboard()
@@ -155,6 +169,7 @@ export default function App() {
             entries={entries}
             loading={loading}
             onRefresh={loadDashboard}
+            onRefreshRepo={loadSingleRepo}
             onReposChange={handleReposChange}
             onToast={addToast}
           />
