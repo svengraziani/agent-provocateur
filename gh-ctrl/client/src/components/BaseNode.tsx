@@ -28,6 +28,11 @@ export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, on
   const hasReviews = stats.needsReview > 0
   const hasClaudeActive = (data.activeClaudeIssues?.length ?? 0) > 0
 
+  // Detect PRs created by Claude (branch starts with "claude/") when no active work remains
+  const claudeDonePRs = hasClaudeActive
+    ? []
+    : data.prs.filter((pr) => pr.headRefName?.startsWith('claude/'))
+
   const statusClass = hasConflicts
     ? 'base-conflict'
     : hasReviews
@@ -84,6 +89,18 @@ export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, on
             <span className="base-beacon beacon-claude spinning-radar" title="Claude is active on this base">
               &#x2605;
             </span>
+          )}
+          {claudeDonePRs.length > 0 && (
+            <a
+              className="beacon-claude-done"
+              href={`https://github.com/${repo.fullName}/pulls?q=is%3Aopen+head%3Aclaude%2F`}
+              target="_blank"
+              rel="noopener noreferrer"
+              title={`Claude created ${claudeDonePRs.length} PR(s) — click to review`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              &#x2605; PR READY
+            </a>
           )}
         </div>
 
