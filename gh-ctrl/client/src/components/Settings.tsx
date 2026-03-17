@@ -4,13 +4,24 @@ import { api } from '../api'
 
 const COLORS = ['#39d353', '#58a6ff', '#f0883e', '#f85149', '#bc8cff', '#ffa657', '#ff7b72', '#79c0ff']
 
+const REFRESH_OPTIONS = [
+  { label: '30 seconds', value: 30 * 1000 },
+  { label: '1 minute', value: 60 * 1000 },
+  { label: '2 minutes', value: 2 * 60 * 1000 },
+  { label: '5 minutes', value: 5 * 60 * 1000 },
+  { label: '10 minutes', value: 10 * 60 * 1000 },
+  { label: '30 minutes', value: 30 * 60 * 1000 },
+]
+
 interface Props {
   repos: Repo[]
   onReposChange: () => void
   onToast: (message: string, type: 'success' | 'error' | 'info') => void
+  refreshInterval: number
+  onRefreshIntervalChange: (ms: number) => void
 }
 
-export function Settings({ repos, onReposChange, onToast }: Props) {
+export function Settings({ repos, onReposChange, onToast, refreshInterval, onRefreshIntervalChange }: Props) {
   const [fullName, setFullName] = useState('')
   const [selectedColor, setSelectedColor] = useState(COLORS[0])
   const [adding, setAdding] = useState(false)
@@ -53,6 +64,23 @@ export function Settings({ repos, onReposChange, onToast }: Props) {
     <div className="settings-page">
       <div className="topbar">
         <h1>Repositories</h1>
+      </div>
+
+      <div className="settings-section">
+        <h2>Preferences</h2>
+        <div className="form-row">
+          <label className="color-picker-label" htmlFor="refresh-interval">Auto-refresh interval:</label>
+          <select
+            id="refresh-interval"
+            className="input"
+            value={refreshInterval}
+            onChange={(e) => onRefreshIntervalChange(parseInt(e.target.value, 10))}
+          >
+            {REFRESH_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div className="settings-section">
