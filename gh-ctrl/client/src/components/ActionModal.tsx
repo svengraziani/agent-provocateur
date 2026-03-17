@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import type { GHLabel, IssueDetail } from '../types'
+import type { GHLabel, IssueDetail, PRDetail } from '../types'
 import { api } from '../api'
 
 export type ModalState =
@@ -8,6 +8,7 @@ export type ModalState =
   | { mode: 'create-pr'; fullName: string; owner: string; repoName: string; head: string }
   | { mode: 'create-issue'; fullName: string; owner: string; repoName: string }
   | { mode: 'issue-detail'; fullName: string; owner: string; repoName: string; number: number }
+  | { mode: 'pr-detail'; fullName: string; owner: string; repoName: string; number: number }
   | { mode: 'trigger-claude'; fullName: string; number: number; type: 'pr' | 'issue' }
   | null
 
@@ -39,6 +40,9 @@ export function ActionModal({ state, onClose, onSuccess, onError }: Props) {
         )}
         {state.mode === 'issue-detail' && (
           <IssueDetailView state={state} onClose={onClose} onError={onError} />
+        )}
+        {state.mode === 'pr-detail' && (
+          <PRDetailView state={state} onClose={onClose} onError={onError} />
         )}
         {state.mode === 'trigger-claude' && (
           <TriggerClaudeForm state={state} onClose={onClose} onSuccess={onSuccess} onError={onError} />
@@ -452,6 +456,95 @@ function TriggerClaudeForm({ state, onClose, onSuccess, onError }: {
         </button>
       </div>
     </form>
+  )
+}
+
+function PRDetailView({ state, onClose, onError }: {
+  state: Extract<ModalState, { mode: 'pr-detail' }>
+  onClose: () => void
+  onError: (msg: string) => void
+}) {
+  const [pr, setPR] = useState<PRDetail | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    api.getPR(state.owner, state.repoName, state.number)
+      .then(setPR)
+      .catch((err) => onError(`Failed to load PR: ${err.message}`))
+      .finally(() => setLoading(false))
+  }, [state.owner, state.repoName, state.number])
+
+  const formatDate = (dateStr: string) => {
+    try {
+      return new Date(dateStr).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+    } catch {
+      return dateStr
+    }
+  }
+
+  return (
+    <div>
+      <div className="modal-title">
+        PR #{state.number}
+        <span className="modal-subtitle">{state.fullName}</span>
+      </div>
+      {loading ? (
+        <div className="modal-loading">Loading PR...</div>
+      ) : !pr ? (
+        <div className="modal-loading">Failed to load PR.</div>
+      ) : (
+        <div className="issue-detail">
+          <div className="issue-detail-header">
+            <h3 className="issue-detail-title">{pr.title}</h3>
+            <div className="issue-detail-meta">
+              <span className="issue-meta-author">opened by <strong>{pr.author.login}</strong></span>
+              <span className="issue-meta-date">on {formatDate(pr.createdAt)}</span>
+              <span>{pr.headRefName} → {pr.baseRefName}</span>
+              {pr.isDraft && <span>· Draft</span>}
+              {pr.reviewDecision === 'APPROVED' && <span>· Approved</span>}
+              {pr.mergeable === 'CONFLICTING' && <span>· Conflict</span>}
+            </div>
+            {pr.labels.length > 0 && (
+              <div className="issue-detail-labels">
+                {pr.labels.map((l) => (
+                  <span
+                    key={l.name}
+                    className="inline-label"
+                    style={{ background: `#${l.color}22`, borderColor: `#${l.color}88`, color: `#${l.color}` }}
+                  >
+                    {l.name}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+          {pr.body && (
+            <div className="issue-detail-body">
+              <pre className="issue-body-text">{pr.body}</pre>
+            </div>
+          )}
+          {pr.comments.length > 0 && (
+            <div className="issue-detail-comments">
+              <div className="issue-comments-title">{pr.comments.length} comment{pr.comments.length !== 1 ? 's' : ''}</div>
+              {pr.comments.map((comment, i) => (
+                <div key={i} className="issue-comment">
+                  <div className="issue-comment-meta">
+                    <strong>{comment.author.login}</strong> · {formatDate(comment.createdAt)}
+                  </div>
+                  <pre className="issue-body-text">{comment.body}</pre>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="modal-actions">
+            <a href={pr.url} target="_blank" rel="noopener noreferrer" className="btn btn-ghost">
+              View on GitHub ↗
+            </a>
+            <button type="button" className="btn btn-primary" onClick={onClose}>Close</button>
+          </div>
+        </div>
+      )}
+    </div>
   )
 }
 
