@@ -1,4 +1,4 @@
-import type { Repo, DashboardEntry, RepoData, GHLabel, BranchesData, IssueDetail } from './types'
+import type { Repo, DashboardEntry, RepoData, GHLabel, BranchesData, IssueDetail, PRDetail } from './types'
 
 const BASE = '/api'
 
@@ -107,6 +107,9 @@ export const api = {
 
   getIssue: (owner: string, name: string, number: number) =>
     request<IssueDetail>(`/github/issue/${owner}/${name}/${number}`),
+
+  getPR: (owner: string, name: string, number: number) =>
+    request<PRDetail>(`/github/pr/${owner}/${name}/${number}`),
 
   createIssue: (params: {
     fullName: string

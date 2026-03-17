@@ -50,10 +50,30 @@ function fetchNetlifyUrls(fullName: string, prs: any[]): Record<number, string> 
   return urlsByPrNumber
 }
 
+const CLAUDE_BRANCH_RE = /^claude\/issue-(\d+)-/
+
+function fetchActiveClaudeIssues(fullName: string): number[] {
+  const result = gh([
+    'run', 'list', '--repo', fullName,
+    '--json', 'status,headBranch',
+    '--limit', '30',
+  ])
+  if (result.error || !result.data) return []
+
+  const activeIssues = new Set<number>()
+  for (const run of result.data) {
+    if (run.status === 'in_progress' || run.status === 'queued' || run.status === 'waiting') {
+      const match = run.headBranch?.match(CLAUDE_BRANCH_RE)
+      if (match) activeIssues.add(Number(match[1]))
+    }
+  }
+  return Array.from(activeIssues)
+}
+
 function fetchRepoData(fullName: string) {
   const prResult = gh([
     'pr', 'list', '--repo', fullName, '--json',
-    'number,title,state,reviewDecision,mergeable,headRefName,author,updatedAt,labels,isDraft',
+    'number,title,state,reviewDecision,mergeable,headRefName,author,updatedAt,labels,isDraft,assignees',
     '--limit', '30',
   ])
 
@@ -72,6 +92,7 @@ function fetchRepoData(fullName: string) {
       conflicts: [],
       needsReview: [],
       claudeIssues: [],
+      activeClaudeIssues: [],
       error: prResult.error || issueResult.error,
     }
   }
@@ -97,6 +118,8 @@ function fetchRepoData(fullName: string) {
     )
   )
 
+  const activeClaudeIssues = fetchActiveClaudeIssues(fullName)
+
   return {
     fullName,
     prs: enrichedPrs,
@@ -113,6 +136,7 @@ function fetchRepoData(fullName: string) {
     conflicts,
     needsReview,
     claudeIssues,
+    activeClaudeIssues,
     error: null,
   }
 }
@@ -316,6 +340,22 @@ app.post('/create-issue', async (c) => {
 
   const url = proc.stdout.toString().trim()
   return c.json({ ok: true, url })
+})
+
+// GET /api/github/pr/:owner/:name/:number — fetch PR details
+app.get('/pr/:owner/:name/:number', async (c) => {
+  const owner = c.req.param('owner')
+  const name = c.req.param('name')
+  const number = c.req.param('number')
+  const fullName = `${owner}/${name}`
+
+  const result = gh([
+    'pr', 'view', number, '--repo', fullName,
+    '--json', 'number,title,body,state,labels,assignees,author,url,createdAt,comments,reviewDecision,mergeable,headRefName,baseRefName,isDraft',
+  ])
+
+  if (result.error) return c.json({ error: result.error }, 500)
+  return c.json(result.data)
 })
 
 // POST /api/github/create-pr — create a PR from a branch

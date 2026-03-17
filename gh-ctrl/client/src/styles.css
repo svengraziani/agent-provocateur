@@ -422,6 +422,15 @@ a:hover { text-decoration: underline; }
   animation: spin 0.7s linear infinite;
 }
 
+.claude-active-indicator {
+  display: inline-block;
+  color: var(--purple);
+  font-size: 12px;
+  animation: spin 1s linear infinite;
+  margin-right: 2px;
+  vertical-align: middle;
+}
+
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
@@ -771,6 +780,24 @@ select.input {
   color: var(--text-3);
   border: 1px solid var(--border);
   white-space: nowrap;
+}
+
+/* Assignee badges on list items */
+.assignees-list {
+  display: inline-flex;
+  gap: 3px;
+  flex-wrap: wrap;
+}
+
+.assignee-badge {
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: var(--bg-3);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  white-space: nowrap;
+  opacity: 0.85;
 }
 
 /* Section toggle button */

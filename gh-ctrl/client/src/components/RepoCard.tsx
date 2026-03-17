@@ -46,6 +46,10 @@ export function RepoCard({ entry, onToast }: Props) {
     setModalState({ mode: 'issue-detail', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, number })
   }
 
+  const openPRDetail = (number: number) => {
+    setModalState({ mode: 'pr-detail', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, number })
+  }
+
   const toggleBranches = async () => {
     if (!showBranches && branches.length === 0) {
       setBranchesLoading(true)
@@ -65,6 +69,7 @@ export function RepoCard({ entry, onToast }: Props) {
   const conflictSet = new Set(data.conflicts.map((p) => p.number))
   const reviewSet = new Set(data.needsReview.map((p) => p.number))
   const claudeSet = new Set(data.claudeIssues.map((i) => i.number))
+  const activeClaudeSet = new Set(data.activeClaudeIssues ?? [])
 
   const remainingPRs = data.prs.filter((p) => !conflictSet.has(p.number) && !reviewSet.has(p.number))
   const remainingIssues = data.issues.filter((i) => !claudeSet.has(i.number))
@@ -122,12 +127,14 @@ export function RepoCard({ entry, onToast }: Props) {
                   key={pr.number}
                   number={pr.number}
                   title={pr.title}
-                  labels={pr.labels.map((l) => l.name)}
+                  labels={pr.labels}
+                  assignees={pr.assignees}
                   badge={<span className="badge badge-conflict">Conflict</span>}
                   previewUrl={pr.previewUrl}
                   onClaude={() => openTriggerClaude(pr.number, 'pr')}
                   onComment={() => openComment(pr.number, 'pr')}
                   onLabel={() => openLabel(pr.number, 'pr', pr.labels.map((l) => l.name))}
+                  onDetail={() => openPRDetail(pr.number)}
                 />
               ))}
             </div>
@@ -141,12 +148,14 @@ export function RepoCard({ entry, onToast }: Props) {
                   key={pr.number}
                   number={pr.number}
                   title={pr.title}
-                  labels={pr.labels.map((l) => l.name)}
+                  labels={pr.labels}
+                  assignees={pr.assignees}
                   badge={<span className="badge badge-review">Review</span>}
                   previewUrl={pr.previewUrl}
                   onClaude={() => openTriggerClaude(pr.number, 'pr')}
                   onComment={() => openComment(pr.number, 'pr')}
                   onLabel={() => openLabel(pr.number, 'pr', pr.labels.map((l) => l.name))}
+                  onDetail={() => openPRDetail(pr.number)}
                 />
               ))}
             </div>
@@ -160,7 +169,9 @@ export function RepoCard({ entry, onToast }: Props) {
                   key={issue.number}
                   number={issue.number}
                   title={issue.title}
-                  labels={issue.labels.map((l) => l.name)}
+                  labels={issue.labels}
+                  assignees={issue.assignees}
+                  isClaudeActive={activeClaudeSet.has(issue.number)}
                   onClaude={() => openTriggerClaude(issue.number, 'issue')}
                   onComment={() => openComment(issue.number, 'issue')}
                   onLabel={() => openLabel(issue.number, 'issue', issue.labels.map((l) => l.name))}
@@ -181,12 +192,14 @@ export function RepoCard({ entry, onToast }: Props) {
                   key={pr.number}
                   number={pr.number}
                   title={pr.title}
-                  labels={pr.labels.map((l) => l.name)}
+                  labels={pr.labels}
+                  assignees={pr.assignees}
                   badge={pr.isDraft ? <span className="badge badge-draft">Draft</span> : pr.reviewDecision === 'APPROVED' ? <span className="badge badge-approved">Approved</span> : undefined}
                   previewUrl={pr.previewUrl}
                   onClaude={() => openTriggerClaude(pr.number, 'pr')}
                   onComment={() => openComment(pr.number, 'pr')}
                   onLabel={() => openLabel(pr.number, 'pr', pr.labels.map((l) => l.name))}
+                  onDetail={() => openPRDetail(pr.number)}
                 />
               ))}
             </div>
@@ -203,7 +216,9 @@ export function RepoCard({ entry, onToast }: Props) {
                   key={issue.number}
                   number={issue.number}
                   title={issue.title}
-                  labels={issue.labels.map((l) => l.name)}
+                  labels={issue.labels}
+                  assignees={issue.assignees}
+                  isClaudeActive={activeClaudeSet.has(issue.number)}
                   onClaude={() => openTriggerClaude(issue.number, 'issue')}
                   onComment={() => openComment(issue.number, 'issue')}
                   onLabel={() => openLabel(issue.number, 'issue', issue.labels.map((l) => l.name))}
@@ -252,14 +267,26 @@ export function RepoCard({ entry, onToast }: Props) {
   )
 }
 
+function labelTextColor(hex: string): string {
+  const h = hex.replace('#', '')
+  const r = parseInt(h.substring(0, 2), 16)
+  const g = parseInt(h.substring(2, 4), 16)
+  const b = parseInt(h.substring(4, 6), 16)
+  // WCAG relative luminance
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+  return luminance > 0.5 ? '#000000' : '#ffffff'
+}
+
 function ItemRow({
-  number, title, labels, badge, previewUrl, onClaude, onComment, onLabel, onDetail,
+  number, title, labels, assignees, badge, previewUrl, isClaudeActive, onClaude, onComment, onLabel, onDetail,
 }: {
   number: number
   title: string
-  labels: string[]
+  labels: { name: string; color: string }[]
+  assignees?: { login: string }[]
   badge?: React.ReactNode
   previewUrl?: string | null
+  isClaudeActive?: boolean
   onClaude: () => void
   onComment: () => void
   onLabel: () => void
@@ -269,6 +296,9 @@ function ItemRow({
     <div className="list-item">
       <div className="list-item-left">
         <span className="list-item-number">#{number}</span>
+        {isClaudeActive && (
+          <span className="claude-active-indicator spinning" title="Claude is working on this">⟳</span>
+        )}
         {onDetail ? (
           <button className="list-item-title list-item-title-btn" onClick={onDetail} title="View details">
             {title}
@@ -276,9 +306,26 @@ function ItemRow({
         ) : (
           <span className="list-item-title">{title}</span>
         )}
-        {labels.map((l) => (
-          <span key={l} className="inline-label">{l}</span>
-        ))}
+        {labels.map((l) => {
+          const bg = l.color ? `#${l.color.replace('#', '')}` : undefined
+          const fg = bg ? labelTextColor(bg) : undefined
+          return (
+            <span
+              key={l.name}
+              className="inline-label"
+              style={bg ? { background: bg, color: fg, borderColor: bg } : undefined}
+            >
+              {l.name}
+            </span>
+          )
+        })}
+        {assignees && assignees.length > 0 && (
+          <span className="assignees-list" title={`Assigned to: ${assignees.map((a) => a.login).join(', ')}`}>
+            {assignees.map((a) => (
+              <span key={a.login} className="assignee-badge">@{a.login}</span>
+            ))}
+          </span>
+        )}
       </div>
       <div className="list-item-right">
         {badge}
