@@ -146,6 +146,7 @@ export default function App() {
             entries={entries}
             loading={loading}
             onRefresh={loadDashboard}
+            onReposChange={handleReposChange}
             onToast={addToast}
           />
         )}
