@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240">
+  <defs>
+    <radialGradient id="radar-glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#39ff6e" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#39ff6e" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="2" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="240" height="240" rx="12" fill="#080b08"/>
+
+  <!-- Radar glow -->
+  <circle cx="120" cy="120" r="100" fill="url(#radar-glow)"/>
+
+  <!-- Radar rings -->
+  <circle cx="120" cy="120" r="96" fill="none" stroke="#1a4d1a" stroke-width="1.5"/>
+  <circle cx="120" cy="120" r="72" fill="none" stroke="#1a4d1a" stroke-width="1"/>
+  <circle cx="120" cy="120" r="48" fill="none" stroke="#1a4d1a" stroke-width="1"/>
+  <circle cx="120" cy="120" r="24" fill="none" stroke="#1a4d1a" stroke-width="1"/>
+
+  <!-- Radar cross lines -->
+  <line x1="24" y1="120" x2="216" y2="120" stroke="#1a4d1a" stroke-width="0.8"/>
+  <line x1="120" y1="24" x2="120" y2="216" stroke="#1a4d1a" stroke-width="0.8"/>
+  <line x1="52" y1="52" x2="188" y2="188" stroke="#1a4d1a" stroke-width="0.5" opacity="0.5"/>
+  <line x1="188" y1="52" x2="52" y2="188" stroke="#1a4d1a" stroke-width="0.5" opacity="0.5"/>
+
+  <!-- Outer neon ring -->
+  <circle cx="120" cy="120" r="98" fill="none" stroke="#39ff6e" stroke-width="1.5" opacity="0.6" filter="url(#glow)"/>
+
+  <!-- Star at top -->
+  <polygon points="120,30 123,40 134,40 125,47 128,57 120,51 112,57 115,47 106,40 117,40"
+           fill="#39ff6e" opacity="0.8"/>
+
+  <!-- Sword/arrow shapes (simplified crossed swords from logo) -->
+  <line x1="60" y1="60" x2="180" y2="180" stroke="#4a7a4a" stroke-width="4" stroke-linecap="round"/>
+  <line x1="180" y1="60" x2="60" y2="180" stroke="#4a7a4a" stroke-width="4" stroke-linecap="round"/>
+
+  <!-- Circuit board lines (top right area) -->
+  <g stroke="#39ff6e" stroke-width="1" opacity="0.4" fill="none">
+    <rect x="155" y="35" width="30" height="20" rx="2"/>
+    <line x1="160" y1="40" x2="180" y2="40"/>
+    <line x1="160" y1="45" x2="175" y2="45"/>
+    <line x1="160" y1="50" x2="180" y2="50"/>
+    <circle cx="183" cy="40" r="1.5" fill="#39ff6e"/>
+    <circle cx="177" cy="45" r="1.5" fill="#39ff6e"/>
+    <circle cx="183" cy="50" r="1.5" fill="#39ff6e"/>
+  </g>
+
+  <!-- Terminal prompt in center -->
+  <text x="120" y="128" font-family="monospace" font-size="28" font-weight="bold"
+        fill="#39ff6e" text-anchor="middle" dominant-baseline="middle" filter="url(#glow)">&#62;_</text>
+
+  <!-- "VIBE AND CONQUER" text -->
+  <text x="120" y="12" font-family="monospace" font-size="10" font-weight="bold"
+        fill="#39ff6e" text-anchor="middle" letter-spacing="2" opacity="0.9">VIBE AND CONQUER</text>
+
+  <!-- "COMMAND CENTER" curved around top -->
+  <text x="120" y="175" font-family="monospace" font-size="7" font-weight="bold"
+        fill="#39ff6e" text-anchor="middle" letter-spacing="1.5" opacity="0.7">COMMAND CENTER</text>
+
+  <!-- "EST. 2026" bottom -->
+  <text x="120" y="228" font-family="monospace" font-size="8"
+        fill="#39ff6e" text-anchor="middle" letter-spacing="1" opacity="0.7">EST. 2026</text>
+
+  <!-- Laurel wreath simplified (left side) -->
+  <g fill="none" stroke="#4a7a4a" stroke-width="1.5" opacity="0.6">
+    <ellipse cx="20" cy="100" rx="6" ry="10" transform="rotate(-20, 20, 100)"/>
+    <ellipse cx="18" cy="115" rx="6" ry="10" transform="rotate(-10, 18, 115)"/>
+    <ellipse cx="18" cy="130" rx="6" ry="10" transform="rotate(0, 18, 130)"/>
+    <ellipse cx="20" cy="145" rx="6" ry="10" transform="rotate(10, 20, 145)"/>
+  </g>
+  <!-- Laurel wreath right side -->
+  <g fill="none" stroke="#4a7a4a" stroke-width="1.5" opacity="0.6">
+    <ellipse cx="220" cy="100" rx="6" ry="10" transform="rotate(20, 220, 100)"/>
+    <ellipse cx="222" cy="115" rx="6" ry="10" transform="rotate(10, 222, 115)"/>
+    <ellipse cx="222" cy="130" rx="6" ry="10" transform="rotate(0, 222, 130)"/>
+    <ellipse cx="220" cy="145" rx="6" ry="10" transform="rotate(-10, 220, 145)"/>
+  </g>
+</svg>
