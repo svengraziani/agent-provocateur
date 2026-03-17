@@ -20,6 +20,7 @@ export interface GHPR {
   labels: { name: string; color: string }[]
   isDraft: boolean
   assignees: { login: string }[]
+  previewUrl?: string | null
 }
 
 export interface GHIssue {
