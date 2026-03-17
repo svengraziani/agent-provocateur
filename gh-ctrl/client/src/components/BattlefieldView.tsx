@@ -213,6 +213,7 @@ export function BattlefieldView({ entries, loading, onRefresh, onReposChange, on
   }, [positions])
 
   const totalConflicts = entries.reduce((sum, e) => sum + e.data.stats.conflicts, 0)
+  const totalRunningActions = entries.reduce((sum, e) => sum + (e.data.stats.runningActions ?? 0), 0)
 
   return (
     <div
@@ -235,6 +236,9 @@ export function BattlefieldView({ entries, loading, onRefresh, onReposChange, on
           <span className="hud-stat">BASES: <strong>{entries.length}</strong></span>
           {totalConflicts > 0 && (
             <span className="hud-stat hud-alert blink">&#x26a0; CONFLICTS: <strong>{totalConflicts}</strong></span>
+          )}
+          {totalRunningActions > 0 && (
+            <span className="hud-stat hud-actions spinning-process" title="Running GitHub Actions across all bases">&#x2699; PROCESSES: <strong>{totalRunningActions}</strong></span>
           )}
           <button
             className="hud-btn"
