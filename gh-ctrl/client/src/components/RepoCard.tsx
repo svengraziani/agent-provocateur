@@ -65,6 +65,7 @@ export function RepoCard({ entry, onToast }: Props) {
   const conflictSet = new Set(data.conflicts.map((p) => p.number))
   const reviewSet = new Set(data.needsReview.map((p) => p.number))
   const claudeSet = new Set(data.claudeIssues.map((i) => i.number))
+  const activeClaudeSet = new Set(data.activeClaudeIssues ?? [])
 
   const remainingPRs = data.prs.filter((p) => !conflictSet.has(p.number) && !reviewSet.has(p.number))
   const remainingIssues = data.issues.filter((i) => !claudeSet.has(i.number))
@@ -159,6 +160,7 @@ export function RepoCard({ entry, onToast }: Props) {
                   number={issue.number}
                   title={issue.title}
                   labels={issue.labels.map((l) => l.name)}
+                  isClaudeActive={activeClaudeSet.has(issue.number)}
                   onClaude={() => openTriggerClaude(issue.number, 'issue')}
                   onComment={() => openComment(issue.number, 'issue')}
                   onLabel={() => openLabel(issue.number, 'issue', issue.labels.map((l) => l.name))}
@@ -201,6 +203,7 @@ export function RepoCard({ entry, onToast }: Props) {
                   number={issue.number}
                   title={issue.title}
                   labels={issue.labels.map((l) => l.name)}
+                  isClaudeActive={activeClaudeSet.has(issue.number)}
                   onClaude={() => openTriggerClaude(issue.number, 'issue')}
                   onComment={() => openComment(issue.number, 'issue')}
                   onLabel={() => openLabel(issue.number, 'issue', issue.labels.map((l) => l.name))}
@@ -250,12 +253,13 @@ export function RepoCard({ entry, onToast }: Props) {
 }
 
 function ItemRow({
-  number, title, labels, badge, onClaude, onComment, onLabel, onDetail,
+  number, title, labels, badge, isClaudeActive, onClaude, onComment, onLabel, onDetail,
 }: {
   number: number
   title: string
   labels: string[]
   badge?: React.ReactNode
+  isClaudeActive?: boolean
   onClaude: () => void
   onComment: () => void
   onLabel: () => void
@@ -265,6 +269,9 @@ function ItemRow({
     <div className="list-item">
       <div className="list-item-left">
         <span className="list-item-number">#{number}</span>
+        {isClaudeActive && (
+          <span className="claude-active-indicator spinning" title="Claude is working on this">⟳</span>
+        )}
         {onDetail ? (
           <button className="list-item-title list-item-title-btn" onClick={onDetail} title="View details">
             {title}

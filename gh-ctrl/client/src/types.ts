@@ -60,6 +60,7 @@ export interface RepoData {
   conflicts: GHPR[]
   needsReview: GHPR[]
   claudeIssues: GHIssue[]
+  activeClaudeIssues: number[]
   error: string | null
 }
 
