@@ -2,11 +2,13 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import type { DashboardEntry } from '../types'
 import { BaseNode } from './BaseNode'
 import { ConstructDialog } from './ConstructDialog'
+import { CreateBaseDialog } from './CreateBaseDialog'
 
 interface Props {
   entries: DashboardEntry[]
   loading: boolean
   onRefresh: () => void
+  onReposChange: () => void
   onToast: (message: string, type: 'success' | 'error' | 'info') => void
 }
 
@@ -21,6 +23,10 @@ const ISO_HALF_H = 180  // half tile height (vertical offset per col/row step)
 const COLS = 4
 const ISO_MAP_CENTER_X = 600  // x anchor for the top of the diamond
 const ISO_MAP_OFFSET_Y = 120  // y anchor for the top of the diamond
+const MAP_PADDING = 100
+const ZOOM_MIN = 0.25
+const ZOOM_MAX = 2.5
+const ZOOM_STEP = 0.15
 
 function getDefaultPositions(entries: DashboardEntry[]): Record<number, Position> {
   const positions: Record<number, Position> = {}
@@ -49,8 +55,9 @@ function savePositions(positions: Record<number, Position>) {
   localStorage.setItem('battlefield-positions', JSON.stringify(positions))
 }
 
-export function BattlefieldView({ entries, loading, onRefresh, onToast }: Props) {
+export function BattlefieldView({ entries, loading, onRefresh, onReposChange, onToast }: Props) {
   const [offset, setOffset] = useState<Position>({ x: 0, y: 0 })
+  const [zoom, setZoom] = useState(1)
   const [isDraggingMap, setIsDraggingMap] = useState(false)
   const [dragStart, setDragStart] = useState<Position>({ x: 0, y: 0 })
   const [positions, setPositions] = useState<Record<number, Position>>(() => {
@@ -62,7 +69,12 @@ export function BattlefieldView({ entries, loading, onRefresh, onToast }: Props)
   const [relocatingStart, setRelocatingStart] = useState<{ mouseX: number; mouseY: number; nodeX: number; nodeY: number } | null>(null)
   const [constructTarget, setConstructTarget] = useState<DashboardEntry | null>(null)
   const [isRelocateMode, setIsRelocateMode] = useState(false)
+  const [showCreateBase, setShowCreateBase] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
+  const zoomRef = useRef(zoom)
+  const offsetRef = useRef(offset)
+  useEffect(() => { zoomRef.current = zoom }, [zoom])
+  useEffect(() => { offsetRef.current = offset }, [offset])
 
   // Update positions when entries change (new repos)
   useEffect(() => {
@@ -86,8 +98,8 @@ export function BattlefieldView({ entries, loading, onRefresh, onToast }: Props)
     if (isDraggingMap) {
       setOffset({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y })
     } else if (relocatingId !== null && relocatingStart !== null) {
-      const dx = e.clientX - relocatingStart.mouseX
-      const dy = e.clientY - relocatingStart.mouseY
+      const dx = (e.clientX - relocatingStart.mouseX) / zoomRef.current
+      const dy = (e.clientY - relocatingStart.mouseY) / zoomRef.current
       setPositions(prev => ({
         ...prev,
         [relocatingId]: {
@@ -97,6 +109,53 @@ export function BattlefieldView({ entries, loading, onRefresh, onToast }: Props)
       }))
     }
   }, [isDraggingMap, dragStart, relocatingId, relocatingStart])
+
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    e.preventDefault()
+    const delta = -Math.sign(e.deltaY) * ZOOM_STEP
+    setZoom(prevZoom => {
+      const newZoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, prevZoom + delta))
+      // Zoom toward cursor position
+      const cursorX = e.clientX
+      const cursorY = e.clientY
+      setOffset(prevOffset => ({
+        x: cursorX - (cursorX - prevOffset.x) * (newZoom / prevZoom),
+        y: cursorY - (cursorY - prevOffset.y) * (newZoom / prevZoom),
+      }))
+      return newZoom
+    })
+  }, [])
+
+  const handleZoomIn = useCallback(() => {
+    setZoom(prev => {
+      const newZoom = Math.min(ZOOM_MAX, prev + ZOOM_STEP)
+      const cx = window.innerWidth / 2
+      const cy = window.innerHeight / 2
+      setOffset(prevOffset => ({
+        x: cx - (cx - prevOffset.x) * (newZoom / prev),
+        y: cy - (cy - prevOffset.y) * (newZoom / prev),
+      }))
+      return newZoom
+    })
+  }, [])
+
+  const handleZoomOut = useCallback(() => {
+    setZoom(prev => {
+      const newZoom = Math.max(ZOOM_MIN, prev - ZOOM_STEP)
+      const cx = window.innerWidth / 2
+      const cy = window.innerHeight / 2
+      setOffset(prevOffset => ({
+        x: cx - (cx - prevOffset.x) * (newZoom / prev),
+        y: cy - (cy - prevOffset.y) * (newZoom / prev),
+      }))
+      return newZoom
+    })
+  }, [])
+
+  const handleZoomReset = useCallback(() => {
+    setZoom(1)
+    setOffset({ x: 0, y: 0 })
+  }, [])
 
   const handleMapMouseUp = useCallback(() => {
     setIsDraggingMap(false)
@@ -126,6 +185,7 @@ export function BattlefieldView({ entries, loading, onRefresh, onToast }: Props)
       onMouseMove={handleMapMouseMove}
       onMouseUp={handleMapMouseUp}
       onMouseLeave={handleMapMouseUp}
+      onWheel={handleWheel}
       ref={containerRef}
       style={{ cursor: isDraggingMap ? 'grabbing' : (isRelocateMode ? 'crosshair' : 'grab') }}
     >
@@ -135,7 +195,7 @@ export function BattlefieldView({ entries, loading, onRefresh, onToast }: Props)
 
       {/* HUD */}
       <div className="battlefield-hud">
-        <div className="hud-brand">&#x25a0; AGENT PROVOCATEUR — TACTICAL COMMAND</div>
+        <div className="hud-brand">&#x25a0; C&amp;C GITAGENTS — TACTICAL COMMAND</div>
         <div className="hud-controls">
           <span className="hud-stat">BASES: <strong>{entries.length}</strong></span>
           {totalConflicts > 0 && (
@@ -154,13 +214,23 @@ export function BattlefieldView({ entries, loading, onRefresh, onToast }: Props)
           >
             {isRelocateMode ? '✕ CANCEL RELOCATE' : '&#x2295; RELOCATE BASE'}
           </button>
+          <button
+            className="hud-btn hud-btn-new-base"
+            onClick={() => setShowCreateBase(true)}
+          >
+            &#x2b; NEW BASE
+          </button>
+          <span className="hud-zoom-sep" />
+          <button className="hud-btn hud-zoom-btn" onClick={handleZoomOut} disabled={zoom <= ZOOM_MIN} title="Zoom out">−</button>
+          <span className="hud-zoom-level" title="Click to reset zoom" onClick={handleZoomReset}>{Math.round(zoom * 100)}%</span>
+          <button className="hud-btn hud-zoom-btn" onClick={handleZoomIn} disabled={zoom >= ZOOM_MAX} title="Zoom in">+</button>
         </div>
       </div>
 
       {/* Scrollable map layer */}
       <div
         className="battlefield-map"
-        style={{ transform: `translate(${offset.x}px, ${offset.y}px)` }}
+        style={{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${zoom})`, transformOrigin: '0 0' }}
       >
         {entries.map((entry) => {
           const pos = positions[entry.repo.id] ?? { x: 0, y: 0 }
@@ -181,7 +251,7 @@ export function BattlefieldView({ entries, loading, onRefresh, onToast }: Props)
 
       {/* Minimap */}
       {entries.length > 0 && (
-        <Minimap entries={entries} positions={positions} offset={offset} onJump={setOffset} />
+        <Minimap entries={entries} positions={positions} offset={offset} zoom={zoom} onJump={setOffset} />
       )}
 
       {/* Empty state */}
@@ -215,6 +285,19 @@ export function BattlefieldView({ entries, loading, onRefresh, onToast }: Props)
           onError={(msg) => onToast(msg, 'error')}
         />
       )}
+
+      {/* Create new base dialog */}
+      {showCreateBase && (
+        <CreateBaseDialog
+          onClose={() => setShowCreateBase(false)}
+          onSuccess={(msg) => {
+            onToast(msg, 'success')
+            setShowCreateBase(false)
+            onReposChange()
+          }}
+          onError={(msg) => onToast(msg, 'error')}
+        />
+      )}
     </div>
   )
 }
@@ -223,10 +306,11 @@ interface MinimapProps {
   entries: DashboardEntry[]
   positions: Record<number, Position>
   offset: Position
+  zoom: number
   onJump: (pos: Position) => void
 }
 
-function Minimap({ entries, positions, offset, onJump }: MinimapProps) {
+function Minimap({ entries, positions, offset, zoom, onJump }: MinimapProps) {
   const MINIMAP_W = 160
   const MINIMAP_H = 100
   const SCALE = 0.12
@@ -236,7 +320,7 @@ function Minimap({ entries, positions, offset, onJump }: MinimapProps) {
     const rect = e.currentTarget.getBoundingClientRect()
     const mx = (e.clientX - rect.left) / SCALE
     const my = (e.clientY - rect.top) / SCALE
-    onJump({ x: -mx + window.innerWidth / 2, y: -my + window.innerHeight / 2 })
+    onJump({ x: -mx * zoom + window.innerWidth / 2, y: -my * zoom + window.innerHeight / 2 })
   }
 
   return (
@@ -270,10 +354,10 @@ function Minimap({ entries, positions, offset, onJump }: MinimapProps) {
       <div
         className="minimap-viewport"
         style={{
-          left: -offset.x * SCALE,
-          top: -offset.y * SCALE + 12,
-          width: window.innerWidth * SCALE,
-          height: window.innerHeight * SCALE,
+          left: -offset.x / zoom * SCALE,
+          top: -offset.y / zoom * SCALE + 12,
+          width: window.innerWidth / zoom * SCALE,
+          height: window.innerHeight / zoom * SCALE,
         }}
       />
     </div>

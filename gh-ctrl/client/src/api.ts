@@ -121,4 +121,14 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(params),
     }),
+
+  createRepo: (params: {
+    name: string
+    description?: string
+    visibility: 'public' | 'private'
+  }) =>
+    request<{ ok: boolean; repo: import('./types').Repo }>('/github/create-repo', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    }),
 }
