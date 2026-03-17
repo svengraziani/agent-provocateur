@@ -88,7 +88,18 @@ export function RepoCard({ entry, onToast }: Props) {
         <div className="card-body">
           <div className="card-header">
             <div>
-              <div className="card-repo-name">{repo.name}</div>
+              <div className="card-repo-name">
+                {repo.name}
+                <a
+                  href={`https://github.com/${repo.fullName}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="repo-github-link"
+                  title="View on GitHub"
+                >
+                  ↗
+                </a>
+              </div>
               <div className="card-repo-full">{repo.fullName}</div>
             </div>
             <button className="btn btn-ghost btn-sm" onClick={openCreateIssue} title="Create new issue">
