@@ -16,14 +16,26 @@ interface Props {
   isBeingRelocated: boolean
   onConstruct: () => void
   onStartRelocate: (mouseX: number, mouseY: number) => void
+  onRefreshRepo: (owner: string, name: string) => Promise<void>
   onToast: (message: string, type: 'success' | 'error' | 'info') => void
   onModalOpen: (state: ModalState) => void
 }
 
-export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, onConstruct, onStartRelocate, onToast, onModalOpen }: Props) {
+export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, onConstruct, onStartRelocate, onRefreshRepo, onToast, onModalOpen }: Props) {
   const { repo, data } = entry
   const { stats } = data
   const [showDetail, setShowDetail] = useState(false)
+  const [scanning, setScanning] = useState(false)
+
+  const handleScanBase = useCallback(async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    setScanning(true)
+    try {
+      await onRefreshRepo(repo.owner, repo.name)
+    } finally {
+      setScanning(false)
+    }
+  }, [onRefreshRepo, repo.owner, repo.name])
 
   const hasConflicts = stats.conflicts > 0
   const hasReviews = stats.needsReview > 0
@@ -125,6 +137,18 @@ export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, on
             title="Construct new issue for this base"
           >
             + CONSTRUCT
+          </button>
+        )}
+
+        {/* Scan base button (shows on hover) */}
+        {!isRelocateMode && (
+          <button
+            className="base-scan-btn"
+            onClick={handleScanBase}
+            disabled={scanning}
+            title="Scan only this base"
+          >
+            {scanning ? <><RefreshIcon size={10} /> SCANNING...</> : <><RefreshIcon size={10} /> SCAN BASE</>}
           </button>
         )}
       </div>

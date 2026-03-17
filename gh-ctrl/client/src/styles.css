@@ -1601,6 +1601,40 @@ select.input {
   display: block;
 }
 
+/* Scan base button */
+.base-scan-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: transparent;
+  border: 1px solid rgba(57, 255, 20, 0.4);
+  color: var(--text-2);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 1px;
+  padding: 3px 8px;
+  cursor: pointer;
+  width: 100%;
+  text-align: center;
+  transition: all 0.15s;
+  margin-top: 2px;
+}
+
+.base-scan-btn:hover:not(:disabled) {
+  background: rgba(57, 255, 20, 0.08);
+  color: var(--crt-green);
+}
+
+.base-scan-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.base-node:hover .base-scan-btn {
+  display: flex;
+}
+
 /* ---- Base Detail Panel ---- */
 .base-detail-panel {
   position: absolute;
