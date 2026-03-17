@@ -2230,6 +2230,445 @@ select.input {
 }
 
 /* ============================================================
+   MAP EDITOR
+   ============================================================ */
+
+/* Full-height layout for map editor — no padding */
+.main-content:has(.map-editor-layout) {
+  padding: 0;
+  overflow: hidden;
+}
+
+.map-editor-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100%;
+  overflow: hidden;
+  background: #050809;
+  font-family: var(--font-mono);
+}
+
+/* ── Top HUD ── */
+.map-editor-hud {
+  position: relative;
+  z-index: 10;
+  background: linear-gradient(180deg, rgba(5,8,9,0.97) 80%, transparent);
+  padding: 8px 20px 10px;
+  border-bottom: 1px solid rgba(57,255,20,0.25);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+.map-editor-hud-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex-shrink: 0;
+}
+
+.map-editor-map-name {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--crt-green);
+  text-shadow: 0 0 6px var(--crt-green);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+}
+
+.map-editor-map-name.muted {
+  color: var(--text-3);
+  text-shadow: none;
+  cursor: default;
+}
+
+.map-editor-map-name:not(.muted):hover {
+  text-decoration: underline;
+  text-decoration-color: rgba(57,255,20,0.4);
+}
+
+.map-editor-size-label {
+  font-size: 10px;
+  color: var(--text-3);
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+}
+
+.map-dirty-dot {
+  color: var(--crt-amber);
+  text-shadow: 0 0 6px var(--crt-amber);
+  font-size: 10px;
+}
+
+.map-name-input {
+  background: rgba(13,17,23,0.95);
+  border: 1px solid rgba(57,255,20,0.5);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 3px 8px;
+  outline: none;
+  letter-spacing: 1px;
+  width: 160px;
+}
+
+.map-name-input:focus {
+  border-color: var(--crt-green);
+  box-shadow: 0 0 8px rgba(57,255,20,0.2);
+}
+
+.hud-section-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--text-3);
+  flex-shrink: 0;
+}
+
+/* ── Editor body: palette + canvas ── */
+.map-editor-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ── Tile palette sidebar ── */
+.map-editor-palette {
+  width: 140px;
+  flex-shrink: 0;
+  background: rgba(5,8,9,0.95);
+  border-right: 1px solid rgba(57,255,20,0.2);
+  overflow-y: auto;
+  padding: 12px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  z-index: 5;
+}
+
+.palette-section-title {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--text-3);
+  padding: 6px 4px 4px;
+  display: block;
+}
+
+.palette-tile {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-2);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 5px 7px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.12s;
+  letter-spacing: 0.3px;
+  border-radius: 3px;
+}
+
+.palette-tile:hover {
+  background: rgba(57,255,20,0.06);
+  border-color: rgba(57,255,20,0.2);
+  color: var(--text);
+}
+
+.palette-tile.selected {
+  background: rgba(57,255,20,0.1);
+  border-color: rgba(57,255,20,0.5);
+  color: var(--crt-green);
+  text-shadow: 0 0 6px rgba(57,255,20,0.5);
+}
+
+.palette-tile-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 2px;
+  flex-shrink: 0;
+  border: 1px solid rgba(0,0,0,0.3);
+}
+
+.palette-tile-swatch-lg {
+  width: 20px;
+  height: 20px;
+  border-radius: 3px;
+}
+
+.palette-tile-label {
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.palette-tile-label.muted {
+  color: var(--text-3);
+  font-style: italic;
+}
+
+.palette-custom-color {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px 4px;
+  margin-top: 4px;
+}
+
+.color-picker-input {
+  width: 100%;
+  height: 32px;
+  border: 1px solid rgba(57,255,20,0.4);
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  border-radius: 2px;
+}
+
+.color-picker-input::-webkit-color-swatch-wrapper { padding: 2px; }
+.color-picker-input::-webkit-color-swatch { border: none; border-radius: 1px; }
+
+.color-hex-label {
+  font-size: 10px;
+  color: var(--text-2);
+  letter-spacing: 1px;
+  text-align: center;
+}
+
+.palette-divider {
+  height: 1px;
+  background: rgba(57,255,20,0.1);
+  margin: 6px 0;
+}
+
+.palette-active-preview {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 4px;
+}
+
+.palette-hint {
+  font-size: 9px;
+  color: var(--text-3);
+  letter-spacing: 0.3px;
+  padding: 1px 4px;
+  line-height: 1.6;
+}
+
+/* ── Canvas area ── */
+.map-canvas-container {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background: #050809;
+}
+
+.map-editor-canvas {
+  display: block;
+  position: absolute;
+  inset: 0;
+  user-select: none;
+}
+
+/* ── Map dialogs ── */
+.map-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(0,0,0,0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(3px);
+}
+
+.map-dialog {
+  width: 360px;
+  max-width: calc(100vw - 40px);
+  background: rgba(5,8,9,0.98);
+  border: 1px solid rgba(57,255,20,0.5);
+  box-shadow: 0 0 40px rgba(57,255,20,0.15), 0 20px 60px rgba(0,0,0,0.8);
+  font-family: var(--font-mono);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  animation: toast-in 0.2s ease-out;
+}
+
+.map-dialog-load {
+  width: 520px;
+}
+
+.map-dialog-title {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: var(--crt-green);
+  text-shadow: 0 0 8px var(--crt-green);
+  text-transform: uppercase;
+}
+
+.map-dialog-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex: 1;
+}
+
+.map-dialog-field label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: var(--crt-amber);
+  text-transform: uppercase;
+}
+
+.map-dialog-input {
+  background: rgba(13,17,23,0.95);
+  border: 1px solid rgba(57,255,20,0.3);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  padding: 8px 10px;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.map-dialog-input:focus {
+  border-color: rgba(57,255,20,0.7);
+  box-shadow: 0 0 10px rgba(57,255,20,0.12);
+}
+
+.map-dialog-row {
+  display: flex;
+  gap: 12px;
+}
+
+.map-dialog-size-hint {
+  font-size: 10px;
+  color: var(--text-3);
+  letter-spacing: 0.5px;
+}
+
+.map-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.map-dialog-empty {
+  font-size: 12px;
+  color: var(--text-3);
+  text-align: center;
+  padding: 20px 0;
+  letter-spacing: 0.5px;
+}
+
+/* ── Map list ── */
+.map-load-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.map-load-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: rgba(13,17,23,0.8);
+  border: 1px solid rgba(57,255,20,0.15);
+  cursor: pointer;
+  transition: all 0.15s;
+  border-radius: 3px;
+}
+
+.map-load-item:hover {
+  background: rgba(57,255,20,0.06);
+  border-color: rgba(57,255,20,0.35);
+}
+
+.map-load-item.active {
+  border-color: rgba(57,255,20,0.6);
+  background: rgba(57,255,20,0.08);
+}
+
+.map-load-preview {
+  flex-shrink: 0;
+  border: 1px solid rgba(57,255,20,0.2);
+  border-radius: 3px;
+  overflow: hidden;
+  line-height: 0;
+}
+
+.map-load-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.map-load-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.map-load-meta {
+  font-size: 10px;
+  color: var(--text-3);
+  letter-spacing: 0.3px;
+}
+
+.map-load-delete {
+  flex-shrink: 0;
+  background: transparent;
+  border: 1px solid rgba(248,81,73,0.3);
+  color: var(--red);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s;
+  border-radius: 2px;
+}
+
+.map-load-delete:hover {
+  background: rgba(248,81,73,0.12);
+  border-color: var(--red);
+}
+
+.map-load-delete:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ============================================================
    TERRAIN ELEMENTS — trees, rocks, crystals
    ============================================================ */
 
