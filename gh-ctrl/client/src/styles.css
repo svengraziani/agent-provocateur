@@ -1054,6 +1054,112 @@ select.input {
 }
 
 /* ============================================================
+   MARKDOWN CONTENT RENDERING
+   ============================================================ */
+
+.md-content {
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.6;
+  word-break: break-word;
+  color: var(--text);
+}
+
+.md-content .md-p {
+  margin: 0 0 8px;
+}
+
+.md-content .md-p:last-child {
+  margin-bottom: 0;
+}
+
+.md-content .md-h1,
+.md-content .md-h2,
+.md-content .md-h3,
+.md-content .md-h4,
+.md-content .md-h5,
+.md-content .md-h6 {
+  margin: 12px 0 6px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--green-primary);
+}
+
+.md-content .md-h1 { font-size: 1.4em; }
+.md-content .md-h2 { font-size: 1.25em; }
+.md-content .md-h3 { font-size: 1.1em; }
+.md-content .md-h4,
+.md-content .md-h5,
+.md-content .md-h6 { font-size: 1em; }
+
+.md-content .md-list {
+  margin: 6px 0 8px 20px;
+  padding: 0;
+}
+
+.md-content .md-list li {
+  margin-bottom: 3px;
+}
+
+.md-content .md-code-block {
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 10px 12px;
+  margin: 8px 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-x: auto;
+  white-space: pre;
+  color: var(--green-neon);
+}
+
+.md-content .md-inline-code {
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--green-neon);
+}
+
+.md-content .md-blockquote {
+  border-left: 3px solid var(--green-dark);
+  margin: 6px 0;
+  padding: 4px 10px;
+  color: var(--text-3);
+  font-style: italic;
+}
+
+.md-content .md-hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 10px 0;
+}
+
+.md-content .md-link {
+  color: var(--blue);
+  text-decoration: none;
+}
+
+.md-content .md-link:hover {
+  text-decoration: underline;
+}
+
+.md-content .md-image {
+  max-width: 100%;
+  border-radius: 4px;
+  margin: 4px 0;
+}
+
+/* Override the old pre styling when used alongside md-content */
+.issue-body-text.md-content {
+  white-space: normal;
+}
+
+/* ============================================================
    BATTLEFIELD VIEW — C&C Red Alert Style
    ============================================================ */
 
