@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import type { DashboardEntry, GHPR, GHIssue } from '../types'
 import { ActionModal } from './ActionModal'
 import type { ModalState } from './ActionModal'
@@ -143,6 +143,14 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
   const panelX = position.x + 145
   const panelY = position.y
 
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [onClose])
+
   const activeClaudeSet = new Set(data.activeClaudeIssues ?? [])
   const conflictSet = new Set(data.conflicts.map((p) => p.number))
   const reviewSet = new Set(data.needsReview.map((p) => p.number))
@@ -198,6 +206,7 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
               labels={pr.labels}
             />
           ))}
+          {data.conflicts.length > 4 && <div className="bdp-more">+{data.conflicts.length - 4} more</div>}
         </div>
       )}
 
@@ -216,6 +225,7 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
               labels={pr.labels}
             />
           ))}
+          {data.needsReview.length > 4 && <div className="bdp-more">+{data.needsReview.length - 4} more</div>}
         </div>
       )}
 
@@ -234,6 +244,7 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
               isClaudeActive={activeClaudeSet.has(issue.number)}
             />
           ))}
+          {data.claudeIssues.length > 4 && <div className="bdp-more">+{data.claudeIssues.length - 4} more</div>}
         </div>
       )}
 
