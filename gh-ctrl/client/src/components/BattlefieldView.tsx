@@ -1,8 +1,11 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import type { DashboardEntry } from '../types'
 import { BaseNode } from './BaseNode'
+import { ActionModal } from './ActionModal'
+import type { ModalState } from './ActionModal'
 import { ConstructDialog } from './ConstructDialog'
 import { CreateBaseDialog } from './CreateBaseDialog'
+import { CloseIcon, RelocateIcon, RefreshIcon } from './Icons'
 
 interface Props {
   entries: DashboardEntry[]
@@ -96,6 +99,7 @@ export function BattlefieldView({ entries, loading, onRefresh, onReposChange, on
   const [constructTarget, setConstructTarget] = useState<DashboardEntry | null>(null)
   const [isRelocateMode, setIsRelocateMode] = useState(false)
   const [showCreateBase, setShowCreateBase] = useState(false)
+  const [modalState, setModalState] = useState<ModalState>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const zoomRef = useRef(zoom)
   const offsetRef = useRef(offset)
@@ -237,13 +241,13 @@ export function BattlefieldView({ entries, loading, onRefresh, onReposChange, on
             onClick={onRefresh}
             disabled={loading}
           >
-            {loading ? '◌ SCANNING...' : '&#x27F3; SCAN'}
+            {loading ? '◌ SCANNING...' : <><RefreshIcon size={12} /> SCAN</>}
           </button>
           <button
             className={`hud-btn${isRelocateMode ? ' active' : ''}`}
             onClick={() => { setIsRelocateMode(v => !v); setRelocatingId(null); setRelocatingStart(null) }}
           >
-            {isRelocateMode ? '✕ CANCEL RELOCATE' : '&#x2295; RELOCATE BASE'}
+            {isRelocateMode ? <><CloseIcon size={10} /> CANCEL RELOCATE</> : <><RelocateIcon size={12} /> RELOCATE BASE</>}
           </button>
           <button
             className="hud-btn hud-btn-new-base"
@@ -306,6 +310,7 @@ export function BattlefieldView({ entries, loading, onRefresh, onReposChange, on
               onConstruct={() => setConstructTarget(entry)}
               onStartRelocate={(mouseX, mouseY) => handleStartRelocate(entry.repo.id, mouseX, mouseY)}
               onToast={onToast}
+              onModalOpen={setModalState}
             />
           )
         })}
@@ -337,6 +342,14 @@ export function BattlefieldView({ entries, loading, onRefresh, onReposChange, on
           &#x2295; RELOCATE MODE — Drag a base to reposition it. Click again to cancel.
         </div>
       )}
+
+      {/* Action modal — rendered outside the transformed map to ensure correct fixed positioning */}
+      <ActionModal
+        state={modalState}
+        onClose={() => setModalState(null)}
+        onSuccess={(msg) => onToast(msg, 'success')}
+        onError={(msg) => onToast(msg, 'error')}
+      />
 
       {/* Construction dialog */}
       {constructTarget && (

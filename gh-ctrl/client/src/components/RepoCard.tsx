@@ -3,6 +3,7 @@ import type { DashboardEntry, GHPR, GHIssue, Branch } from '../types'
 import { api } from '../api'
 import { ActionModal } from './ActionModal'
 import type { ModalState } from './ActionModal'
+import { LinkIcon, LabelIcon, CommentIcon, BranchIcon, RefreshIcon } from './Icons'
 
 interface Props {
   entry: DashboardEntry
@@ -220,7 +221,7 @@ export function RepoCard({ entry, onToast }: Props) {
             <div className="card-section">
               <button className="section-toggle" onClick={() => setShowAllIssues((v) => !v)}>
                 <span>{showAllIssues ? '▾' : '▸'}</span>
-                All Issues ({remainingIssues.length} more)
+                All Issues ({remainingIssues.length} more) <span className="untouched-count-badge" title="Issues with no @claude interaction">● {remainingIssues.length} untouched</span>
               </button>
               {showAllIssues && remainingIssues.map((issue: GHIssue) => (
                 <ItemRow
@@ -230,6 +231,7 @@ export function RepoCard({ entry, onToast }: Props) {
                   labels={issue.labels}
                   assignees={issue.assignees}
                   isClaudeActive={activeClaudeSet.has(issue.number)}
+                  isUntouched
                   onClaude={() => openTriggerClaude(issue.number, 'issue')}
                   onComment={() => openComment(issue.number, 'issue')}
                   onLabel={() => openLabel(issue.number, 'issue', issue.labels.map((l) => l.name))}
@@ -251,7 +253,7 @@ export function RepoCard({ entry, onToast }: Props) {
                 branches.map((branch) => (
                   <div key={branch.name} className="list-item">
                     <div className="list-item-left">
-                      <span className="branch-icon">⎇</span>
+                      <span className="branch-icon"><BranchIcon size={12} /></span>
                       <span className="list-item-title">{branch.name}</span>
                       {branch.name === defaultBranch && (
                         <span className="badge badge-default">default</span>
@@ -294,7 +296,7 @@ function labelTextColor(hex: string): string {
 }
 
 function ItemRow({
-  number, title, labels, assignees, badge, previewUrl, isClaudeActive, onClaude, onComment, onLabel, onDetail,
+  number, title, labels, assignees, badge, previewUrl, isClaudeActive, isUntouched, onClaude, onComment, onLabel, onDetail,
 }: {
   number: number
   title: string
@@ -303,13 +305,14 @@ function ItemRow({
   badge?: React.ReactNode
   previewUrl?: string | null
   isClaudeActive?: boolean
+  isUntouched?: boolean
   onClaude: () => void
   onComment: () => void
   onLabel: () => void
   onDetail?: () => void
 }) {
   return (
-    <div className="list-item">
+    <div className={`list-item${isUntouched ? ' untouched-issue' : ''}`}>
       <div className="list-item-left">
         <span className="list-item-number">#{number}</span>
         {isClaudeActive && (

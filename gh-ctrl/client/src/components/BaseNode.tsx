@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react'
 import type { DashboardEntry, GHPR, GHIssue, Branch } from '../types'
-import { ActionModal } from './ActionModal'
 import type { ModalState } from './ActionModal'
+import { CloseIcon, LinkIcon, LabelIcon, CommentIcon, RefreshIcon, ExternalLinkIcon } from './Icons'
 import { api } from '../api'
 
 interface Position {
@@ -17,13 +17,13 @@ interface Props {
   onConstruct: () => void
   onStartRelocate: (mouseX: number, mouseY: number) => void
   onToast: (message: string, type: 'success' | 'error' | 'info') => void
+  onModalOpen: (state: ModalState) => void
 }
 
-export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, onConstruct, onStartRelocate, onToast }: Props) {
+export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, onConstruct, onStartRelocate, onToast, onModalOpen }: Props) {
   const { repo, data } = entry
   const { stats } = data
   const [showDetail, setShowDetail] = useState(false)
-  const [modalState, setModalState] = useState<ModalState>(null)
 
   const hasConflicts = stats.conflicts > 0
   const hasReviews = stats.needsReview > 0
@@ -56,13 +56,6 @@ export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, on
 
   return (
     <>
-      <ActionModal
-        state={modalState}
-        onClose={() => setModalState(null)}
-        onSuccess={(msg) => onToast(msg, 'success')}
-        onError={(msg) => onToast(msg, 'error')}
-      />
-
       <div
         className={`base-node ${statusClass}${isBeingRelocated ? ' relocating' : ''}${isRelocateMode ? ' relocate-mode' : ''}`}
         style={{
@@ -120,7 +113,7 @@ export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, on
         <div className="base-stats-mini">
           <span className="bsm green" title="Open PRs">▲{stats.openPRs}</span>
           <span className="bsm blue" title="Open Issues">◆{stats.openIssues}</span>
-          {stats.conflicts > 0 && <span className="bsm red" title="Conflicts">✕{stats.conflicts}</span>}
+          {stats.conflicts > 0 && <span className="bsm red" title="Conflicts"><CloseIcon size={10} />{stats.conflicts}</span>}
           {stats.needsReview > 0 && <span className="bsm amber" title="Needs Review">◎{stats.needsReview}</span>}
         </div>
 
@@ -142,7 +135,7 @@ export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, on
           entry={entry}
           position={position}
           onClose={() => setShowDetail(false)}
-          onModalOpen={setModalState}
+          onModalOpen={onModalOpen}
         />
       )}
     </>
@@ -210,7 +203,7 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
           rel="noopener noreferrer"
           className="bdp-title"
         >
-          {repo.fullName} &#x2197;
+          {repo.fullName} <ExternalLinkIcon size={11} />
         </a>
         <button
           className="bdp-action-btn"
@@ -219,7 +212,7 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
         >
           + Issue
         </button>
-        <button className="bdp-close" onClick={onClose}>✕</button>
+        <button className="bdp-close" onClick={onClose}><CloseIcon size={12} /></button>
       </div>
 
       <div className="bdp-stats">
@@ -309,7 +302,7 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
       {remainingIssues.length > 0 && (
         <div className="bdp-section">
           <button className="bdp-toggle" onClick={() => setShowAllIssues((v) => !v)}>
-            <span>{showAllIssues ? '▾' : '▸'}</span> All Issues ({remainingIssues.length})
+            <span>{showAllIssues ? '▾' : '▸'}</span> All Issues ({remainingIssues.length}) <span className="untouched-count-badge" title="Issues with no @claude interaction">● {remainingIssues.length} untouched</span>
           </button>
           {showAllIssues && remainingIssues.slice(0, 5).map((issue: GHIssue) => (
             <BdpItemRow
@@ -321,6 +314,7 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
               onModalOpen={onModalOpen}
               labels={issue.labels}
               isClaudeActive={activeClaudeSet.has(issue.number)}
+              isUntouched
             />
           ))}
         </div>
@@ -376,7 +370,7 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
   )
 }
 
-function BdpItemRow({ number, title, type, repo, onModalOpen, previewUrl, labels, isClaudeActive }: {
+function BdpItemRow({ number, title, type, repo, onModalOpen, previewUrl, labels, isClaudeActive, isUntouched }: {
   number: number
   title: string
   type: 'pr' | 'issue'
@@ -385,9 +379,10 @@ function BdpItemRow({ number, title, type, repo, onModalOpen, previewUrl, labels
   previewUrl?: string | null
   labels: { name: string; color: string }[]
   isClaudeActive?: boolean
+  isUntouched?: boolean
 }) {
   return (
-    <div className="bdp-item">
+    <div className={`bdp-item${isUntouched ? ' untouched-issue' : ''}`}>
       <div className="bdp-item-left">
         <span className="bdp-num">#{number}</span>
         {isClaudeActive && (
