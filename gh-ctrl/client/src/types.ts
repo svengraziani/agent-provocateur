@@ -16,6 +16,7 @@ export interface GHPR {
   mergeable: 'MERGEABLE' | 'CONFLICTING' | 'UNKNOWN'
   headRefName: string
   author: { login: string }
+  createdAt: string
   updatedAt: string
   labels: { name: string; color: string }[]
   isDraft: boolean

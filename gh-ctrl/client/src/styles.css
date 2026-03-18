@@ -1739,6 +1739,14 @@ select.input {
   letter-spacing: 0.2px;
 }
 
+.pr-bld-date {
+  font-size: 7px;
+  color: var(--text-3, rgba(255,255,255,0.4));
+  text-align: center;
+  letter-spacing: 0.2px;
+  margin-top: 1px;
+}
+
 /* ---- Base Detail Panel ---- */
 .base-detail-panel {
   position: absolute;

@@ -316,6 +316,7 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
               onModalOpen={onModalOpen}
               labels={pr.labels}
               assignees={pr.assignees}
+              createdAt={pr.createdAt}
             />
           ))}
           {data.conflicts.length > 4 && <div className="bdp-more">+{data.conflicts.length - 4} more</div>}
@@ -336,6 +337,7 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
               onModalOpen={onModalOpen}
               labels={pr.labels}
               assignees={pr.assignees}
+              createdAt={pr.createdAt}
             />
           ))}
           {data.needsReview.length > 4 && <div className="bdp-more">+{data.needsReview.length - 4} more</div>}
@@ -405,6 +407,7 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
               onModalOpen={onModalOpen}
               labels={pr.labels}
               assignees={pr.assignees}
+              createdAt={pr.createdAt}
             />
           ))}
         </div>
@@ -511,6 +514,7 @@ function PRBuilding({ pr, position, repo, onModalOpen }: {
     : 'OPEN'
 
   const shortTitle = pr.title.length > 14 ? pr.title.slice(0, 12) + '…' : pr.title
+  const openedDate = pr.createdAt ? new Date(pr.createdAt).toLocaleDateString() : null
 
   return (
     <div
@@ -524,7 +528,7 @@ function PRBuilding({ pr, position, repo, onModalOpen }: {
         e.stopPropagation()
         onModalOpen({ mode: 'pr-detail', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, number: pr.number })
       }}
-      title={`#${pr.number} — ${pr.title}`}
+      title={`#${pr.number} — ${pr.title}${openedDate ? ` · opened ${openedDate}` : ''}`}
     >
       <div className="pr-bld-graphic">
         <IsoPRBuilding />
@@ -535,12 +539,13 @@ function PRBuilding({ pr, position, repo, onModalOpen }: {
           <span className="pr-bld-status">{statusLabel}</span>
         </div>
         <div className="pr-bld-title">{shortTitle}</div>
+        {openedDate && <div className="pr-bld-date">{openedDate}</div>}
       </div>
     </div>
   )
 }
 
-function BdpItemRow({ number, title, type, repo, onModalOpen, previewUrl, labels, assignees, isClaudeActive, isUntouched }: {
+function BdpItemRow({ number, title, type, repo, onModalOpen, previewUrl, labels, assignees, isClaudeActive, isUntouched, createdAt }: {
   number: number
   title: string
   type: 'pr' | 'issue'
@@ -551,6 +556,7 @@ function BdpItemRow({ number, title, type, repo, onModalOpen, previewUrl, labels
   assignees: { login: string }[]
   isClaudeActive?: boolean
   isUntouched?: boolean
+  createdAt?: string
 }) {
   return (
     <div className={`bdp-item${isUntouched ? ' untouched-issue' : ''}`}>
@@ -577,6 +583,11 @@ function BdpItemRow({ number, title, type, repo, onModalOpen, previewUrl, labels
         </button>
       </div>
       <div className="bdp-item-right">
+        {createdAt && (
+          <span className="bdp-branch-date" title={`Opened ${new Date(createdAt).toLocaleString()}`}>
+            {new Date(createdAt).toLocaleDateString()}
+          </span>
+        )}
         {previewUrl && (
           <a
             href={previewUrl}
