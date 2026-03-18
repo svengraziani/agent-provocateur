@@ -50,7 +50,7 @@ export default function App() {
             end
             className={({ isActive }) => `nav-btn${isActive ? ' active' : ''}`}
           >
-            &#x25a0; Dashboard
+            &#x25a0; Dashboard!
           </NavLink>
           <NavLink
             to="/battlefield"
