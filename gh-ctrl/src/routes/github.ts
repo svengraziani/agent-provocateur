@@ -115,7 +115,7 @@ function fetchRunningWorkflows(fullName: string): RunningWorkflowsResult {
 function fetchRepoData(fullName: string) {
   const prResult = gh([
     'pr', 'list', '--repo', fullName, '--json',
-    'number,title,state,reviewDecision,mergeable,headRefName,author,updatedAt,labels,isDraft,assignees',
+    'number,title,state,reviewDecision,mergeable,headRefName,author,createdAt,updatedAt,labels,isDraft,assignees',
     '--limit', '30',
   ])
 
