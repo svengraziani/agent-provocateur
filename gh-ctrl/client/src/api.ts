@@ -1,4 +1,4 @@
-import type { Repo, DashboardEntry, RepoData, GHLabel, BranchesData, IssueDetail, PRDetail, GameMap } from './types'
+import type { Repo, DashboardEntry, RepoData, GHLabel, BranchesData, IssueDetail, PRDetail, GameMap, RepoMeta } from './types'
 
 const BASE = '/api'
 
@@ -34,6 +34,25 @@ export const api = {
 
   getDashboard: () => request<DashboardEntry[]>('/github/dashboard'),
 
+  streamDashboard: (
+    onEntry: (entry: DashboardEntry) => void,
+    onDone: () => void
+  ): (() => void) => {
+    const es = new EventSource(`${BASE}/github/dashboard/stream`)
+    es.addEventListener('repo', (e: Event) => {
+      onEntry(JSON.parse((e as MessageEvent).data))
+    })
+    es.addEventListener('done', () => {
+      es.close()
+      onDone()
+    })
+    es.onerror = () => {
+      es.close()
+      onDone()
+    }
+    return () => es.close()
+  },
+
   getRepoData: (owner: string, name: string) =>
     request<RepoData>(`/github/repo/${owner}/${name}`),
 
@@ -42,6 +61,9 @@ export const api = {
 
   getBranches: (owner: string, name: string) =>
     request<BranchesData>(`/github/branches/${owner}/${name}`),
+
+  getRepoMeta: (owner: string, name: string) =>
+    request<RepoMeta>(`/github/meta/${owner}/${name}`),
 
   triggerClaude: (params: {
     fullName: string
@@ -114,7 +136,7 @@ export const api = {
     }),
 
   getCollaborators: (owner: string, name: string) =>
-    request<string[]>(`/github/collaborators/${owner}/${name}`),
+    request<{ login: string }[]>(`/github/collaborators/${owner}/${name}`),
 
   createPR: (params: {
     fullName: string
@@ -175,9 +197,6 @@ export const api = {
       body: JSON.stringify(params),
     })
   },
-
-  getCollaborators: (owner: string, name: string) =>
-    request<{ login: string }[]>(`/github/collaborators/${owner}/${name}`),
 
   addAssignee: (params: {
     fullName: string

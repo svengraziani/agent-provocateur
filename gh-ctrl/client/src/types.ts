@@ -124,6 +124,31 @@ export interface MapTile {
   color: string
 }
 
+export interface RepoMetaLanguage {
+  name: string
+  color: string
+  percentage: number
+}
+
+export interface RepoMetaContributor {
+  login: string
+  avatarUrl: string
+  contributions: number
+}
+
+export interface RepoMeta {
+  stars: number
+  forks: number
+  watchers: number
+  primaryLanguage: { name: string; color: string } | null
+  languages: RepoMetaLanguage[]
+  topics: string[]
+  contributors: RepoMetaContributor[]
+  commitWeeks: number[] // last 26 weeks of commit counts
+  createdAt: string
+  pushedAt: string
+}
+
 export interface GameMap {
   id: number
   name: string
