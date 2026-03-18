@@ -433,6 +433,7 @@ export function MapEditor() {
   const [tool, setTool] = useState<Tool>('paint')
   const [selectedType, setSelectedType] = useState<TileKey>('ground')
   const [customColor, setCustomColor] = useState('#00ff88')
+  const [brushSize, setBrushSize] = useState(1)
   const [hoveredTile, setHoveredTile] = useState<{ col: number; row: number } | null>(null)
   const [isPainting, setIsPainting] = useState(false)
 
@@ -454,12 +455,14 @@ export function MapEditor() {
   const zoomRef = useRef(zoom)
   const offsetRef = useRef(offset)
   const mapRef = useRef(currentMap)
+  const brushSizeRef = useRef(brushSize)
 
   useEffect(() => { tilesRef.current = tiles }, [tiles])
   useEffect(() => { hoveredRef.current = hoveredTile }, [hoveredTile])
   useEffect(() => { zoomRef.current = zoom }, [zoom])
   useEffect(() => { offsetRef.current = offset }, [offset])
   useEffect(() => { mapRef.current = currentMap }, [currentMap])
+  useEffect(() => { brushSizeRef.current = brushSize }, [brushSize])
 
   // Load all maps on mount
   useEffect(() => {
@@ -502,7 +505,9 @@ export function MapEditor() {
         const key = `${col},${row}`
         const tile = currentTiles[key]
         const { x: sx, y: sy } = toScreenPos(col, row, 0, 0)
-        const isHovered = hov?.col === col && hov?.row === row
+        const bs = brushSizeRef.current
+        const isHovered = hov !== null &&
+          Math.abs(col - hov.col) < bs && Math.abs(row - hov.row) < bs
 
         if (tile) {
           drawIsoTile(ctx, sx, sy, tile.color, isHovered)
@@ -548,29 +553,38 @@ export function MapEditor() {
   const applyTool = useCallback((col: number, row: number) => {
     const map = mapRef.current
     if (!map) return
-    if (col < 0 || col >= map.width || row < 0 || row >= map.height) return
 
-    const key = `${col},${row}`
-
-    if (tool === 'erase') {
-      setTiles(prev => {
-        const next = { ...prev }
-        delete next[key]
-        return next
-      })
-      setIsDirty(true)
-    } else if (tool === 'paint') {
-      const color = getActiveTileColor()
-      setTiles(prev => ({ ...prev, [key]: { type: selectedType, color } }))
-      setIsDirty(true)
-    } else if (tool === 'fill') {
+    if (tool === 'fill') {
+      if (col < 0 || col >= map.width || row < 0 || row >= map.height) return
       const color = getActiveTileColor()
       setTiles(prev => {
         const result = floodFill(prev, col, row, { type: selectedType, color }, map.width, map.height)
         return result
       })
       setIsDirty(true)
+      return
     }
+
+    const radius = brushSizeRef.current - 1
+    const color = getActiveTileColor()
+    setTiles(prev => {
+      const next = { ...prev }
+      for (let dr = -radius; dr <= radius; dr++) {
+        for (let dc = -radius; dc <= radius; dc++) {
+          const c = col + dc
+          const r = row + dr
+          if (c < 0 || c >= map.width || r < 0 || r >= map.height) continue
+          const key = `${c},${r}`
+          if (tool === 'erase') {
+            delete next[key]
+          } else {
+            next[key] = { type: selectedType, color }
+          }
+        }
+      }
+      return next
+    })
+    setIsDirty(true)
   }, [tool, selectedType, getActiveTileColor])
 
   // ── Mouse handlers ──────────────────────────────────────────────────────────
@@ -841,6 +855,21 @@ export function MapEditor() {
               <span className="color-hex-label">{customColor.toUpperCase()}</span>
             </div>
           )}
+
+          <div className="palette-divider" />
+          <div className="palette-section-title">BRUSH SIZE</div>
+          <div className="palette-brush-size">
+            {[1, 2, 3, 4, 5].map(size => (
+              <button
+                key={size}
+                className={`brush-size-btn${brushSize === size ? ' active' : ''}`}
+                onClick={() => setBrushSize(size)}
+                title={`${size * 2 - 1}×${size * 2 - 1} brush`}
+              >
+                {size}
+              </button>
+            ))}
+          </div>
 
           <div className="palette-divider" />
           <div className="palette-section-title">ACTIVE</div>
