@@ -86,6 +86,7 @@ export function ConstructDialog({ entry, onClose, onSuccess, onError }: Props) {
       className="construct-overlay"
       onClick={onClose}
       onKeyDown={handleOverlayKeyDown}
+      onWheel={(e) => e.stopPropagation()}
     >
       <div
         className="construct-dialog"
