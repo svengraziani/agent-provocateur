@@ -348,7 +348,8 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
         <div className="bdp-section">
           <div className="bdp-section-title claude">&#x2605; CLAUDE ISSUES</div>
           {data.claudeIssues.slice(0, 4).map((issue: GHIssue) => {
-            const claudeBranch = (data.claudeIssueBranches ?? {})[issue.number]
+            const isActive = activeClaudeSet.has(issue.number)
+            const prLink = !isActive ? (data.claudeIssuePRLinks ?? {})[issue.number] : undefined
             return (
               <BdpItemRow
                 key={issue.number}
@@ -359,8 +360,8 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
                 onModalOpen={onModalOpen}
                 labels={issue.labels}
                 assignees={issue.assignees}
-                isClaudeActive={activeClaudeSet.has(issue.number)}
-                onPR={() => onModalOpen({ mode: 'create-pr', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, head: claudeBranch || undefined })}
+                isClaudeActive={isActive}
+                onPR={prLink ? () => onModalOpen({ mode: 'create-pr', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, head: prLink.head, base: prLink.base, title: prLink.title, prBody: prLink.body, issueNumber: issue.number }) : undefined}
               />
             )
           })}
@@ -434,7 +435,6 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
               assignees={issue.assignees}
               isClaudeActive={activeClaudeSet.has(issue.number)}
               isUntouched
-              onPR={() => onModalOpen({ mode: 'create-pr', fullName: repo.fullName, owner: repo.owner, repoName: repo.name })}
             />
           ))}
         </div>

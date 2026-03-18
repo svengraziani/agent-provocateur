@@ -40,8 +40,8 @@ export function RepoCard({ entry }: Props) {
     setModalState({ mode: 'assignee', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, number, type, currentAssignees })
   }
 
-  const openCreatePR = (head?: string) => {
-    setModalState({ mode: 'create-pr', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, head })
+  const openCreatePR = (head?: string, base?: string, title?: string, prBody?: string, issueNumber?: number) => {
+    setModalState({ mode: 'create-pr', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, head, base, title, prBody, issueNumber })
   }
 
   const openCreateIssue = () => {
@@ -185,9 +185,8 @@ export function RepoCard({ entry }: Props) {
             <div className="card-section">
               <div className="card-section-title claude">Claude Issues</div>
               {data.claudeIssues.map((issue: GHIssue) => {
-                const claudeBranch = (data.claudeIssueBranches ?? {})[issue.number]
                 const isActive = activeClaudeSet.has(issue.number)
-                const showCreatePR = !!claudeBranch && !isActive
+                const prLink = !isActive ? (data.claudeIssuePRLinks ?? {})[issue.number] : undefined
                 return (
                   <ItemRow
                     key={issue.number}
@@ -200,9 +199,8 @@ export function RepoCard({ entry }: Props) {
                     onComment={() => openComment(issue.number, 'issue')}
                     onLabel={() => openLabel(issue.number, 'issue', issue.labels.map((l) => l.name))}
                     onAssignee={() => openAssignee(issue.number, 'issue', issue.assignees.map((a) => a.login))}
-                      onPR={() => openCreatePR(claudeBranch || undefined)}
                     onDetail={() => openIssueDetail(issue.number)}
-                    onCreatePR={showCreatePR ? () => openCreatePR(claudeBranch) : undefined}
+                    onCreatePR={prLink ? () => openCreatePR(prLink.head, prLink.base, prLink.title, prLink.body, issue.number) : undefined}
                   />
                 )
               })}
@@ -253,7 +251,6 @@ export function RepoCard({ entry }: Props) {
                   onComment={() => openComment(issue.number, 'issue')}
                   onLabel={() => openLabel(issue.number, 'issue', issue.labels.map((l) => l.name))}
                   onAssignee={() => openAssignee(issue.number, 'issue', issue.assignees.map((a) => a.login))}
-                  onPR={() => openCreatePR()}
                   onDetail={() => openIssueDetail(issue.number)}
                 />
               ))}

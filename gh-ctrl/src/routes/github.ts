@@ -52,6 +52,49 @@ function fetchNetlifyUrls(fullName: string, prs: any[]): Record<number, string> 
 
 const CLAUDE_BRANCH_RE = /^claude\/issue-(\d+)-/
 
+interface ClaudeIssuePRInfo {
+  head: string
+  base: string
+  title: string
+  body: string
+}
+
+function parseGitHubComparePRLink(urlStr: string): ClaudeIssuePRInfo | null {
+  try {
+    const url = new URL(urlStr)
+    const compareMatch = url.pathname.match(/\/compare\/(.+)$/)
+    if (!compareMatch) return null
+    const comparePart = compareMatch[1]
+    const sepIdx = comparePart.indexOf('...')
+    if (sepIdx === -1) return null
+    const base = comparePart.slice(0, sepIdx)
+    const head = comparePart.slice(sepIdx + 3)
+    if (!base || !head) return null
+    const title = decodeURIComponent(url.searchParams.get('title') || '')
+    const body = decodeURIComponent(url.searchParams.get('body') || '')
+    return { base, head, title, body }
+  } catch {
+    return null
+  }
+}
+
+function fetchClaudeIssuePRLinks(fullName: string, issueNumbers: number[]): Record<number, ClaudeIssuePRInfo> {
+  if (issueNumbers.length === 0) return {}
+  const result: Record<number, ClaudeIssuePRInfo> = {}
+  for (const issueNumber of issueNumbers) {
+    const res = gh(['issue', 'view', String(issueNumber), '--repo', fullName, '--json', 'comments'])
+    if (res.error || !Array.isArray(res.data?.comments)) continue
+    const comments: { body: string }[] = res.data.comments
+    for (const comment of [...comments].reverse()) {
+      const m = comment.body?.match(/\[Create a PR\]\((https:\/\/github\.com\/[^)]+)\)/)
+      if (!m) continue
+      const info = parseGitHubComparePRLink(m[1])
+      if (info) { result[issueNumber] = info; break }
+    }
+  }
+  return result
+}
+
 function fetchClaudeIssueBranches(fullName: string): Record<number, string> {
   const result = gh(['api', `repos/${fullName}/branches?per_page=100`])
   if (result.error || !Array.isArray(result.data)) return {}
@@ -136,6 +179,7 @@ function fetchRepoData(fullName: string) {
       claudeIssues: [],
       activeClaudeIssues: [],
       claudeIssueBranches: {},
+      claudeIssuePRLinks: {},
       runningWorkflows: [],
       error: prResult.error || issueResult.error,
     }
@@ -164,6 +208,7 @@ function fetchRepoData(fullName: string) {
 
   const { activeClaudeIssues, runningWorkflows } = fetchRunningWorkflows(fullName)
   const claudeIssueBranches = fetchClaudeIssueBranches(fullName)
+  const claudeIssuePRLinks = fetchClaudeIssuePRLinks(fullName, claudeIssues.map((i: any) => i.number))
 
   return {
     fullName,
@@ -184,6 +229,7 @@ function fetchRepoData(fullName: string) {
     claudeIssues,
     activeClaudeIssues,
     claudeIssueBranches,
+    claudeIssuePRLinks,
     runningWorkflows,
     error: null,
   }
