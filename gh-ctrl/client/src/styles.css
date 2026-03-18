@@ -2688,6 +2688,41 @@ select.input {
   line-height: 1.6;
 }
 
+.palette-brush-size {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  flex-wrap: wrap;
+}
+
+.brush-size-btn {
+  flex: 1;
+  min-width: 20px;
+  height: 24px;
+  background: transparent;
+  border: 1px solid rgba(57,255,20,0.25);
+  color: var(--text-2);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: all 0.12s;
+  padding: 0;
+}
+
+.brush-size-btn:hover {
+  background: rgba(57,255,20,0.06);
+  border-color: rgba(57,255,20,0.4);
+  color: var(--text);
+}
+
+.brush-size-btn.active {
+  background: rgba(57,255,20,0.15);
+  border-color: rgba(57,255,20,0.6);
+  color: var(--crt-green);
+  text-shadow: 0 0 6px rgba(57,255,20,0.4);
+}
+
 /* ── Canvas area ── */
 .map-canvas-container {
   flex: 1;
