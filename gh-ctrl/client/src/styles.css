@@ -227,6 +227,25 @@ a:hover { text-decoration: underline; }
   border-color: var(--red);
 }
 
+.repo-card.repo-card-skeleton {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.skeleton-line {
+  height: 10px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--border) 25%, var(--border-2) 50%, var(--border) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+
 .card-color-bar {
   width: 4px;
   flex-shrink: 0;
@@ -1472,6 +1491,37 @@ select.input {
   z-index: 5;
 }
 
+.base-node-ghost {
+  position: absolute;
+  width: 100px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px 8px;
+  border: 1px dashed;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.base-node-ghost-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 88px;
+}
+
+.base-node-ghost-status {
+  font-size: 14px;
+  opacity: 0.7;
+}
+
 /* Status glow via drop-shadow on the building image */
 .base-node.base-ok .base-building img {
   filter: drop-shadow(0 4px 8px rgba(57, 255, 20, 0.35));
@@ -2049,6 +2099,24 @@ select.input {
   padding: 6px 10px;
   font-size: 10px;
   color: var(--red);
+}
+
+/* Meta section inside the detail panel */
+.bdp-meta-section {
+  padding: 0;
+}
+.bdp-meta-section .repo-meta-strip {
+  border: none;
+  border-top: 1px solid rgba(57, 255, 20, 0.08);
+  background: transparent;
+  padding: 6px 10px;
+}
+
+.meta-no-intel {
+  font-size: 9px;
+  color: var(--text-3);
+  opacity: 0.6;
+  font-style: italic;
 }
 
 /* ---- Minimap ---- */
@@ -2636,6 +2704,41 @@ select.input {
   line-height: 1.6;
 }
 
+.palette-brush-size {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  flex-wrap: wrap;
+}
+
+.brush-size-btn {
+  flex: 1;
+  min-width: 20px;
+  height: 24px;
+  background: transparent;
+  border: 1px solid rgba(57,255,20,0.25);
+  color: var(--text-2);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: all 0.12s;
+  padding: 0;
+}
+
+.brush-size-btn:hover {
+  background: rgba(57,255,20,0.06);
+  border-color: rgba(57,255,20,0.4);
+  color: var(--text);
+}
+
+.brush-size-btn.active {
+  background: rgba(57,255,20,0.15);
+  border-color: rgba(57,255,20,0.6);
+  color: var(--crt-green);
+  text-shadow: 0 0 6px rgba(57,255,20,0.4);
+}
+
 /* ── Canvas area ── */
 .map-canvas-container {
   flex: 1;
@@ -3105,4 +3208,190 @@ select.input {
 @keyframes voice-pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }
+}
+
+/* ── Repo Meta Strip ─────────────────────────────────────────────────────── */
+
+.repo-meta-strip {
+  position: relative;
+  width: 100%;
+  background: rgba(10, 21, 16, 0.88);
+  border: 1px solid rgba(57, 255, 20, 0.18);
+  border-top: none;
+  padding: 4px 6px;
+  font-size: 9px;
+  font-family: var(--font-mono);
+  color: var(--text-2);
+  pointer-events: all;
+}
+
+.meta-loading {
+  color: var(--text-3);
+  font-size: 9px;
+  opacity: 0.7;
+}
+
+.meta-summary-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.meta-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 9px;
+  color: var(--text-2);
+  white-space: nowrap;
+}
+
+.meta-stars { color: #e3b341; }
+.meta-forks { color: var(--text-3); }
+.meta-lang  { color: var(--text-2); }
+
+.meta-lang-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.meta-expand-btn {
+  background: none;
+  border: none;
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: 8px;
+  cursor: pointer;
+  padding: 0;
+  margin-left: auto;
+  letter-spacing: 0.5px;
+}
+
+.meta-expand-btn:hover { color: var(--text); }
+
+.meta-expanded {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 5px;
+  border-top: 1px solid rgba(57, 255, 20, 0.1);
+  padding-top: 5px;
+}
+
+.meta-row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.meta-row-label {
+  font-size: 8px;
+  color: var(--text-3);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+/* Commit sparkline */
+.meta-sparkline {
+  display: flex;
+  align-items: flex-end;
+  gap: 1px;
+  height: 22px;
+  width: 100%;
+}
+
+.meta-spark-bar {
+  flex: 1;
+  background: var(--green-neon);
+  min-height: 1px;
+  border-radius: 1px 1px 0 0;
+}
+
+/* Language bar */
+.meta-lang-bar {
+  display: flex;
+  height: 5px;
+  border-radius: 2px;
+  overflow: hidden;
+  width: 100%;
+  gap: 1px;
+}
+
+.meta-lang-seg {
+  height: 100%;
+  border-radius: 1px;
+  min-width: 2px;
+}
+
+.meta-lang-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  margin-top: 2px;
+}
+
+.meta-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 8px;
+  color: var(--text-3);
+  white-space: nowrap;
+}
+
+/* Topics */
+.meta-topics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.meta-topic-tag {
+  background: rgba(57, 255, 20, 0.07);
+  border: 1px solid rgba(57, 255, 20, 0.2);
+  border-radius: 2px;
+  padding: 1px 4px;
+  font-size: 8px;
+  color: var(--text-2);
+  white-space: nowrap;
+}
+
+/* Contributors */
+.meta-contributors {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.meta-contributor {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  text-decoration: none;
+  color: var(--text-2);
+  font-size: 9px;
+}
+
+.meta-contributor:hover { color: var(--text); text-decoration: none; }
+
+.meta-avatar {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1px solid rgba(57, 255, 20, 0.25);
+  display: block;
+  object-fit: cover;
+}
+
+.meta-contrib-login {
+  font-size: 9px;
+  color: var(--text-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 90px;
 }

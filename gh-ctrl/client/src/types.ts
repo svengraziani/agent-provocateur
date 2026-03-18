@@ -70,6 +70,13 @@ export interface WorkflowRun {
   claudeIssueNumber?: number
 }
 
+export interface ClaudeIssuePRInfo {
+  head: string
+  base: string
+  title: string
+  body: string
+}
+
 export interface RepoData {
   fullName: string
   prs: GHPR[]
@@ -79,7 +86,7 @@ export interface RepoData {
   needsReview: GHPR[]
   claudeIssues: GHIssue[]
   activeClaudeIssues: number[]
-  claudeIssueBranches: Record<number, string>
+  claudeIssuePRLinks: Record<number, ClaudeIssuePRInfo>
   runningWorkflows: WorkflowRun[]
   error: string | null
 }
@@ -118,6 +125,31 @@ export interface IssueDetail {
   url: string
   createdAt: string
   comments: { author: { login: string }; body: string; createdAt: string }[]
+}
+
+export interface RepoMetaLanguage {
+  name: string
+  color: string
+  percentage: number
+}
+
+export interface RepoMetaContributor {
+  login: string
+  avatarUrl: string
+  contributions: number
+}
+
+export interface RepoMeta {
+  stars: number
+  forks: number
+  watchers: number
+  primaryLanguage: { name: string; color: string } | null
+  languages: RepoMetaLanguage[]
+  topics: string[]
+  contributors: RepoMetaContributor[]
+  commitWeeks: number[] // last 26 weeks of commit counts
+  createdAt: string
+  pushedAt: string
 }
 
 export interface MapTile {
