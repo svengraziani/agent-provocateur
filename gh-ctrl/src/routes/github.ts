@@ -224,6 +224,16 @@ app.get('/labels/:owner/:name', async (c) => {
   return c.json(result.data || [])
 })
 
+// GET /api/github/collaborators/:owner/:name — list collaborator logins for assignee picker
+app.get('/collaborators/:owner/:name', async (c) => {
+  const owner = c.req.param('owner')
+  const name = c.req.param('name')
+  const result = gh(['api', `repos/${owner}/${name}/collaborators`])
+  if (result.error) return c.json({ error: result.error }, 500)
+  const logins = (result.data || []).map((u: any) => u.login as string)
+  return c.json(logins)
+})
+
 // GET /api/github/branches/:owner/:name — list branches for a repo, sorted by commit date desc
 app.get('/branches/:owner/:name', async (c) => {
   const owner = c.req.param('owner')
@@ -375,6 +385,29 @@ app.post('/label-trigger', async (c) => {
   return c.json({ ok: true })
 })
 
+// POST /api/github/assign — add assignees to an issue or PR
+app.post('/assign', async (c) => {
+  const body = await c.req.json()
+  const { fullName, number, type, assignees } = body
+
+  if (!fullName || !number || !type || !assignees?.length) {
+    return c.json({ error: 'Missing required fields: fullName, number, type, assignees' }, 400)
+  }
+
+  const ghType = type === 'pr' ? 'pr' : 'issue'
+  const args = [ghType, 'edit', String(number), '--repo', fullName]
+  for (const login of assignees) {
+    args.push('--add-assignee', login)
+  }
+
+  const proc = Bun.spawnSync(['gh', ...args], { env: { ...process.env } })
+  if (proc.exitCode !== 0) {
+    return c.json({ error: proc.stderr.toString() }, 500)
+  }
+
+  return c.json({ ok: true })
+})
+
 // GET /api/github/issue/:owner/:name/:number — fetch issue details
 app.get('/issue/:owner/:name/:number', async (c) => {
   const owner = c.req.param('owner')
@@ -483,7 +516,7 @@ app.post('/create-repo', async (c) => {
 // POST /api/github/create-pr — create a PR from a branch
 app.post('/create-pr', async (c) => {
   const body = await c.req.json()
-  const { fullName, head, base, title, prBody } = body
+  const { fullName, head, base, title, prBody, assignees } = body
 
   if (!fullName || !head || !base || !title) {
     return c.json({ error: 'Missing required fields: fullName, head, base, title' }, 400)
@@ -491,6 +524,7 @@ app.post('/create-pr', async (c) => {
 
   const args = ['pr', 'create', '--repo', fullName, '--head', head, '--base', base, '--title', title]
   if (prBody) args.push('--body', prBody)
+  if (assignees && assignees.length > 0) args.push('--assignee', assignees.join(','))
 
   const proc = Bun.spawnSync(['gh', ...args], { env: { ...process.env } })
 
