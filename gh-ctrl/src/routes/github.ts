@@ -76,6 +76,7 @@ interface WorkflowRun {
   status: 'in_progress' | 'queued' | 'waiting'
   headBranch: string
   workflowName: string
+  claudeIssueNumber?: number
 }
 
 interface RunningWorkflowsResult {
@@ -97,15 +98,17 @@ function fetchRunningWorkflows(fullName: string): RunningWorkflowsResult {
   for (const run of result.data) {
     const status = run.status as string
     if (status === 'in_progress' || status === 'queued' || status === 'waiting') {
+      const match = run.headBranch?.match(CLAUDE_BRANCH_RE)
+      const claudeIssueNumber = match ? Number(match[1]) : undefined
+      if (claudeIssueNumber !== undefined) activeIssues.add(claudeIssueNumber)
       runningWorkflows.push({
         databaseId: run.databaseId,
         name: run.name || '',
         status: status as WorkflowRun['status'],
         headBranch: run.headBranch || '',
         workflowName: run.workflowName || run.name || '',
+        ...(claudeIssueNumber !== undefined ? { claudeIssueNumber } : {}),
       })
-      const match = run.headBranch?.match(CLAUDE_BRANCH_RE)
-      if (match) activeIssues.add(Number(match[1]))
     }
   }
 

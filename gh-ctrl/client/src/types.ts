@@ -67,6 +67,7 @@ export interface WorkflowRun {
   status: 'in_progress' | 'queued' | 'waiting'
   headBranch: string
   workflowName: string
+  claudeIssueNumber?: number
 }
 
 export interface RepoData {
