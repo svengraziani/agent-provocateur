@@ -11,7 +11,7 @@ export type ModalState =
   | { mode: 'assignee'; fullName: string; owner: string; repoName: string; number: number; type: 'pr' | 'issue'; currentAssignees: string[] }
   | { mode: 'create-pr'; fullName: string; owner: string; repoName: string; head?: string; base?: string; title?: string; prBody?: string; issueNumber?: number }
   | { mode: 'create-issue'; fullName: string; owner: string; repoName: string }
-  | { mode: 'issue-detail'; fullName: string; owner: string; repoName: string; number: number }
+  | { mode: 'issue-detail'; fullName: string; owner: string; repoName: string; number: number; prLink?: { head: string; base: string; title: string; body: string } }
   | { mode: 'pr-detail'; fullName: string; owner: string; repoName: string; number: number }
   | { mode: 'trigger-claude'; fullName: string; number: number; type: 'pr' | 'issue' }
   | { mode: 'assign'; fullName: string; owner: string; repoName: string; number: number; type: 'pr' | 'issue'; currentAssignees: string[] }
@@ -929,7 +929,7 @@ function IssueDetailView({ state, onClose, onError, onTransition }: {
                 <button
                   type="button"
                   className="btn btn-success btn-sm"
-                  onClick={() => onTransition({ mode: 'create-pr', fullName: state.fullName, owner: state.owner, repoName: state.repoName, issueNumber: state.number })}
+                  onClick={() => onTransition({ mode: 'create-pr', fullName: state.fullName, owner: state.owner, repoName: state.repoName, issueNumber: state.number, ...(state.prLink ? { head: state.prLink.head, base: state.prLink.base, title: state.prLink.title, prBody: state.prLink.body } : {}) })}
                 >
                   @pr
                 </button>

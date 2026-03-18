@@ -361,6 +361,7 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
                 labels={issue.labels}
                 assignees={issue.assignees}
                 isClaudeActive={isActive}
+                prLink={prLink}
                 onPR={prLink ? () => onModalOpen({ mode: 'create-pr', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, head: prLink.head, base: prLink.base, title: prLink.title, prBody: prLink.body, issueNumber: issue.number }) : undefined}
               />
             )
@@ -550,7 +551,7 @@ function PRBuilding({ pr, position, repo, onModalOpen }: {
   )
 }
 
-function BdpItemRow({ number, title, type, repo, onModalOpen, previewUrl, labels, assignees, isClaudeActive, isUntouched, createdAt, onPR }: {
+function BdpItemRow({ number, title, type, repo, onModalOpen, previewUrl, labels, assignees, isClaudeActive, isUntouched, createdAt, onPR, prLink }: {
   number: number
   title: string
   type: 'pr' | 'issue'
@@ -563,6 +564,7 @@ function BdpItemRow({ number, title, type, repo, onModalOpen, previewUrl, labels
   isUntouched?: boolean
   createdAt?: string
   onPR?: () => void
+  prLink?: { head: string; base: string; title: string; body: string }
 }) {
   return (
     <div className={`bdp-item${isUntouched ? ' untouched-issue' : ''}`}>
@@ -580,7 +582,7 @@ function BdpItemRow({ number, title, type, repo, onModalOpen, previewUrl, labels
           className="bdp-text-btn"
           onClick={() => onModalOpen(
             type === 'issue'
-              ? { mode: 'issue-detail', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, number }
+              ? { mode: 'issue-detail', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, number, prLink }
               : { mode: 'pr-detail', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, number }
           )}
           title="View details"

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { DashboardEntry, GHPR, GHIssue, Branch } from '../types'
+import type { DashboardEntry, GHPR, GHIssue, Branch, ClaudeIssuePRInfo } from '../types'
 import { api } from '../api'
 import { ActionModal } from './ActionModal'
 import type { ModalState } from './ActionModal'
@@ -48,8 +48,8 @@ export function RepoCard({ entry }: Props) {
     setModalState({ mode: 'create-issue', fullName: repo.fullName, owner: repo.owner, repoName: repo.name })
   }
 
-  const openIssueDetail = (number: number) => {
-    setModalState({ mode: 'issue-detail', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, number })
+  const openIssueDetail = (number: number, prLink?: ClaudeIssuePRInfo) => {
+    setModalState({ mode: 'issue-detail', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, number, prLink })
   }
 
   const openPRDetail = (number: number) => {
@@ -199,7 +199,7 @@ export function RepoCard({ entry }: Props) {
                     onComment={() => openComment(issue.number, 'issue')}
                     onLabel={() => openLabel(issue.number, 'issue', issue.labels.map((l) => l.name))}
                     onAssignee={() => openAssignee(issue.number, 'issue', issue.assignees.map((a) => a.login))}
-                    onDetail={() => openIssueDetail(issue.number)}
+                    onDetail={() => openIssueDetail(issue.number, prLink)}
                     onCreatePR={prLink ? () => openCreatePR(prLink.head, prLink.base, prLink.title, prLink.body, issue.number) : undefined}
                   />
                 )
