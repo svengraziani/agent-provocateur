@@ -238,22 +238,27 @@ export function RepoCard({ entry }: Props) {
                 <span>{showAllIssues ? '▾' : '▸'}</span>
                 All Issues ({remainingIssues.length} more) <span className="untouched-count-badge" title="Issues with no @claude interaction">● {remainingIssues.length} untouched</span>
               </button>
-              {showAllIssues && remainingIssues.map((issue: GHIssue) => (
-                <ItemRow
-                  key={issue.number}
-                  number={issue.number}
-                  title={issue.title}
-                  labels={issue.labels}
-                  assignees={issue.assignees}
-                  isClaudeActive={activeClaudeSet.has(issue.number)}
-                  isUntouched
-                  onClaude={() => openTriggerClaude(issue.number, 'issue')}
-                  onComment={() => openComment(issue.number, 'issue')}
-                  onLabel={() => openLabel(issue.number, 'issue', issue.labels.map((l) => l.name))}
-                  onAssignee={() => openAssignee(issue.number, 'issue', issue.assignees.map((a) => a.login))}
-                  onDetail={() => openIssueDetail(issue.number)}
-                />
-              ))}
+              {showAllIssues && remainingIssues.map((issue: GHIssue) => {
+                const isActive = activeClaudeSet.has(issue.number)
+                const prLink = !isActive ? (data.claudeIssuePRLinks ?? {})[issue.number] : undefined
+                return (
+                  <ItemRow
+                    key={issue.number}
+                    number={issue.number}
+                    title={issue.title}
+                    labels={issue.labels}
+                    assignees={issue.assignees}
+                    isClaudeActive={isActive}
+                    isUntouched
+                    onClaude={() => openTriggerClaude(issue.number, 'issue')}
+                    onComment={() => openComment(issue.number, 'issue')}
+                    onLabel={() => openLabel(issue.number, 'issue', issue.labels.map((l) => l.name))}
+                    onAssignee={() => openAssignee(issue.number, 'issue', issue.assignees.map((a) => a.login))}
+                    onDetail={() => openIssueDetail(issue.number, prLink)}
+                    onCreatePR={prLink ? () => openCreatePR(prLink.head, prLink.base, prLink.title, prLink.body, issue.number) : undefined}
+                  />
+                )
+              })}
             </div>
           )}
 
@@ -312,7 +317,7 @@ function labelTextColor(hex: string): string {
 }
 
 function ItemRow({
-  number, title, labels, assignees, badge, previewUrl, isClaudeActive, isUntouched, onClaude, onComment, onLabel, onAssignee, onDetail, onCreatePR, onPR,
+  number, title, labels, assignees, badge, previewUrl, isClaudeActive, isUntouched, onClaude, onComment, onLabel, onAssignee, onDetail, onCreatePR,
 }: {
   number: number
   title: string
@@ -328,7 +333,6 @@ function ItemRow({
   onAssignee: () => void
   onDetail?: () => void
   onCreatePR?: () => void
-  onPR?: () => void
 }) {
   return (
     <div className={`list-item${isUntouched ? ' untouched-issue' : ''}`}>
@@ -401,11 +405,6 @@ function ItemRow({
         <button className="btn btn-ghost btn-xs item-claude-btn" onClick={onComment} title="Post comment">
           <CommentIcon size={12} />
         </button>
-        {onPR && (
-          <button className="btn btn-success btn-xs item-claude-btn" onClick={onPR} title="Create pull request">
-            @pr
-          </button>
-        )}
         <button className="btn btn-claude item-claude-btn" onClick={onClaude}>
           @claude
         </button>

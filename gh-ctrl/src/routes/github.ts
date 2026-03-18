@@ -81,7 +81,7 @@ function parseGitHubComparePRLink(urlStr: string): ClaudeIssuePRInfo | null {
 const PR_LINKS_CACHE_TTL_MS = 30_000
 const prLinksCache = new Map<string, { data: Record<number, ClaudeIssuePRInfo>; expiresAt: number }>()
 
-function fetchClaudeIssuePRLinks(fullName: string, issueNumbers: number[]): Record<number, ClaudeIssuePRInfo> {
+function fetchClaudeIssuePRLinks(fullName: string, issueNumbers: number[], existingPrHeads: Set<string>): Record<number, ClaudeIssuePRInfo> {
   if (issueNumbers.length === 0) return {}
 
   const cached = prLinksCache.get(fullName)
@@ -93,10 +93,10 @@ function fetchClaudeIssuePRLinks(fullName: string, issueNumbers: number[]): Reco
     if (res.error || !Array.isArray(res.data?.comments)) continue
     const comments: { body: string }[] = res.data.comments
     for (const comment of [...comments].reverse()) {
-      const m = comment.body?.match(/\[Create a PR\]\((https:\/\/github\.com\/[^)]+)\)/)
+      const m = comment.body?.match(/\[Create (?:a )?PR[^\]]*\]\((https:\/\/github\.com\/[^)]+)\)/)
       if (!m) continue
       const info = parseGitHubComparePRLink(m[1])
-      if (info) { result[issueNumber] = info; break }
+      if (info && !existingPrHeads.has(info.head)) { result[issueNumber] = info; break }
     }
   }
 
@@ -197,7 +197,8 @@ function fetchRepoData(fullName: string) {
   )
 
   const { activeClaudeIssues, runningWorkflows } = fetchRunningWorkflows(fullName)
-  const claudeIssuePRLinks = fetchClaudeIssuePRLinks(fullName, claudeIssues.map((i: any) => i.number))
+  const existingPrHeads = new Set<string>(prs.map((pr: any) => pr.headRefName as string))
+  const claudeIssuePRLinks = fetchClaudeIssuePRLinks(fullName, issues.map((i: any) => i.number), existingPrHeads)
 
   return {
     fullName,
