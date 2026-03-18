@@ -1434,120 +1434,72 @@ select.input {
 /* ---- Base Node ---- */
 .base-node {
   position: absolute;
-  width: 130px;
+  width: 140px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
-  padding: 10px 8px 8px;
-  background: rgba(13, 17, 23, 0.92);
-  /* Directional borders: lit top/left, shadowed right/bottom for 3D illusion */
-  border-top: 1px solid var(--base-color, var(--crt-green));
-  border-left: 1px solid var(--base-color, var(--crt-green));
-  border-right: 1px solid color-mix(in srgb, var(--base-color, var(--crt-green)) 30%, #000);
-  border-bottom: 1px solid color-mix(in srgb, var(--base-color, var(--crt-green)) 30%, #000);
-  /* Stacked diagonal shadows going down-right for depth */
-  box-shadow:
-    3px 3px 0 color-mix(in srgb, var(--base-color, var(--crt-green)) 18%, #000),
-    6px 6px 0 color-mix(in srgb, var(--base-color, var(--crt-green)) 8%, #000),
-    9px 9px 0 rgba(0, 0, 0, 0.5),
-    0 0 14px rgba(0, 0, 0, 0.5);
-  transition: box-shadow 0.2s, border-color 0.2s;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  gap: 0;
   font-family: var(--font-mono);
-}
-
-/* Right wall of the 3D isometric block */
-.base-node::before {
-  content: '';
-  position: absolute;
-  top: 7px;
-  left: 100%;
-  width: 9px;
-  height: 100%;
-  background: color-mix(in srgb, var(--base-color, var(--crt-green)) 6%, rgba(0, 0, 0, 0.88));
-  border-top: 1px solid color-mix(in srgb, var(--base-color, var(--crt-green)) 30%, transparent);
-  border-right: 1px solid rgba(0, 0, 0, 0.5);
-  transform: skewY(30deg);
-  transform-origin: top left;
-  pointer-events: none;
-}
-
-/* Bottom wall of the 3D isometric block */
-.base-node::after {
-  content: '';
-  position: absolute;
-  top: 100%;
-  left: 7px;
-  width: 100%;
-  height: 9px;
-  background: color-mix(in srgb, var(--base-color, var(--crt-green)) 4%, rgba(0, 0, 0, 0.85));
-  border-left: 1px solid color-mix(in srgb, var(--base-color, var(--crt-green)) 20%, transparent);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.5);
-  transform: skewX(30deg);
-  transform-origin: top left;
-  pointer-events: none;
+  transition: z-index 0s;
 }
 
 .base-node:hover {
-  box-shadow:
-    3px 3px 0 color-mix(in srgb, var(--base-color, var(--crt-green)) 30%, #000),
-    6px 6px 0 color-mix(in srgb, var(--base-color, var(--crt-green)) 15%, #000),
-    9px 9px 0 rgba(0, 0, 0, 0.5),
-    0 0 20px var(--base-color, var(--crt-green)),
-    0 0 6px var(--base-color, var(--crt-green));
   z-index: 5;
 }
 
-.base-node.base-conflict {
-  border-color: var(--crt-red) !important;
-  box-shadow:
-    3px 3px 0 rgba(248, 81, 73, 0.3),
-    6px 6px 0 rgba(248, 81, 73, 0.15),
-    9px 9px 0 rgba(0, 0, 0, 0.5),
-    0 0 14px rgba(248, 81, 73, 0.4);
-  animation: construct-glow 1.5s ease-in-out infinite;
+/* Status glow via drop-shadow on the building image */
+.base-node.base-ok .base-building img {
+  filter: drop-shadow(0 4px 8px rgba(57, 255, 20, 0.35));
+}
+
+.base-node.base-conflict .base-building img {
+  filter: drop-shadow(0 4px 12px rgba(248, 81, 73, 0.7));
   --base-color: var(--crt-red);
 }
 
-.base-node.base-review {
-  border-color: var(--crt-amber) !important;
+.base-node.base-review .base-building img {
+  filter: drop-shadow(0 4px 10px rgba(240, 136, 62, 0.6));
   --base-color: var(--crt-amber);
 }
 
-.base-node.base-claude {
-  border-color: var(--purple) !important;
+.base-node.base-claude .base-building img {
+  filter: drop-shadow(0 4px 12px rgba(188, 140, 255, 0.65));
   --base-color: var(--purple);
 }
 
-.base-node.relocate-mode {
-  border-style: dashed;
+.base-node.base-conflict .base-building img {
+  animation: construct-glow-filter 1.5s ease-in-out infinite;
 }
 
-.base-node.relocate-mode:hover {
-  border-style: solid;
-  box-shadow: 0 0 20px var(--base-color, var(--crt-green));
+@keyframes construct-glow-filter {
+  0%, 100% { filter: drop-shadow(0 4px 12px rgba(248, 81, 73, 0.7)); }
+  50%       { filter: drop-shadow(0 4px 20px rgba(248, 81, 73, 1.0)); }
+}
+
+.base-node.relocate-mode .base-building {
+  outline: 2px dashed var(--base-color, var(--crt-green));
+  outline-offset: 2px;
 }
 
 .base-node.relocating {
   opacity: 0.85;
   z-index: 20;
-  box-shadow:
-    4px 4px 0 color-mix(in srgb, var(--base-color, var(--crt-green)) 35%, #000),
-    8px 8px 0 color-mix(in srgb, var(--base-color, var(--crt-green)) 18%, #000),
-    12px 12px 0 rgba(0, 0, 0, 0.5),
-    0 16px 40px rgba(0, 0, 0, 0.7),
-    0 0 24px var(--base-color, var(--crt-green));
 }
 
-/* Beacons */
+/* Beacons — overlaid on the top of the building */
 .base-beacons {
   position: absolute;
-  top: -12px;
+  top: 0px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
   gap: 4px;
   z-index: 3;
+  pointer-events: none;
 }
 
 .base-beacon {
@@ -1578,12 +1530,41 @@ select.input {
   font-size: 18px;
 }
 
-/* Building graphic — isometric SVG 3D building */
+/* Building graphic — isometric PNG building */
 .base-building {
   position: relative;
-  width: 72px;
-  height: 82px;
-  margin: 0 auto 2px;
+  width: 120px;
+  height: 120px;
+}
+
+/* Floating HUD toolbar — invisible by default, slides up on hover */
+.base-hud {
+  position: absolute;
+  top: calc(100% - 8px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  min-width: 130px;
+  background: rgba(8, 12, 18, 0.88);
+  border: 1px solid var(--base-color, var(--crt-green));
+  box-shadow:
+    0 0 10px rgba(0, 0, 0, 0.7),
+    0 0 6px color-mix(in srgb, var(--base-color, var(--crt-green)) 40%, transparent);
+  padding: 6px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s, transform 0.15s;
+  white-space: nowrap;
+  z-index: 10;
+}
+
+.base-node:hover .base-hud {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+  pointer-events: auto;
 }
 
 /* Base name + stats */
@@ -1591,7 +1572,7 @@ select.input {
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.5px;
-  color: var(--text);
+  color: var(--base-color, var(--crt-green));
   text-align: center;
   white-space: nowrap;
   overflow: hidden;
@@ -1616,7 +1597,6 @@ select.input {
 
 /* Construct button */
 .base-construct-btn {
-  display: none;
   background: transparent;
   border: 1px solid var(--base-color, var(--crt-green));
   color: var(--base-color, var(--crt-green));
@@ -1635,13 +1615,9 @@ select.input {
   box-shadow: 0 0 8px var(--base-color, var(--crt-green));
 }
 
-.base-node:hover .base-construct-btn {
-  display: block;
-}
-
 /* Scan base button */
 .base-scan-btn {
-  display: none;
+  display: flex;
   align-items: center;
   justify-content: center;
   gap: 4px;
@@ -1656,7 +1632,6 @@ select.input {
   width: 100%;
   text-align: center;
   transition: all 0.15s;
-  margin-top: 2px;
 }
 
 .base-scan-btn:hover:not(:disabled) {
@@ -1669,83 +1644,68 @@ select.input {
   cursor: default;
 }
 
-.base-node:hover .base-scan-btn {
-  display: flex;
-}
-
 /* ---- PR Buildings ---- */
 .pr-building {
   position: absolute;
-  width: 72px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-  padding: 6px 4px 5px;
-  background: rgba(13, 17, 23, 0.88);
-  border-top: 1px solid var(--pr-color, var(--crt-green));
-  border-left: 1px solid var(--pr-color, var(--crt-green));
-  border-right: 1px solid color-mix(in srgb, var(--pr-color, var(--crt-green)) 30%, #000);
-  border-bottom: 1px solid color-mix(in srgb, var(--pr-color, var(--crt-green)) 30%, #000);
-  box-shadow:
-    2px 2px 0 color-mix(in srgb, var(--pr-color, var(--crt-green)) 15%, #000),
-    4px 4px 0 color-mix(in srgb, var(--pr-color, var(--crt-green)) 6%, #000),
-    0 0 8px rgba(0, 0, 0, 0.4);
+  width: 90px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
   cursor: pointer;
   font-family: var(--font-mono);
-  transition: box-shadow 0.15s;
   z-index: 2;
 }
 
-.pr-building::before {
-  content: '';
-  position: absolute;
-  top: 5px;
-  left: 100%;
-  width: 5px;
-  height: 100%;
-  background: color-mix(in srgb, var(--pr-color, var(--crt-green)) 5%, rgba(0, 0, 0, 0.85));
-  border-top: 1px solid color-mix(in srgb, var(--pr-color, var(--crt-green)) 25%, transparent);
-  transform: skewY(30deg);
-  transform-origin: top left;
-  pointer-events: none;
-}
-
-.pr-building::after {
-  content: '';
-  position: absolute;
-  top: 100%;
-  left: 5px;
-  width: 100%;
-  height: 5px;
-  background: color-mix(in srgb, var(--pr-color, var(--crt-green)) 4%, rgba(0, 0, 0, 0.82));
-  border-left: 1px solid color-mix(in srgb, var(--pr-color, var(--crt-green)) 18%, transparent);
-  transform: skewX(30deg);
-  transform-origin: top left;
-  pointer-events: none;
-}
-
 .pr-building:hover {
-  box-shadow:
-    2px 2px 0 color-mix(in srgb, var(--pr-color, var(--crt-green)) 25%, #000),
-    4px 4px 0 color-mix(in srgb, var(--pr-color, var(--crt-green)) 12%, #000),
-    0 0 14px var(--pr-color, var(--crt-green));
   z-index: 4;
 }
 
 .pr-bld-graphic {
   position: relative;
-  width: 50px;
-  height: 58px;
-  flex-shrink: 0;
+  width: 80px;
+  height: 80px;
+  transition: filter 0.15s;
 }
 
+.pr-bld-graphic img {
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.5));
+}
+
+.pr-building:hover .pr-bld-graphic img {
+  filter: drop-shadow(0 4px 10px var(--pr-color, var(--crt-green)));
+}
+
+/* Floating PR info tooltip */
 .pr-bld-info {
+  position: absolute;
+  top: calc(100% - 4px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  background: rgba(8, 12, 18, 0.88);
+  border: 1px solid var(--pr-color, var(--crt-green));
+  box-shadow: 0 0 8px rgba(0,0,0,0.7), 0 0 4px color-mix(in srgb, var(--pr-color, var(--crt-green)) 40%, transparent);
+  padding: 4px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s, transform 0.15s;
+  white-space: nowrap;
+  z-index: 10;
+}
+
+.pr-building:hover .pr-bld-info {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.pr-bld-info-row {
   display: flex;
   align-items: center;
   gap: 4px;
-  width: 100%;
-  justify-content: center;
 }
 
 .pr-bld-num {
