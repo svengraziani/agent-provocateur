@@ -245,6 +245,80 @@ app.get('/repo/:owner/:name', async (c) => {
   return c.json(data)
 })
 
+// GET /api/github/meta/:owner/:name — fetch repo meta: stars, languages, topics, contributors, commit history
+app.get('/meta/:owner/:name', async (c) => {
+  const owner = c.req.param('owner')
+  const name = c.req.param('name')
+  const fullName = `${owner}/${name}`
+
+  // Fetch repo info + languages + topics via GraphQL
+  const graphqlQuery = `{
+    repository(owner: "${owner}", name: "${name}") {
+      stargazerCount
+      forkCount
+      watchers { totalCount }
+      createdAt
+      pushedAt
+      primaryLanguage { name color }
+      languages(first: 10, orderBy: { field: SIZE, direction: DESC }) {
+        totalSize
+        edges {
+          size
+          node { name color }
+        }
+      }
+      repositoryTopics(first: 15) {
+        nodes { topic { name } }
+      }
+    }
+  }`
+
+  const repoResult = gh(['api', 'graphql', '-f', `query=${graphqlQuery}`])
+
+  // Fetch top contributors
+  const contributorsResult = gh(['api', `repos/${fullName}/contributors?per_page=5&anon=false`])
+
+  // Fetch weekly commit activity (last 52 weeks)
+  const commitActivityResult = gh(['api', `repos/${fullName}/stats/commit_activity`])
+
+  const repoData = repoResult.data?.data?.repository
+
+  // Build languages array with percentages
+  const totalSize: number = repoData?.languages?.totalSize || 1
+  const languages = (repoData?.languages?.edges || []).map((edge: any) => ({
+    name: edge.node.name,
+    color: edge.node.color || '#8b8b8b',
+    percentage: Math.round((edge.size / totalSize) * 1000) / 10,
+  }))
+
+  // Topics
+  const topics = (repoData?.repositoryTopics?.nodes || []).map((n: any) => n.topic.name)
+
+  // Contributors
+  const contributors = (contributorsResult.data || []).slice(0, 5).map((u: any) => ({
+    login: u.login,
+    avatarUrl: u.avatar_url,
+    contributions: u.contributions,
+  }))
+
+  // Commit weeks — last 26 weeks (commitActivity gives 52 weeks of {week, total, days[]})
+  const allWeeks: any[] = commitActivityResult.data || []
+  const commitWeeks = allWeeks.slice(-26).map((w: any) => w.total || 0)
+
+  return c.json({
+    stars: repoData?.stargazerCount ?? 0,
+    forks: repoData?.forkCount ?? 0,
+    watchers: repoData?.watchers?.totalCount ?? 0,
+    primaryLanguage: repoData?.primaryLanguage ?? null,
+    languages,
+    topics,
+    contributors,
+    commitWeeks,
+    createdAt: repoData?.createdAt ?? '',
+    pushedAt: repoData?.pushedAt ?? '',
+  })
+})
+
 // GET /api/github/labels/:owner/:name — list available labels for a repo
 app.get('/labels/:owner/:name', async (c) => {
   const owner = c.req.param('owner')

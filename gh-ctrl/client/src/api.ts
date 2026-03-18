@@ -1,4 +1,4 @@
-import type { Repo, DashboardEntry, RepoData, GHLabel, BranchesData, IssueDetail, PRDetail, GameMap } from './types'
+import type { Repo, DashboardEntry, RepoData, GHLabel, BranchesData, IssueDetail, PRDetail, GameMap, RepoMeta } from './types'
 
 const BASE = '/api'
 
@@ -61,6 +61,9 @@ export const api = {
 
   getBranches: (owner: string, name: string) =>
     request<BranchesData>(`/github/branches/${owner}/${name}`),
+
+  getRepoMeta: (owner: string, name: string) =>
+    request<RepoMeta>(`/github/meta/${owner}/${name}`),
 
   triggerClaude: (params: {
     fullName: string
