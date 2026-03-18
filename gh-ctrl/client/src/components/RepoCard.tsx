@@ -35,8 +35,12 @@ export function RepoCard({ entry, onToast }: Props) {
     setModalState({ mode: 'label', fullName: repo.fullName, number, type, currentLabels })
   }
 
-  const openCreatePR = (head: string) => {
+  const openCreatePR = (head?: string) => {
     setModalState({ mode: 'create-pr', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, head })
+  }
+
+  const openAssign = (number: number, type: 'pr' | 'issue', currentAssignees: string[]) => {
+    setModalState({ mode: 'assign', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, number, type, currentAssignees })
   }
 
   const openCreateIssue = () => {
@@ -82,6 +86,7 @@ export function RepoCard({ entry, onToast }: Props) {
         onClose={() => setModalState(null)}
         onSuccess={(msg) => onToast(msg, 'success')}
         onError={(msg) => onToast(msg, 'error')}
+        onTransition={setModalState}
       />
 
       <div className={`repo-card${hasConflicts ? ' has-conflicts' : ''}`}>
@@ -146,6 +151,7 @@ export function RepoCard({ entry, onToast }: Props) {
                   onClaude={() => openTriggerClaude(pr.number, 'pr')}
                   onComment={() => openComment(pr.number, 'pr')}
                   onLabel={() => openLabel(pr.number, 'pr', pr.labels.map((l) => l.name))}
+                  onAssign={() => openAssign(pr.number, 'pr', pr.assignees.map((a) => a.login))}
                   onDetail={() => openPRDetail(pr.number)}
                 />
               ))}
@@ -167,6 +173,7 @@ export function RepoCard({ entry, onToast }: Props) {
                   onClaude={() => openTriggerClaude(pr.number, 'pr')}
                   onComment={() => openComment(pr.number, 'pr')}
                   onLabel={() => openLabel(pr.number, 'pr', pr.labels.map((l) => l.name))}
+                  onAssign={() => openAssign(pr.number, 'pr', pr.assignees.map((a) => a.login))}
                   onDetail={() => openPRDetail(pr.number)}
                 />
               ))}
@@ -191,6 +198,8 @@ export function RepoCard({ entry, onToast }: Props) {
                     onClaude={() => openTriggerClaude(issue.number, 'issue')}
                     onComment={() => openComment(issue.number, 'issue')}
                     onLabel={() => openLabel(issue.number, 'issue', issue.labels.map((l) => l.name))}
+                    onAssign={() => openAssign(issue.number, 'issue', issue.assignees.map((a) => a.login))}
+                    onPR={() => openCreatePR(claudeBranch || undefined)}
                     onDetail={() => openIssueDetail(issue.number)}
                     onCreatePR={showCreatePR ? () => openCreatePR(claudeBranch) : undefined}
                   />
@@ -217,6 +226,7 @@ export function RepoCard({ entry, onToast }: Props) {
                   onClaude={() => openTriggerClaude(pr.number, 'pr')}
                   onComment={() => openComment(pr.number, 'pr')}
                   onLabel={() => openLabel(pr.number, 'pr', pr.labels.map((l) => l.name))}
+                  onAssign={() => openAssign(pr.number, 'pr', pr.assignees.map((a) => a.login))}
                   onDetail={() => openPRDetail(pr.number)}
                 />
               ))}
@@ -241,6 +251,8 @@ export function RepoCard({ entry, onToast }: Props) {
                   onClaude={() => openTriggerClaude(issue.number, 'issue')}
                   onComment={() => openComment(issue.number, 'issue')}
                   onLabel={() => openLabel(issue.number, 'issue', issue.labels.map((l) => l.name))}
+                  onAssign={() => openAssign(issue.number, 'issue', issue.assignees.map((a) => a.login))}
+                  onPR={() => openCreatePR()}
                   onDetail={() => openIssueDetail(issue.number)}
                 />
               ))}
@@ -302,7 +314,7 @@ function labelTextColor(hex: string): string {
 }
 
 function ItemRow({
-  number, title, labels, assignees, badge, previewUrl, isClaudeActive, isUntouched, onClaude, onComment, onLabel, onDetail, onCreatePR,
+  number, title, labels, assignees, badge, previewUrl, isClaudeActive, isUntouched, onClaude, onComment, onLabel, onDetail, onCreatePR, onPR, onAssign,
 }: {
   number: number
   title: string
@@ -317,6 +329,8 @@ function ItemRow({
   onLabel: () => void
   onDetail?: () => void
   onCreatePR?: () => void
+  onPR?: () => void
+  onAssign?: () => void
 }) {
   return (
     <div className={`list-item${isUntouched ? ' untouched-issue' : ''}`}>
@@ -380,12 +394,22 @@ function ItemRow({
             Create PR
           </button>
         )}
+        {onAssign && (
+          <button className="btn btn-ghost btn-xs item-claude-btn" onClick={onAssign} title="Assign">
+            Assign
+          </button>
+        )}
         <button className="btn btn-ghost btn-xs item-claude-btn" onClick={onLabel} title="Manage labels">
           <LabelIcon size={12} />
         </button>
         <button className="btn btn-ghost btn-xs item-claude-btn" onClick={onComment} title="Post comment">
           <CommentIcon size={12} />
         </button>
+        {onPR && (
+          <button className="btn btn-success btn-xs item-claude-btn" onClick={onPR} title="Create pull request">
+            @pr
+          </button>
+        )}
         <button className="btn btn-claude item-claude-btn" onClick={onClaude}>
           @claude
         </button>

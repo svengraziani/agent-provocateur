@@ -87,14 +87,29 @@ export const api = {
       body: JSON.stringify(params),
     }),
 
+  getCollaborators: (owner: string, name: string) =>
+    request<string[]>(`/github/collaborators/${owner}/${name}`),
+
   createPR: (params: {
     fullName: string
     head: string
     base: string
     title: string
     prBody?: string
+    assignees?: string[]
   }) =>
     request<{ ok: boolean; url: string }>('/github/create-pr', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    }),
+
+  assignUser: (params: {
+    fullName: string
+    number: number
+    type: 'pr' | 'issue'
+    assignees: string[]
+  }) =>
+    request<{ ok: boolean }>('/github/assign', {
       method: 'POST',
       body: JSON.stringify(params),
     }),
