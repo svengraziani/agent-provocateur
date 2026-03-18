@@ -4,13 +4,14 @@ import { api } from '../api'
 import { ActionModal } from './ActionModal'
 import type { ModalState } from './ActionModal'
 import { LinkIcon, LabelIcon, CommentIcon, BranchIcon, RefreshIcon } from './Icons'
+import { useAppStore } from '../store'
 
 interface Props {
   entry: DashboardEntry
-  onToast: (message: string, type: 'success' | 'error' | 'info') => void
 }
 
-export function RepoCard({ entry, onToast }: Props) {
+export function RepoCard({ entry }: Props) {
+  const addToast = useAppStore((s) => s.addToast)
   const { repo, data } = entry
   const { stats } = data
   const [modalState, setModalState] = useState<ModalState>(null)
@@ -63,7 +64,7 @@ export function RepoCard({ entry, onToast }: Props) {
         setBranches(result.branches)
         setDefaultBranch(result.defaultBranch)
       } catch (err: any) {
-        onToast(`Failed to load branches: ${err.message}`, 'error')
+        addToast(`Failed to load branches: ${err.message}`, 'error')
       } finally {
         setBranchesLoading(false)
       }
@@ -84,8 +85,8 @@ export function RepoCard({ entry, onToast }: Props) {
       <ActionModal
         state={modalState}
         onClose={() => setModalState(null)}
-        onSuccess={(msg) => onToast(msg, 'success')}
-        onError={(msg) => onToast(msg, 'error')}
+        onSuccess={(msg) => addToast(msg, 'success')}
+        onError={(msg) => addToast(msg, 'error')}
         onTransition={setModalState}
       />
 

@@ -1,70 +1,20 @@
-import { useState, useEffect, useCallback } from 'react'
-import type { Repo, DashboardEntry } from './types'
-import { api } from './api'
+import { useEffect } from 'react'
+import { Routes, Route, NavLink } from 'react-router-dom'
+import { useAppStore } from './store'
 import { Dashboard } from './components/Dashboard'
 import { Settings } from './components/Settings'
 import { BattlefieldView } from './components/BattlefieldView'
 import { MapEditor } from './components/MapEditor'
-import { ToastArea, useToast } from './components/Toast'
-
-type View = 'dashboard' | 'settings' | 'battlefield' | 'map-editor'
-
-const DEFAULT_REFRESH_INTERVAL = 2 * 60 * 1000 // 2 minutes
-
-function getStoredRefreshInterval(): number {
-  const stored = localStorage.getItem('refreshInterval')
-  return stored ? parseInt(stored, 10) : DEFAULT_REFRESH_INTERVAL
-}
+import { ToastArea } from './components/Toast'
 
 export default function App() {
-  const [view, setView] = useState<View>('dashboard')
-  const [repos, setRepos] = useState<Repo[]>([])
-  const [entries, setEntries] = useState<DashboardEntry[]>([])
-  const [loading, setLoading] = useState(false)
-  const [lastRefresh, setLastRefresh] = useState<Date | null>(null)
-  const [refreshInterval, setRefreshInterval] = useState<number>(getStoredRefreshInterval)
-  const { toasts, addToast } = useToast()
-
-  const handleRefreshIntervalChange = useCallback((ms: number) => {
-    localStorage.setItem('refreshInterval', String(ms))
-    setRefreshInterval(ms)
-  }, [])
-
-  const loadRepos = useCallback(async () => {
-    try {
-      const data = await api.listRepos()
-      setRepos(data)
-    } catch (err: any) {
-      addToast(`Failed to load repos: ${err.message}`, 'error')
-    }
-  }, [addToast])
-
-  const loadDashboard = useCallback(async () => {
-    setLoading(true)
-    try {
-      const data = await api.getDashboard()
-      setEntries(data)
-      setLastRefresh(new Date())
-    } catch (err: any) {
-      addToast(`Failed to load dashboard: ${err.message}`, 'error')
-    } finally {
-      setLoading(false)
-    }
-  }, [addToast])
-
-  const loadSingleRepo = useCallback(async (owner: string, name: string) => {
-    try {
-      const data = await api.getRepoData(owner, name)
-      setEntries(prev => prev.map(e =>
-        e.repo.owner === owner && e.repo.name === name
-          ? { ...e, data }
-          : e
-      ))
-      setLastRefresh(new Date())
-    } catch (err: any) {
-      addToast(`Failed to refresh ${owner}/${name}: ${err.message}`, 'error')
-    }
-  }, [addToast])
+  const repos = useAppStore((s) => s.repos)
+  const entries = useAppStore((s) => s.entries)
+  const lastRefresh = useAppStore((s) => s.lastRefresh)
+  const refreshInterval = useAppStore((s) => s.refreshInterval)
+  const toasts = useAppStore((s) => s.toasts)
+  const loadRepos = useAppStore((s) => s.loadRepos)
+  const loadDashboard = useAppStore((s) => s.loadDashboard)
 
   useEffect(() => {
     loadRepos()
@@ -77,11 +27,6 @@ export default function App() {
     }, refreshInterval)
     return () => clearInterval(interval)
   }, [loadDashboard, refreshInterval])
-
-  const handleReposChange = () => {
-    loadRepos()
-    loadDashboard()
-  }
 
   const totalStats = entries.reduce(
     (acc, e) => ({
@@ -100,30 +45,31 @@ export default function App() {
         </div>
 
         <nav className="sidebar-nav">
-          <button
-            className={`nav-btn${view === 'dashboard' ? ' active' : ''}`}
-            onClick={() => setView('dashboard')}
+          <NavLink
+            to="/"
+            end
+            className={({ isActive }) => `nav-btn${isActive ? ' active' : ''}`}
           >
             &#x25a0; Dashboard
-          </button>
-          <button
-            className={`nav-btn${view === 'battlefield' ? ' active' : ''}`}
-            onClick={() => setView('battlefield')}
+          </NavLink>
+          <NavLink
+            to="/battlefield"
+            className={({ isActive }) => `nav-btn${isActive ? ' active' : ''}`}
           >
             &#x25a0; Battlefield
-          </button>
-          <button
-            className={`nav-btn${view === 'map-editor' ? ' active' : ''}`}
-            onClick={() => setView('map-editor')}
+          </NavLink>
+          <NavLink
+            to="/map-editor"
+            className={({ isActive }) => `nav-btn${isActive ? ' active' : ''}`}
           >
             &#x25a6; Map Editor
-          </button>
-          <button
-            className={`nav-btn${view === 'settings' ? ' active' : ''}`}
-            onClick={() => setView('settings')}
+          </NavLink>
+          <NavLink
+            to="/settings"
+            className={({ isActive }) => `nav-btn${isActive ? ' active' : ''}`}
           >
             &#x2699; Repositories
-          </button>
+          </NavLink>
         </nav>
 
         <div className="sidebar-stats">
@@ -156,36 +102,12 @@ export default function App() {
       </aside>
 
       <main className="main-content">
-        {view === 'dashboard' && (
-          <Dashboard
-            entries={entries}
-            loading={loading}
-            onRefresh={loadDashboard}
-            onToast={addToast}
-          />
-        )}
-        {view === 'battlefield' && (
-          <BattlefieldView
-            entries={entries}
-            loading={loading}
-            onRefresh={loadDashboard}
-            onRefreshRepo={loadSingleRepo}
-            onReposChange={handleReposChange}
-            onToast={addToast}
-          />
-        )}
-        {view === 'map-editor' && (
-          <MapEditor onToast={addToast} />
-        )}
-        {view === 'settings' && (
-          <Settings
-            repos={repos}
-            onReposChange={handleReposChange}
-            onToast={addToast}
-            refreshInterval={refreshInterval}
-            onRefreshIntervalChange={handleRefreshIntervalChange}
-          />
-        )}
+        <Routes>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/battlefield" element={<BattlefieldView />} />
+          <Route path="/map-editor" element={<MapEditor />} />
+          <Route path="/settings" element={<Settings />} />
+        </Routes>
       </main>
 
       <ToastArea toasts={toasts} />

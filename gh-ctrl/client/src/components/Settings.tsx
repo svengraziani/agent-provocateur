@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { Repo } from '../types'
 import { api } from '../api'
+import { useAppStore } from '../store'
 
 const COLORS = ['#39d353', '#58a6ff', '#f0883e', '#f85149', '#bc8cff', '#ffa657', '#ff7b72', '#79c0ff']
 
@@ -13,19 +14,23 @@ const REFRESH_OPTIONS = [
   { label: '30 minutes', value: 30 * 60 * 1000 },
 ]
 
-interface Props {
-  repos: Repo[]
-  onReposChange: () => void
-  onToast: (message: string, type: 'success' | 'error' | 'info') => void
-  refreshInterval: number
-  onRefreshIntervalChange: (ms: number) => void
-}
+export function Settings() {
+  const repos = useAppStore((s) => s.repos)
+  const refreshInterval = useAppStore((s) => s.refreshInterval)
+  const addToast = useAppStore((s) => s.addToast)
+  const loadRepos = useAppStore((s) => s.loadRepos)
+  const loadDashboard = useAppStore((s) => s.loadDashboard)
+  const handleRefreshIntervalChange = useAppStore((s) => s.handleRefreshIntervalChange)
 
-export function Settings({ repos, onReposChange, onToast, refreshInterval, onRefreshIntervalChange }: Props) {
   const [fullName, setFullName] = useState('')
   const [selectedColor, setSelectedColor] = useState(COLORS[0])
   const [adding, setAdding] = useState(false)
   const [formError, setFormError] = useState('')
+
+  const handleReposChange = () => {
+    loadRepos()
+    loadDashboard()
+  }
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -39,12 +44,12 @@ export function Settings({ repos, onReposChange, onToast, refreshInterval, onRef
     setAdding(true)
     try {
       await api.addRepo(fullName.trim(), selectedColor)
-      onToast(`Added ${fullName}`, 'success')
+      addToast(`Added ${fullName}`, 'success')
       setFullName('')
-      onReposChange()
+      handleReposChange()
     } catch (err: any) {
       setFormError(err.message)
-      onToast(`Failed to add: ${err.message}`, 'error')
+      addToast(`Failed to add: ${err.message}`, 'error')
     } finally {
       setAdding(false)
     }
@@ -53,10 +58,10 @@ export function Settings({ repos, onReposChange, onToast, refreshInterval, onRef
   const handleDelete = async (repo: Repo) => {
     try {
       await api.deleteRepo(repo.id)
-      onToast(`Removed ${repo.fullName}`, 'info')
-      onReposChange()
+      addToast(`Removed ${repo.fullName}`, 'info')
+      handleReposChange()
     } catch (err: any) {
-      onToast(`Failed to delete: ${err.message}`, 'error')
+      addToast(`Failed to delete: ${err.message}`, 'error')
     }
   }
 
@@ -74,7 +79,7 @@ export function Settings({ repos, onReposChange, onToast, refreshInterval, onRef
             id="refresh-interval"
             className="input"
             value={refreshInterval}
-            onChange={(e) => onRefreshIntervalChange(parseInt(e.target.value, 10))}
+            onChange={(e) => handleRefreshIntervalChange(parseInt(e.target.value, 10))}
           >
             {REFRESH_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
