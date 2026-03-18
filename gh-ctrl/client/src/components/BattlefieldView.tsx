@@ -255,7 +255,7 @@ interface LoadBattlefieldMapDialogProps {
 
 function LoadBattlefieldMapDialog({ maps, activeMapId, onLoad, onClose }: LoadBattlefieldMapDialogProps) {
   return (
-    <div className="map-dialog-overlay" onClick={onClose}>
+    <div className="map-dialog-overlay" onClick={onClose} onWheel={(e) => e.stopPropagation()}>
       <div className="map-dialog map-dialog-load" onClick={e => e.stopPropagation()}>
         <div className="map-dialog-title">&#x25a0; SELECT MAP FOR BATTLEFIELD</div>
         {maps.length === 0 ? (
