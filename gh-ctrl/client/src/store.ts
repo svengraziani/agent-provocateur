@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Repo, DashboardEntry, RepoData } from './types'
+import type { Repo, DashboardEntry, RepoData, GHUser } from './types'
 import { api } from './api'
 
 type ToastType = 'success' | 'error' | 'info'
@@ -28,6 +28,7 @@ interface AppStore {
   lastRefresh: Date | null
   refreshInterval: number
   toasts: Toast[]
+  user: GHUser | null
 
   // Toast
   addToast: (message: string, type?: ToastType) => void
@@ -38,6 +39,8 @@ interface AppStore {
   loadDashboard: () => Promise<void>
   loadSingleRepo: (owner: string, name: string) => Promise<void>
   handleRefreshIntervalChange: (ms: number) => void
+  loadUser: () => Promise<void>
+  logout: () => Promise<void>
 }
 
 export const useAppStore = create<AppStore>((set, get) => ({
@@ -47,6 +50,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   lastRefresh: null,
   refreshInterval: getStoredRefreshInterval(),
   toasts: [],
+  user: null,
 
   addToast: (message, type = 'info') => {
     const id = nextToastId++
@@ -107,5 +111,23 @@ export const useAppStore = create<AppStore>((set, get) => ({
   handleRefreshIntervalChange: (ms: number) => {
     localStorage.setItem('refreshInterval', String(ms))
     set({ refreshInterval: ms })
+  },
+
+  loadUser: async () => {
+    try {
+      const user = await api.getMe()
+      set({ user })
+    } catch {
+      set({ user: null })
+    }
+  },
+
+  logout: async () => {
+    try {
+      await api.logout()
+    } catch {
+      // ignore
+    }
+    set({ user: null })
   },
 }))

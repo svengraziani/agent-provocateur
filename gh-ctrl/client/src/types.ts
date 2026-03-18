@@ -144,6 +144,19 @@ export interface RepoMeta {
   pushedAt: string
 }
 
+export interface GHUser {
+  login: string
+  avatarUrl: string
+}
+
+export interface GHUserRepo {
+  fullName: string
+  description: string | null
+  isPrivate: boolean
+  stargazersCount: number
+  language: string | null
+}
+
 export interface MapTile {
   type: string
   color: string

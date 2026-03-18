@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { streamSSE } from 'hono/streaming'
 import { db } from '../db'
 import { repos } from '../db/schema'
+import { getSession } from '../middleware/auth'
 
 interface GHResult {
   data: any
@@ -693,6 +694,47 @@ app.post('/create-pr', async (c) => {
 
   const url = proc.stdout.toString().trim()
   return c.json({ ok: true, url })
+})
+
+// GET /api/github/user-repos — list repos for the OAuth-authenticated user
+app.get('/user-repos', async (c) => {
+  const session = await getSession(c)
+  if (!session) return c.json({ error: 'Not authenticated' }, 401)
+
+  const page = Number(c.req.query('page') || '1')
+  const perPage = Number(c.req.query('per_page') || '30')
+  const search = c.req.query('search') || ''
+
+  const headers = {
+    Authorization: `Bearer ${session.accessToken}`,
+    Accept: 'application/vnd.github+json',
+  }
+
+  let url: string
+  if (search) {
+    url = `https://api.github.com/search/repositories?q=${encodeURIComponent(search + ' user:' + session.githubLogin)}&page=${page}&per_page=${perPage}`
+  } else {
+    url = `https://api.github.com/user/repos?sort=updated&page=${page}&per_page=${perPage}&affiliation=owner,collaborator,organization_member`
+  }
+
+  const res = await fetch(url, { headers })
+  if (!res.ok) return c.json({ error: 'Failed to fetch repos from GitHub' }, 502)
+
+  const data: any = await res.json()
+  const items: any[] = search ? (data.items || []) : (data || [])
+
+  return c.json({
+    repos: items.map((r) => ({
+      fullName: r.full_name,
+      description: r.description || null,
+      isPrivate: r.private,
+      stargazersCount: r.stargazers_count,
+      language: r.language || null,
+    })),
+    totalCount: search ? (data.total_count || 0) : null,
+    page,
+    perPage,
+  })
 })
 
 export default app

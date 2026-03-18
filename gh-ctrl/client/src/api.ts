@@ -1,10 +1,11 @@
-import type { Repo, DashboardEntry, RepoData, GHLabel, BranchesData, IssueDetail, PRDetail, GameMap, RepoMeta } from './types'
+import type { Repo, DashboardEntry, RepoData, GHLabel, BranchesData, IssueDetail, PRDetail, GameMap, RepoMeta, GHUser, GHUserRepo } from './types'
 
 const BASE = '/api'
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
     ...options,
   })
   if (!res.ok) {
@@ -193,6 +194,15 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(params),
     }),
+
+  getMe: () => request<GHUser>('/auth/me'),
+
+  logout: () => request<{ ok: boolean }>('/auth/logout', { method: 'POST' }),
+
+  getUserRepos: (page = 1, search = '') =>
+    request<{ repos: GHUserRepo[]; totalCount: number | null; page: number; perPage: number }>(
+      `/github/user-repos?page=${page}&per_page=30${search ? `&search=${encodeURIComponent(search)}` : ''}`
+    ),
 
   listMaps: () => request<GameMap[]>('/maps'),
 

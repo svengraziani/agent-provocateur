@@ -3326,3 +3326,113 @@ select.input {
   white-space: nowrap;
   max-width: 90px;
 }
+
+/* User Menu */
+.user-menu {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 0 4px;
+  border-top: 1px solid var(--border);
+}
+
+.user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--border-2);
+}
+
+.user-login {
+  font-size: 11px;
+  color: var(--text-2);
+}
+
+.user-menu-login {
+  width: 100%;
+  font-size: 11px;
+  padding: 6px 10px;
+  text-align: center;
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+}
+
+/* Browse Repos */
+.add-repo-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.browse-repos {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.browse-repo-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.browse-repo-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  gap: 12px;
+}
+
+.browse-repo-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.browse-repo-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.browse-repo-desc {
+  font-size: 11px;
+  color: var(--text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 400px;
+}
+
+.badge {
+  display: inline-block;
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--bg-3);
+  color: var(--text-2);
+  border: 1px solid var(--border);
+}
+
+.badge-private {
+  background: rgba(240, 136, 62, 0.1);
+  color: var(--amber);
+  border-color: rgba(240, 136, 62, 0.3);
+}
+
+.browse-pagination {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: center;
+  padding-top: 4px;
+  font-size: 12px;
+}

@@ -17,6 +17,17 @@ sqlite.exec(`
 `)
 
 sqlite.exec(`
+  CREATE TABLE IF NOT EXISTS sessions (
+    id TEXT PRIMARY KEY,
+    access_token TEXT NOT NULL,
+    github_login TEXT NOT NULL,
+    github_avatar_url TEXT NOT NULL DEFAULT '',
+    created_at INTEGER DEFAULT (unixepoch()),
+    expires_at INTEGER NOT NULL
+  )
+`)
+
+sqlite.exec(`
   CREATE TABLE IF NOT EXISTS maps (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,

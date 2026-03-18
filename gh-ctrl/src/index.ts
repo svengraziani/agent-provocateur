@@ -5,15 +5,17 @@ import { serveStatic } from 'hono/bun'
 import reposRouter from './routes/repos'
 import githubRouter from './routes/github'
 import mapsRouter from './routes/maps'
+import authRouter from './routes/auth'
 
 const app = new Hono()
 
-app.use('*', cors({ origin: ['http://localhost:5173'] }))
+app.use('*', cors({ origin: ['http://localhost:5173'], credentials: true }))
 app.use('*', logger())
 
 app.route('/api/repos', reposRouter)
 app.route('/api/github', githubRouter)
 app.route('/api/maps', mapsRouter)
+app.route('/api/auth', authRouter)
 
 app.get('/api/health', (c) => c.json({ ok: true }))
 

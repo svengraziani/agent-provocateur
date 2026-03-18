@@ -6,6 +6,7 @@ import { Settings } from './components/Settings'
 import { BattlefieldView } from './components/BattlefieldView'
 import { MapEditor } from './components/MapEditor'
 import { ToastArea } from './components/Toast'
+import { UserMenu } from './components/UserMenu'
 
 export default function App() {
   const repos = useAppStore((s) => s.repos)
@@ -15,11 +16,13 @@ export default function App() {
   const toasts = useAppStore((s) => s.toasts)
   const loadRepos = useAppStore((s) => s.loadRepos)
   const loadDashboard = useAppStore((s) => s.loadDashboard)
+  const loadUser = useAppStore((s) => s.loadUser)
 
   useEffect(() => {
     loadRepos()
     loadDashboard()
-  }, [loadRepos, loadDashboard])
+    loadUser()
+  }, [loadRepos, loadDashboard, loadUser])
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -99,6 +102,8 @@ export default function App() {
             ? `Updated ${lastRefresh.toLocaleTimeString()}`
             : 'Not refreshed yet'}
         </div>
+
+        <UserMenu />
       </aside>
 
       <main className="main-content">
