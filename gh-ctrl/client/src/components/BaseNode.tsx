@@ -345,19 +345,23 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
       {data.claudeIssues.length > 0 && (
         <div className="bdp-section">
           <div className="bdp-section-title claude">&#x2605; CLAUDE ISSUES</div>
-          {data.claudeIssues.slice(0, 4).map((issue: GHIssue) => (
-            <BdpItemRow
-              key={issue.number}
-              number={issue.number}
-              title={issue.title}
-              type="issue"
-              repo={repo}
-              onModalOpen={onModalOpen}
-              labels={issue.labels}
-              assignees={issue.assignees}
-              isClaudeActive={activeClaudeSet.has(issue.number)}
-            />
-          ))}
+          {data.claudeIssues.slice(0, 4).map((issue: GHIssue) => {
+            const claudeBranch = (data.claudeIssueBranches ?? {})[issue.number]
+            return (
+              <BdpItemRow
+                key={issue.number}
+                number={issue.number}
+                title={issue.title}
+                type="issue"
+                repo={repo}
+                onModalOpen={onModalOpen}
+                labels={issue.labels}
+                assignees={issue.assignees}
+                isClaudeActive={activeClaudeSet.has(issue.number)}
+                onPR={() => onModalOpen({ mode: 'create-pr', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, head: claudeBranch || undefined })}
+              />
+            )
+          })}
           {data.claudeIssues.length > 4 && <div className="bdp-more">+{data.claudeIssues.length - 4} more</div>}
         </div>
       )}
@@ -427,6 +431,7 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
               assignees={issue.assignees}
               isClaudeActive={activeClaudeSet.has(issue.number)}
               isUntouched
+              onPR={() => onModalOpen({ mode: 'create-pr', fullName: repo.fullName, owner: repo.owner, repoName: repo.name })}
             />
           ))}
         </div>
@@ -540,7 +545,7 @@ function PRBuilding({ pr, position, repo, onModalOpen }: {
   )
 }
 
-function BdpItemRow({ number, title, type, repo, onModalOpen, previewUrl, labels, assignees, isClaudeActive, isUntouched }: {
+function BdpItemRow({ number, title, type, repo, onModalOpen, previewUrl, labels, assignees, isClaudeActive, isUntouched, onPR }: {
   number: number
   title: string
   type: 'pr' | 'issue'
@@ -551,6 +556,7 @@ function BdpItemRow({ number, title, type, repo, onModalOpen, previewUrl, labels
   assignees: { login: string }[]
   isClaudeActive?: boolean
   isUntouched?: boolean
+  onPR?: () => void
 }) {
   return (
     <div className={`bdp-item${isUntouched ? ' untouched-issue' : ''}`}>
@@ -609,6 +615,15 @@ function BdpItemRow({ number, title, type, repo, onModalOpen, previewUrl, labels
         >
           <CommentIcon size={12} />
         </button>
+        {onPR && (
+          <button
+            className="bdp-icon-btn"
+            title="Create pull request"
+            onClick={onPR}
+          >
+            PR
+          </button>
+        )}
         <button
           className="bdp-claude-btn"
           onClick={() => onModalOpen({ mode: 'trigger-claude', fullName: repo.fullName, number, type })}
