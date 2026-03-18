@@ -341,6 +341,7 @@ export function BattlefieldView() {
   const containerRef = useRef<HTMLDivElement>(null)
   const zoomRef = useRef(zoom)
   const offsetRef = useRef(offset)
+  const autoScanTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => { zoomRef.current = zoom }, [zoom])
   useEffect(() => { offsetRef.current = offset }, [offset])
 
@@ -378,6 +379,22 @@ export function BattlefieldView() {
       api.listMaps().then(setAllMaps).catch(() => {})
     }
   }, [showMapSelector])
+
+  // Clean up any pending auto-scan timer on unmount
+  useEffect(() => {
+    return () => {
+      if (autoScanTimerRef.current !== null) clearTimeout(autoScanTimerRef.current)
+    }
+  }, [])
+
+  const handleIssueCreated = useCallback((owner: string, repoName: string) => {
+    if (autoScanTimerRef.current !== null) clearTimeout(autoScanTimerRef.current)
+    addToast('Base scan scheduled in 15 seconds...', 'info')
+    autoScanTimerRef.current = setTimeout(() => {
+      autoScanTimerRef.current = null
+      onRefreshRepo(owner, repoName)
+    }, 15000)
+  }, [onRefreshRepo, addToast])
 
   const handleLoadMap = useCallback((map: GameMap) => {
     setActiveMap(map)
@@ -658,6 +675,7 @@ export function BattlefieldView() {
         onClose={() => setModalState(null)}
         onSuccess={(msg) => addToast(msg, 'success')}
         onError={(msg) => addToast(msg, 'error')}
+        onIssueCreated={handleIssueCreated}
       />
 
       {/* Construction dialog */}
