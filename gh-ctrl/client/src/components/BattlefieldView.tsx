@@ -407,7 +407,10 @@ export function BattlefieldView() {
     saveActiveMapId(null)
   }, [])
 
-  // Update positions when entries change (new repos)
+  // Update positions when entries change (new repos arriving via SSE stream).
+  // Do NOT call savePositions here – during streaming entries arrive one at a time,
+  // so saving mid-stream would overwrite localStorage with only the repos seen so far,
+  // causing all other repos to lose their positions on the next load.
   useEffect(() => {
     if (entries.length === 0) return
     setPositions(prev => {
@@ -417,10 +420,19 @@ export function BattlefieldView() {
       const merged = { ...defaults, ...stored, ...prev }
       const valid: Record<number, Position> = {}
       entries.forEach(e => { valid[e.repo.id] = merged[e.repo.id] ?? defaults[e.repo.id] })
-      savePositions(valid)
       return valid
     })
   }, [entries])
+
+  // Persist positions once the full SSE stream has finished loading.
+  useEffect(() => {
+    if (!loading && entries.length > 0) {
+      setPositions(prev => {
+        savePositions(prev)
+        return prev
+      })
+    }
+  }, [loading])
 
   const handleMapMouseDown = useCallback((e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('.base-node')) return
