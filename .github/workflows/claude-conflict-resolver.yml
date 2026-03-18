@@ -1,0 +1,263 @@
+name: Claude Merge Conflict Resolver
+
+# Triggers when a PR is opened or its base branch is updated (which can cause new conflicts)
+on:
+  # pull_request_target is used so the workflow runs even on fork PRs
+  # and has access to repository secrets
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+
+  # Also allow manual trigger for existing PRs with conflicts
+  issue_comment:
+    types: [created]
+
+jobs:
+  # ─── Detect merge conflicts on PR events ───────────────────────────
+  detect-conflicts:
+    if: github.event_name == 'pull_request_target'
+    runs-on: ubuntu-latest
+    outputs:
+      has_conflicts: ${{ steps.check.outputs.has_conflicts }}
+      pr_number: ${{ steps.check.outputs.pr_number }}
+    permissions:
+      pull-requests: read
+    steps:
+      - name: Wait for mergeable state to be computed
+        run: sleep 5
+
+      - name: Check PR mergeable status
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUMBER=${{ github.event.pull_request.number }}
+          echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+
+          # GitHub needs time to compute mergeable status; retry up to 5 times
+          for i in 1 2 3 4 5; do
+            MERGEABLE=$(gh api repos/${{ github.repository }}/pulls/$PR_NUMBER --jq '.mergeable')
+            MERGEABLE_STATE=$(gh api repos/${{ github.repository }}/pulls/$PR_NUMBER --jq '.mergeable_state')
+
+            echo "Attempt $i: mergeable=$MERGEABLE, state=$MERGEABLE_STATE"
+
+            if [ "$MERGEABLE" = "false" ] && [ "$MERGEABLE_STATE" = "dirty" ]; then
+              echo "has_conflicts=true" >> "$GITHUB_OUTPUT"
+              echo "🔴 PR #$PR_NUMBER has merge conflicts"
+              exit 0
+            elif [ "$MERGEABLE" != "null" ]; then
+              echo "has_conflicts=false" >> "$GITHUB_OUTPUT"
+              echo "✅ PR #$PR_NUMBER is mergeable"
+              exit 0
+            fi
+
+            echo "Mergeable state not yet computed, retrying in 5s..."
+            sleep 5
+          done
+
+          echo "has_conflicts=false" >> "$GITHUB_OUTPUT"
+          echo "⚠️ Could not determine mergeable status after retries"
+
+  # ─── Resolve conflicts automatically via Claude Code ────────────────
+  resolve-conflicts-auto:
+    needs: detect-conflicts
+    if: needs.detect-conflicts.outputs.has_conflicts == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
+    steps:
+      - name: Checkout PR head branch
+        uses: actions/checkout@v4
+        with:
+          # Checkout the head ref (PR branch) so Claude can push fixes
+          ref: ${{ github.event.pull_request.head.ref }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Fetch base branch
+        run: |
+          git fetch origin ${{ github.event.pull_request.base.ref }}
+
+      - name: Attempt merge and expose conflicts
+        id: merge-attempt
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Enable diff3 for better conflict markers (shows common ancestor)
+          git config merge.conflictstyle diff3
+
+          # Attempt the merge — this will leave conflict markers in files
+          if git merge origin/${{ github.event.pull_request.base.ref }} --no-commit --no-ff; then
+            echo "No conflicts detected during merge attempt"
+            git merge --abort 2>/dev/null || true
+            echo "has_conflicts=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_conflicts=true" >> "$GITHUB_OUTPUT"
+            # List conflicted files for Claude's context
+            CONFLICTED=$(git diff --name-only --diff-filter=U)
+            echo "Conflicted files:"
+            echo "$CONFLICTED"
+            echo "conflicted_files<<EOF" >> "$GITHUB_OUTPUT"
+            echo "$CONFLICTED" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run Claude Code to resolve conflicts
+        if: steps.merge-attempt.outputs.has_conflicts == 'true'
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          track_progress: true
+
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ github.event.pull_request.number }}
+            PR TITLE: ${{ github.event.pull_request.title }}
+            BASE BRANCH: ${{ github.event.pull_request.base.ref }}
+            HEAD BRANCH: ${{ github.event.pull_request.head.ref }}
+
+            This PR has merge conflicts that need to be resolved. A merge from
+            origin/${{ github.event.pull_request.base.ref }} has been attempted and
+            conflict markers are present in the working tree.
+
+            CONFLICTED FILES:
+            ${{ steps.merge-attempt.outputs.conflicted_files }}
+
+            ## Instructions
+
+            1. Read each conflicted file and understand the intent of BOTH sides:
+               - The HEAD (current) changes represent the PR author's work
+               - The incoming changes represent what's on the base branch
+               - The diff3 markers show `|||||||` with the common ancestor version
+
+            2. For each conflict, resolve it by:
+               - Understanding what each side was trying to accomplish
+               - Producing a merged result that preserves BOTH sets of changes
+               - Removing ALL conflict markers (`<<<<<<<`, `=======`, `>>>>>>>`, `|||||||`)
+               - Ensuring the resulting code compiles/parses correctly
+
+            3. After resolving all conflicts:
+               - Run `git add` on all resolved files
+               - Commit with message: "fix: resolve merge conflicts with ${{ github.event.pull_request.base.ref }}"
+               - Push to the PR branch
+
+            4. Post a comment on the PR summarizing what conflicts were found and
+               how each was resolved. Use `gh pr comment`.
+
+            ## Important Rules
+            - NEVER discard changes from either side unless they are truly redundant
+            - If both sides modified the same function, merge the logic carefully
+            - For package.json / lock files, prefer the union of both dependency sets
+            - If you cannot confidently resolve a conflict, leave a TODO comment in the
+              code and mention it in your PR comment so a human can review
+            - Verify there are zero remaining conflict markers before committing
+
+          claude_args: |
+            --allowedTools "Read,Write,Edit,Bash(git:*),Bash(gh pr comment:*),Bash(gh pr view:*)"
+
+  # ─── Manual trigger: resolve conflicts when someone comments ────────
+  resolve-conflicts-manual:
+    if: |
+      github.event_name == 'issue_comment' &&
+      github.event.issue.pull_request &&
+      (
+        contains(github.event.comment.body, '@claude resolve conflicts') ||
+        contains(github.event.comment.body, '@claude fix conflicts')
+      )
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
+    steps:
+      - name: Get PR details
+        id: pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUMBER=${{ github.event.issue.number }}
+          PR_DATA=$(gh api repos/${{ github.repository }}/pulls/$PR_NUMBER)
+          HEAD_REF=$(echo "$PR_DATA" | jq -r '.head.ref')
+          BASE_REF=$(echo "$PR_DATA" | jq -r '.base.ref')
+          HEAD_REPO=$(echo "$PR_DATA" | jq -r '.head.repo.full_name')
+          echo "head_ref=$HEAD_REF" >> "$GITHUB_OUTPUT"
+          echo "base_ref=$BASE_REF" >> "$GITHUB_OUTPUT"
+          echo "head_repo=$HEAD_REPO" >> "$GITHUB_OUTPUT"
+          echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout PR head branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.pr.outputs.head_ref }}
+          repository: ${{ steps.pr.outputs.head_repo }}
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Fetch base branch
+        run: git fetch origin ${{ steps.pr.outputs.base_ref }}
+
+      - name: Attempt merge and expose conflicts
+        id: merge-attempt
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config merge.conflictstyle diff3
+
+          if git merge origin/${{ steps.pr.outputs.base_ref }} --no-commit --no-ff; then
+            echo "has_conflicts=false" >> "$GITHUB_OUTPUT"
+            git merge --abort 2>/dev/null || true
+            gh pr comment ${{ steps.pr.outputs.pr_number }} \
+              --body "✅ No merge conflicts detected — this PR is clean!" \
+              --repo ${{ github.repository }}
+          else
+            echo "has_conflicts=true" >> "$GITHUB_OUTPUT"
+            CONFLICTED=$(git diff --name-only --diff-filter=U)
+            echo "conflicted_files<<EOF" >> "$GITHUB_OUTPUT"
+            echo "$CONFLICTED" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run Claude Code to resolve conflicts
+        if: steps.merge-attempt.outputs.has_conflicts == 'true'
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          track_progress: true
+
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ steps.pr.outputs.pr_number }}
+            BASE BRANCH: ${{ steps.pr.outputs.base_ref }}
+            HEAD BRANCH: ${{ steps.pr.outputs.head_ref }}
+
+            A user has requested conflict resolution on this PR.
+            A merge from origin/${{ steps.pr.outputs.base_ref }} has been attempted
+            and conflict markers are now present in the working tree.
+
+            CONFLICTED FILES:
+            ${{ steps.merge-attempt.outputs.conflicted_files }}
+
+            ## Instructions
+
+            1. Read each conflicted file and understand the intent of BOTH sides
+            2. Resolve each conflict preserving both sets of changes where possible
+            3. Remove ALL conflict markers
+            4. Run `git add` on resolved files
+            5. Commit: "fix: resolve merge conflicts with ${{ steps.pr.outputs.base_ref }}"
+            6. Push to the PR branch
+            7. Post a summary comment on the PR via `gh pr comment`
+
+            ## Rules
+            - NEVER discard changes from either side unless truly redundant
+            - If unsure about a resolution, leave a TODO and mention it in the comment
+            - Verify zero remaining conflict markers before committing
+
+          claude_args: |
+            --allowedTools "Read,Write,Edit,Bash(git:*),Bash(gh pr comment:*),Bash(gh pr view:*)"

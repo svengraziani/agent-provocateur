@@ -1,4 +1,5 @@
 import { Hono } from 'hono'
+import { streamSSE } from 'hono/streaming'
 import { db } from '../db'
 import { repos } from '../db/schema'
 
@@ -7,13 +8,16 @@ interface GHResult {
   error: string | null
 }
 
-function gh(args: string[]): GHResult {
-  const proc = Bun.spawnSync(['gh', ...args], { env: { ...process.env } })
-  if (proc.exitCode !== 0) {
-    return { data: null, error: proc.stderr.toString() }
+async function gh(args: string[]): Promise<GHResult> {
+  const proc = Bun.spawn(['gh', ...args], { env: { ...process.env } })
+  const stdout = await new Response(proc.stdout).text()
+  const exitCode = await proc.exited
+  if (exitCode !== 0) {
+    const stderr = await new Response(proc.stderr).text()
+    return { data: null, error: stderr }
   }
   try {
-    return { data: JSON.parse(proc.stdout.toString()), error: null }
+    return { data: JSON.parse(stdout), error: null }
   } catch {
     return { data: null, error: 'Failed to parse gh output' }
   }
@@ -21,10 +25,10 @@ function gh(args: string[]): GHResult {
 
 const CLAUDE_LABELS = ['claude', 'ai', 'ai-fix', 'ai-feature']
 
-function fetchNetlifyUrls(fullName: string, prs: any[]): Record<number, string> {
+async function fetchNetlifyUrls(fullName: string, prs: any[]): Promise<Record<number, string>> {
   if (prs.length === 0) return {}
 
-  const deploymentsResult = gh(['api', `repos/${fullName}/deployments?per_page=50`])
+  const deploymentsResult = await gh(['api', `repos/${fullName}/deployments?per_page=50`])
   if (deploymentsResult.error || !deploymentsResult.data?.length) return {}
 
   const prsByRef = new Map<string, number>(prs.map((pr: any) => [pr.headRefName, pr.number]))
@@ -35,17 +39,20 @@ function fetchNetlifyUrls(fullName: string, prs: any[]): Record<number, string> 
     return env.includes('preview') || env.includes('deploy-preview') || env.includes('staging')
   })
 
-  for (const deployment of previewDeployments) {
-    const prNumber = prsByRef.get(deployment.ref)
-    if (!prNumber || urlsByPrNumber[prNumber]) continue
+  // Fetch all deployment statuses concurrently
+  await Promise.all(
+    previewDeployments.map(async (deployment: any) => {
+      const prNumber = prsByRef.get(deployment.ref)
+      if (!prNumber || urlsByPrNumber[prNumber]) return
 
-    const statusResult = gh(['api', `repos/${fullName}/deployments/${deployment.id}/statuses?per_page=1`])
-    if (!statusResult.error && statusResult.data?.length > 0) {
-      const status = statusResult.data[0]
-      const url = status.environment_url || status.target_url
-      if (url) urlsByPrNumber[prNumber] = url
-    }
-  }
+      const statusResult = await gh(['api', `repos/${fullName}/deployments/${deployment.id}/statuses?per_page=1`])
+      if (!statusResult.error && statusResult.data?.length > 0) {
+        const status = statusResult.data[0]
+        const url = status.environment_url || status.target_url
+        if (url && !urlsByPrNumber[prNumber]) urlsByPrNumber[prNumber] = url
+      }
+    })
+  )
 
   return urlsByPrNumber
 }
@@ -57,6 +64,17 @@ interface ClaudeIssuePRInfo {
   base: string
   title: string
   body: string
+}
+
+async function fetchClaudeIssueBranches(fullName: string): Promise<Record<number, string>> {
+  const result = await gh(['api', `repos/${fullName}/branches?per_page=100`])
+  if (result.error || !Array.isArray(result.data)) return {}
+  const map: Record<number, string> = {}
+  for (const branch of result.data) {
+    const match = (branch.name as string)?.match(CLAUDE_BRANCH_RE)
+    if (match) map[Number(match[1])] = branch.name as string
+  }
+  return map
 }
 
 function parseGitHubComparePRLink(urlStr: string): ClaudeIssuePRInfo | null {
@@ -117,8 +135,8 @@ interface RunningWorkflowsResult {
   runningWorkflows: WorkflowRun[]
 }
 
-function fetchRunningWorkflows(fullName: string): RunningWorkflowsResult {
-  const result = gh([
+async function fetchRunningWorkflows(fullName: string): Promise<RunningWorkflowsResult> {
+  const result = await gh([
     'run', 'list', '--repo', fullName,
     '--json', 'status,headBranch,databaseId,name,workflowName',
     '--limit', '30',
@@ -146,17 +164,19 @@ function fetchRunningWorkflows(fullName: string): RunningWorkflowsResult {
   return { activeClaudeIssues: Array.from(activeIssues), runningWorkflows }
 }
 
-function fetchRepoData(fullName: string) {
-  const prResult = gh([
-    'pr', 'list', '--repo', fullName, '--json',
-    'number,title,state,reviewDecision,mergeable,headRefName,author,createdAt,updatedAt,labels,isDraft,assignees',
-    '--limit', '30',
-  ])
-
-  const issueResult = gh([
-    'issue', 'list', '--repo', fullName, '--json',
-    'number,title,state,labels,assignees,updatedAt,author',
-    '--limit', '30',
+async function fetchRepoData(fullName: string) {
+  // PRs and issues are independent — fetch in parallel
+  const [prResult, issueResult] = await Promise.all([
+    gh([
+      'pr', 'list', '--repo', fullName, '--json',
+      'number,title,state,reviewDecision,mergeable,headRefName,author,createdAt,updatedAt,labels,isDraft,assignees',
+      '--limit', '30',
+    ]),
+    gh([
+      'issue', 'list', '--repo', fullName, '--json',
+      'number,title,state,labels,assignees,updatedAt,author',
+      '--limit', '30',
+    ]),
   ])
 
   if (prResult.error && issueResult.error) {
@@ -178,7 +198,13 @@ function fetchRepoData(fullName: string) {
   const prs = prResult.data || []
   const issues = issueResult.data || []
 
-  const previewUrls = fetchNetlifyUrls(fullName, prs)
+  // Netlify URLs depend on prs, but workflows and branches are independent
+  const [previewUrls, { activeClaudeIssues, runningWorkflows }, claudeIssueBranches] = await Promise.all([
+    fetchNetlifyUrls(fullName, prs),
+    fetchRunningWorkflows(fullName),
+    fetchClaudeIssueBranches(fullName),
+  ])
+
   const enrichedPrs = prs.map((pr: any) => ({
     ...pr,
     previewUrl: previewUrls[pr.number] || null,
@@ -196,9 +222,9 @@ function fetchRepoData(fullName: string) {
     )
   )
 
-  const { activeClaudeIssues, runningWorkflows } = fetchRunningWorkflows(fullName)
   const existingPrHeads = new Set<string>(prs.map((pr: any) => pr.headRefName as string))
   const claudeIssuePRLinks = fetchClaudeIssuePRLinks(fullName, issues.map((i: any) => i.number), existingPrHeads)
+
 
   return {
     fullName,
@@ -226,18 +252,37 @@ function fetchRepoData(fullName: string) {
 
 const app = new Hono()
 
-// GET /api/github/dashboard — fetch all repos in parallel
+// GET /api/github/dashboard — fetch all repos in parallel (non-streaming)
 app.get('/dashboard', async (c) => {
   const allRepos = await db.select().from(repos)
 
   const results = await Promise.all(
     allRepos.map(async (repo) => ({
       repo,
-      data: fetchRepoData(repo.fullName),
+      data: await fetchRepoData(repo.fullName),
     }))
   )
 
   return c.json(results)
+})
+
+// GET /api/github/dashboard/stream — SSE: emit each repo as it finishes loading
+app.get('/dashboard/stream', (c) => {
+  return streamSSE(c, async (stream) => {
+    const allRepos = await db.select().from(repos)
+
+    await Promise.all(
+      allRepos.map(async (repo) => {
+        const data = await fetchRepoData(repo.fullName)
+        await stream.writeSSE({
+          data: JSON.stringify({ repo, data }),
+          event: 'repo',
+        })
+      })
+    )
+
+    await stream.writeSSE({ data: 'done', event: 'done' })
+  })
 })
 
 // GET /api/github/repo/:owner/:name — refresh single repo
@@ -245,8 +290,80 @@ app.get('/repo/:owner/:name', async (c) => {
   const owner = c.req.param('owner')
   const name = c.req.param('name')
   const fullName = `${owner}/${name}`
-  const data = fetchRepoData(fullName)
+  const data = await fetchRepoData(fullName)
   return c.json(data)
+})
+
+// GET /api/github/meta/:owner/:name — fetch repo meta: stars, languages, topics, contributors, commit history
+app.get('/meta/:owner/:name', async (c) => {
+  const owner = c.req.param('owner')
+  const name = c.req.param('name')
+  const fullName = `${owner}/${name}`
+
+  // Fetch repo info + languages + topics via GraphQL
+  const graphqlQuery = `{
+    repository(owner: "${owner}", name: "${name}") {
+      stargazerCount
+      forkCount
+      watchers { totalCount }
+      createdAt
+      pushedAt
+      primaryLanguage { name color }
+      languages(first: 10, orderBy: { field: SIZE, direction: DESC }) {
+        totalSize
+        edges {
+          size
+          node { name color }
+        }
+      }
+      repositoryTopics(first: 15) {
+        nodes { topic { name } }
+      }
+    }
+  }`
+
+  const [repoResult, contributorsResult, commitActivityResult] = await Promise.all([
+    gh(['api', 'graphql', '-f', `query=${graphqlQuery}`]),
+    gh(['api', `repos/${fullName}/contributors?per_page=5&anon=false`]),
+    gh(['api', `repos/${fullName}/stats/commit_activity`]),
+  ])
+
+  const repoData = repoResult.data?.data?.repository
+
+  // Build languages array with percentages
+  const totalSize: number = repoData?.languages?.totalSize || 1
+  const languages = (repoData?.languages?.edges || []).map((edge: any) => ({
+    name: edge.node.name,
+    color: edge.node.color || '#8b8b8b',
+    percentage: Math.round((edge.size / totalSize) * 1000) / 10,
+  }))
+
+  // Topics
+  const topics = (repoData?.repositoryTopics?.nodes || []).map((n: any) => n.topic.name)
+
+  // Contributors
+  const contributors = (contributorsResult.data || []).slice(0, 5).map((u: any) => ({
+    login: u.login,
+    avatarUrl: u.avatar_url,
+    contributions: u.contributions,
+  }))
+
+  // Commit weeks — last 26 weeks (commitActivity gives 52 weeks of {week, total, days[]})
+  const allWeeks: any[] = commitActivityResult.data || []
+  const commitWeeks = allWeeks.slice(-26).map((w: any) => w.total || 0)
+
+  return c.json({
+    stars: repoData?.stargazerCount ?? 0,
+    forks: repoData?.forkCount ?? 0,
+    watchers: repoData?.watchers?.totalCount ?? 0,
+    primaryLanguage: repoData?.primaryLanguage ?? null,
+    languages,
+    topics,
+    contributors,
+    commitWeeks,
+    createdAt: repoData?.createdAt ?? '',
+    pushedAt: repoData?.pushedAt ?? '',
+  })
 })
 
 // GET /api/github/labels/:owner/:name — list available labels for a repo
@@ -254,7 +371,7 @@ app.get('/labels/:owner/:name', async (c) => {
   const owner = c.req.param('owner')
   const name = c.req.param('name')
   const fullName = `${owner}/${name}`
-  const result = gh(['label', 'list', '--repo', fullName, '--json', 'name,color,description', '--limit', '100'])
+  const result = await gh(['label', 'list', '--repo', fullName, '--json', 'name,color,description', '--limit', '100'])
   if (result.error) return c.json({ error: result.error }, 500)
   return c.json(result.data || [])
 })
@@ -263,7 +380,7 @@ app.get('/labels/:owner/:name', async (c) => {
 app.get('/collaborators/:owner/:name', async (c) => {
   const owner = c.req.param('owner')
   const name = c.req.param('name')
-  const result = gh(['api', `repos/${owner}/${name}/collaborators`])
+  const result = await gh(['api', `repos/${owner}/${name}/collaborators`])
   if (result.error) return c.json({ error: result.error }, 500)
   const logins = (result.data || []).map((u: any) => u.login as string)
   return c.json(logins)
@@ -290,7 +407,7 @@ app.get('/branches/:owner/:name', async (c) => {
     }
   }`
 
-  const result = gh(['api', 'graphql', '-f', `query=${graphqlQuery}`])
+  const result = await gh(['api', 'graphql', '-f', `query=${graphqlQuery}`])
   if (result.error) return c.json({ error: result.error }, 500)
 
   const repo = result.data?.data?.repository
@@ -324,7 +441,7 @@ app.post('/trigger-claude', async (c) => {
   const comment = message || '@claude Please review and help resolve this.'
   const ghType = type === 'pr' ? 'pr' : 'issue'
 
-  const result = gh([
+  const result = await gh([
     ghType, 'comment',
     String(number), '--repo', fullName, '--body', comment,
   ])
@@ -346,7 +463,7 @@ app.post('/comment', async (c) => {
   }
 
   const ghType = type === 'pr' ? 'pr' : 'issue'
-  const result = gh([ghType, 'comment', String(number), '--repo', fullName, '--body', comment])
+  const result = await gh([ghType, 'comment', String(number), '--repo', fullName, '--body', comment])
 
   if (result.error) {
     return c.json({ error: result.error }, 500)
@@ -450,7 +567,7 @@ app.get('/issue/:owner/:name/:number', async (c) => {
   const number = c.req.param('number')
   const fullName = `${owner}/${name}`
 
-  const result = gh([
+  const result = await gh([
     'issue', 'view', number, '--repo', fullName,
     '--json', 'number,title,body,state,labels,assignees,author,url,createdAt,comments',
   ])
@@ -491,7 +608,7 @@ app.get('/pr/:owner/:name/:number', async (c) => {
   const number = c.req.param('number')
   const fullName = `${owner}/${name}`
 
-  const result = gh([
+  const result = await gh([
     'pr', 'view', number, '--repo', fullName,
     '--json', 'number,title,body,state,labels,assignees,author,url,createdAt,comments,reviewDecision,mergeable,headRefName,baseRefName,isDraft',
   ])
@@ -514,7 +631,7 @@ app.post('/create-repo', async (c) => {
   }
 
   // Get authenticated user to build fullName
-  const userResult = gh(['api', 'user'])
+  const userResult = await gh(['api', 'user'])
   if (userResult.error || !userResult.data?.login) {
     return c.json({ error: 'Failed to get authenticated GitHub user' }, 500)
   }
@@ -552,7 +669,7 @@ app.post('/create-repo', async (c) => {
 app.get('/collaborators/:owner/:name', async (c) => {
   const owner = c.req.param('owner')
   const name = c.req.param('name')
-  const result = gh(['api', `repos/${owner}/${name}/collaborators?per_page=100`])
+  const result = await gh(['api', `repos/${owner}/${name}/collaborators?per_page=100`])
   if (result.error) return c.json({ error: result.error }, 500)
   const collaborators = (result.data || []).map((u: any) => ({ login: u.login }))
   return c.json(collaborators)
