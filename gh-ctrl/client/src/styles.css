@@ -2085,6 +2085,24 @@ select.input {
   color: var(--red);
 }
 
+/* Meta section inside the detail panel */
+.bdp-meta-section {
+  padding: 0;
+}
+.bdp-meta-section .repo-meta-strip {
+  border: none;
+  border-top: 1px solid rgba(57, 255, 20, 0.08);
+  background: transparent;
+  padding: 6px 10px;
+}
+
+.meta-no-intel {
+  font-size: 9px;
+  color: var(--text-3);
+  opacity: 0.6;
+  font-style: italic;
+}
+
 /* ---- Minimap ---- */
 .minimap {
   position: absolute;

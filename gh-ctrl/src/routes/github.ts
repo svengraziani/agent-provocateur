@@ -273,13 +273,11 @@ app.get('/meta/:owner/:name', async (c) => {
     }
   }`
 
-  const repoResult = gh(['api', 'graphql', '-f', `query=${graphqlQuery}`])
-
-  // Fetch top contributors
-  const contributorsResult = gh(['api', `repos/${fullName}/contributors?per_page=5&anon=false`])
-
-  // Fetch weekly commit activity (last 52 weeks)
-  const commitActivityResult = gh(['api', `repos/${fullName}/stats/commit_activity`])
+  const [repoResult, contributorsResult, commitActivityResult] = await Promise.all([
+    gh(['api', 'graphql', '-f', `query=${graphqlQuery}`]),
+    gh(['api', `repos/${fullName}/contributors?per_page=5&anon=false`]),
+    gh(['api', `repos/${fullName}/stats/commit_activity`]),
+  ])
 
   const repoData = repoResult.data?.data?.repository
 
@@ -324,7 +322,7 @@ app.get('/labels/:owner/:name', async (c) => {
   const owner = c.req.param('owner')
   const name = c.req.param('name')
   const fullName = `${owner}/${name}`
-  const result = gh(['label', 'list', '--repo', fullName, '--json', 'name,color,description', '--limit', '100'])
+  const result = await gh(['label', 'list', '--repo', fullName, '--json', 'name,color,description', '--limit', '100'])
   if (result.error) return c.json({ error: result.error }, 500)
   return c.json(result.data || [])
 })
@@ -333,7 +331,7 @@ app.get('/labels/:owner/:name', async (c) => {
 app.get('/collaborators/:owner/:name', async (c) => {
   const owner = c.req.param('owner')
   const name = c.req.param('name')
-  const result = gh(['api', `repos/${owner}/${name}/collaborators`])
+  const result = await gh(['api', `repos/${owner}/${name}/collaborators`])
   if (result.error) return c.json({ error: result.error }, 500)
   const logins = (result.data || []).map((u: any) => u.login as string)
   return c.json(logins)
@@ -360,7 +358,7 @@ app.get('/branches/:owner/:name', async (c) => {
     }
   }`
 
-  const result = gh(['api', 'graphql', '-f', `query=${graphqlQuery}`])
+  const result = await gh(['api', 'graphql', '-f', `query=${graphqlQuery}`])
   if (result.error) return c.json({ error: result.error }, 500)
 
   const repo = result.data?.data?.repository
@@ -394,7 +392,7 @@ app.post('/trigger-claude', async (c) => {
   const comment = message || '@claude Please review and help resolve this.'
   const ghType = type === 'pr' ? 'pr' : 'issue'
 
-  const result = gh([
+  const result = await gh([
     ghType, 'comment',
     String(number), '--repo', fullName, '--body', comment,
   ])
@@ -416,7 +414,7 @@ app.post('/comment', async (c) => {
   }
 
   const ghType = type === 'pr' ? 'pr' : 'issue'
-  const result = gh([ghType, 'comment', String(number), '--repo', fullName, '--body', comment])
+  const result = await gh([ghType, 'comment', String(number), '--repo', fullName, '--body', comment])
 
   if (result.error) {
     return c.json({ error: result.error }, 500)
@@ -520,7 +518,7 @@ app.get('/issue/:owner/:name/:number', async (c) => {
   const number = c.req.param('number')
   const fullName = `${owner}/${name}`
 
-  const result = gh([
+  const result = await gh([
     'issue', 'view', number, '--repo', fullName,
     '--json', 'number,title,body,state,labels,assignees,author,url,createdAt,comments',
   ])
@@ -561,7 +559,7 @@ app.get('/pr/:owner/:name/:number', async (c) => {
   const number = c.req.param('number')
   const fullName = `${owner}/${name}`
 
-  const result = gh([
+  const result = await gh([
     'pr', 'view', number, '--repo', fullName,
     '--json', 'number,title,body,state,labels,assignees,author,url,createdAt,comments,reviewDecision,mergeable,headRefName,baseRefName,isDraft',
   ])
@@ -584,7 +582,7 @@ app.post('/create-repo', async (c) => {
   }
 
   // Get authenticated user to build fullName
-  const userResult = gh(['api', 'user'])
+  const userResult = await gh(['api', 'user'])
   if (userResult.error || !userResult.data?.login) {
     return c.json({ error: 'Failed to get authenticated GitHub user' }, 500)
   }
@@ -622,7 +620,7 @@ app.post('/create-repo', async (c) => {
 app.get('/collaborators/:owner/:name', async (c) => {
   const owner = c.req.param('owner')
   const name = c.req.param('name')
-  const result = gh(['api', `repos/${owner}/${name}/collaborators?per_page=100`])
+  const result = await gh(['api', `repos/${owner}/${name}/collaborators?per_page=100`])
   if (result.error) return c.json({ error: result.error }, 500)
   const collaborators = (result.data || []).map((u: any) => ({ login: u.login }))
   return c.json(collaborators)

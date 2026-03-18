@@ -177,9 +177,6 @@ export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, on
           <IsoBaseBuilding />
         </div>
 
-        {/* Repo meta strip — always visible below base */}
-        <RepoMetaPanel owner={repo.owner} name={repo.name} repoColor={repo.color} />
-
         {/* Floating HUD toolbar — appears on hover */}
         <div className="base-hud">
           <div className="base-name">{repo.name}</div>
@@ -486,6 +483,10 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
         )}
       </div>
 
+      <div className="bdp-section bdp-meta-section">
+        <RepoMetaPanel owner={repo.owner} name={repo.name} repoColor={repo.color} />
+      </div>
+
       {data.error && (
         <div className="bdp-error">&#x26A0; {data.error}</div>
       )}
@@ -566,83 +567,94 @@ function RepoMetaPanel({ owner, name, repoColor }: { owner: string; name: string
       </div>
 
       {/* Expanded detail */}
-      {expanded && (
-        <div className="meta-expanded">
-          {/* Commit sparkline */}
-          {meta.commitWeeks.length > 0 && (
-            <div className="meta-row">
-              <span className="meta-row-label">COMMITS</span>
-              <CommitSparkline weeks={meta.commitWeeks} />
-            </div>
-          )}
+      {expanded && (() => {
+        const hasCommits = meta.commitWeeks.length > 0
+        const hasLanguages = meta.languages.length > 0
+        const hasTopics = topTopics.length > 0
+        const hasCrew = topContributors.length > 0
+        const hasAny = hasCommits || hasLanguages || hasTopics || hasCrew
+        return (
+          <div className="meta-expanded">
+            {!hasAny && (
+              <span className="meta-no-intel">— no additional intel —</span>
+            )}
 
-          {/* Language breakdown */}
-          {meta.languages.length > 1 && (
-            <div className="meta-row">
-              <span className="meta-row-label">STACK</span>
-              <div className="meta-lang-bar">
-                {meta.languages.slice(0, 6).map((lang) => (
-                  <div
-                    key={lang.name}
-                    className="meta-lang-seg"
-                    style={{ width: `${lang.percentage}%`, background: lang.color || '#555' }}
-                    title={`${lang.name}: ${lang.percentage}%`}
-                  />
-                ))}
+            {/* Commit sparkline */}
+            {hasCommits && (
+              <div className="meta-row">
+                <span className="meta-row-label">COMMITS</span>
+                <CommitSparkline weeks={meta.commitWeeks} />
               </div>
-              <div className="meta-lang-legend">
-                {meta.languages.slice(0, 4).map((lang) => (
-                  <span key={lang.name} className="meta-legend-item">
-                    <span className="meta-lang-dot" style={{ background: lang.color || '#555' }} />
-                    {lang.name} {lang.percentage}%
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
+            )}
 
-          {/* Topics / tech stack */}
-          {topTopics.length > 0 && (
-            <div className="meta-row">
-              <span className="meta-row-label">TOPICS</span>
-              <div className="meta-topics">
-                {topTopics.map((topic) => (
-                  <span key={topic} className="meta-topic-tag">{topic}</span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Contributors */}
-          {topContributors.length > 0 && (
-            <div className="meta-row">
-              <span className="meta-row-label">CREW</span>
-              <div className="meta-contributors">
-                {topContributors.map((c) => (
-                  <a
-                    key={c.login}
-                    href={`https://github.com/${c.login}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="meta-contributor"
-                    title={`${c.login} (${c.contributions} commits)`}
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <img
-                      src={c.avatarUrl}
-                      alt={c.login}
-                      className="meta-avatar"
-                      width={20}
-                      height={20}
+            {/* Language breakdown */}
+            {hasLanguages && (
+              <div className="meta-row">
+                <span className="meta-row-label">STACK</span>
+                <div className="meta-lang-bar">
+                  {meta.languages.slice(0, 6).map((lang) => (
+                    <div
+                      key={lang.name}
+                      className="meta-lang-seg"
+                      style={{ width: `${lang.percentage}%`, background: lang.color || '#555' }}
+                      title={`${lang.name}: ${lang.percentage}%`}
                     />
-                    <span className="meta-contrib-login">{c.login}</span>
-                  </a>
-                ))}
+                  ))}
+                </div>
+                <div className="meta-lang-legend">
+                  {meta.languages.slice(0, 4).map((lang) => (
+                    <span key={lang.name} className="meta-legend-item">
+                      <span className="meta-lang-dot" style={{ background: lang.color || '#555' }} />
+                      {lang.name} {lang.percentage}%
+                    </span>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
-        </div>
-      )}
+            )}
+
+            {/* Topics / tech stack */}
+            {hasTopics && (
+              <div className="meta-row">
+                <span className="meta-row-label">TOPICS</span>
+                <div className="meta-topics">
+                  {topTopics.map((topic) => (
+                    <span key={topic} className="meta-topic-tag">{topic}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Contributors */}
+            {hasCrew && (
+              <div className="meta-row">
+                <span className="meta-row-label">CREW</span>
+                <div className="meta-contributors">
+                  {topContributors.map((c) => (
+                    <a
+                      key={c.login}
+                      href={`https://github.com/${c.login}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="meta-contributor"
+                      title={`${c.login} (${c.contributions} commits)`}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <img
+                        src={c.avatarUrl}
+                        alt={c.login}
+                        className="meta-avatar"
+                        width={20}
+                        height={20}
+                      />
+                      <span className="meta-contrib-login">{c.login}</span>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )
+      })()}
     </div>
   )
 }
