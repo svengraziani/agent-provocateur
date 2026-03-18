@@ -227,6 +227,25 @@ a:hover { text-decoration: underline; }
   border-color: var(--red);
 }
 
+.repo-card.repo-card-skeleton {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.skeleton-line {
+  height: 10px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--border) 25%, var(--border-2) 50%, var(--border) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+
 .card-color-bar {
   width: 4px;
   flex-shrink: 0;
@@ -1454,6 +1473,37 @@ select.input {
 
 .base-node:hover {
   z-index: 5;
+}
+
+.base-node-ghost {
+  position: absolute;
+  width: 100px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px 8px;
+  border: 1px dashed;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.base-node-ghost-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 88px;
+}
+
+.base-node-ghost-status {
+  font-size: 14px;
+  opacity: 0.7;
 }
 
 /* Status glow via drop-shadow on the building image */
