@@ -513,6 +513,60 @@ app.post('/create-repo', async (c) => {
   }
 })
 
+// GET /api/github/collaborators/:owner/:name — list repo collaborators
+app.get('/collaborators/:owner/:name', async (c) => {
+  const owner = c.req.param('owner')
+  const name = c.req.param('name')
+  const result = gh(['api', `repos/${owner}/${name}/collaborators?per_page=100`])
+  if (result.error) return c.json({ error: result.error }, 500)
+  const collaborators = (result.data || []).map((u: any) => ({ login: u.login }))
+  return c.json(collaborators)
+})
+
+// POST /api/github/assignee — add an assignee to an issue or PR
+app.post('/assignee', async (c) => {
+  const body = await c.req.json()
+  const { fullName, number, type, assignee } = body
+
+  if (!fullName || !number || !type || !assignee) {
+    return c.json({ error: 'Missing required fields: fullName, number, type, assignee' }, 400)
+  }
+
+  const ghType = type === 'pr' ? 'pr' : 'issue'
+  const proc = Bun.spawnSync(
+    ['gh', ghType, 'edit', String(number), '--repo', fullName, '--add-assignee', assignee],
+    { env: { ...process.env } }
+  )
+
+  if (proc.exitCode !== 0) {
+    return c.json({ error: proc.stderr.toString() }, 500)
+  }
+
+  return c.json({ ok: true })
+})
+
+// DELETE /api/github/assignee — remove an assignee from an issue or PR
+app.delete('/assignee', async (c) => {
+  const body = await c.req.json()
+  const { fullName, number, type, assignee } = body
+
+  if (!fullName || !number || !type || !assignee) {
+    return c.json({ error: 'Missing required fields: fullName, number, type, assignee' }, 400)
+  }
+
+  const ghType = type === 'pr' ? 'pr' : 'issue'
+  const proc = Bun.spawnSync(
+    ['gh', ghType, 'edit', String(number), '--repo', fullName, '--remove-assignee', assignee],
+    { env: { ...process.env } }
+  )
+
+  if (proc.exitCode !== 0) {
+    return c.json({ error: proc.stderr.toString() }, 500)
+  }
+
+  return c.json({ ok: true })
+})
+
 // POST /api/github/create-pr — create a PR from a branch
 app.post('/create-pr', async (c) => {
   const body = await c.req.json()
