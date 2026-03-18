@@ -8,15 +8,7 @@ import { ConstructDialog } from './ConstructDialog'
 import { CreateBaseDialog } from './CreateBaseDialog'
 import { CloseIcon, RelocateIcon, RefreshIcon } from './Icons'
 import { useSound } from '../hooks/useSound'
-
-interface Props {
-  entries: DashboardEntry[]
-  loading: boolean
-  onRefresh: () => void
-  onRefreshRepo: (owner: string, name: string) => Promise<void>
-  onReposChange: () => void
-  onToast: (message: string, type: 'success' | 'error' | 'info') => void
-}
+import { useAppStore } from '../store'
 
 interface Position {
   x: number
@@ -320,7 +312,16 @@ function savePositions(positions: Record<number, Position>) {
   localStorage.setItem('battlefield-positions', JSON.stringify(positions))
 }
 
-export function BattlefieldView({ entries, loading, onRefresh, onRefreshRepo, onReposChange, onToast }: Props) {
+export function BattlefieldView() {
+  const entries = useAppStore((s) => s.entries)
+  const loading = useAppStore((s) => s.loading)
+  const onRefresh = useAppStore((s) => s.loadDashboard)
+  const onRefreshRepo = useAppStore((s) => s.loadSingleRepo)
+  const addToast = useAppStore((s) => s.addToast)
+  const loadRepos = useAppStore((s) => s.loadRepos)
+  const loadDashboard = useAppStore((s) => s.loadDashboard)
+  const onToast = addToast
+  const onReposChange = () => { loadRepos(); loadDashboard() }
   const [offset, setOffset] = useState<Position>({ x: 0, y: 0 })
   const [zoom, setZoom] = useState(1)
   const [isDraggingMap, setIsDraggingMap] = useState(false)
