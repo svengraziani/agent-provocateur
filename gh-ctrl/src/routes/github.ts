@@ -480,6 +480,34 @@ app.post('/create-repo', async (c) => {
   }
 })
 
+// GET /api/github/collaborators/:owner/:name — list repo collaborators
+app.get('/collaborators/:owner/:name', async (c) => {
+  const owner = c.req.param('owner')
+  const name = c.req.param('name')
+  const fullName = `${owner}/${name}`
+  const result = gh(['api', `repos/${fullName}/collaborators?per_page=100`, '--jq', '[.[] | {login, name: .name, avatar_url}]'])
+  if (result.error) return c.json({ error: result.error }, 500)
+  return c.json(result.data || [])
+})
+
+// POST /api/github/assign — add assignees to an issue or PR
+app.post('/assign', async (c) => {
+  const body = await c.req.json()
+  const { fullName, number, type, assignees } = body
+
+  if (!fullName || !number || !type || !assignees) {
+    return c.json({ error: 'Missing required fields: fullName, number, type, assignees' }, 400)
+  }
+
+  const ghType = type === 'pr' ? 'pr' : 'issue'
+  const args = [ghType, 'edit', String(number), '--repo', fullName]
+  for (const a of assignees) args.push('--add-assignee', a)
+
+  const proc = Bun.spawnSync(['gh', ...args], { env: { ...process.env } })
+  if (proc.exitCode !== 0) return c.json({ error: proc.stderr.toString() }, 500)
+  return c.json({ ok: true })
+})
+
 // POST /api/github/create-pr — create a PR from a branch
 app.post('/create-pr', async (c) => {
   const body = await c.req.json()

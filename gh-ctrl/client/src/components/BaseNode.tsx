@@ -596,6 +596,22 @@ function BdpItemRow({ number, title, type, repo, onModalOpen, previewUrl, labels
         >
           <CommentIcon size={12} />
         </button>
+        {type === 'issue' && (
+          <button
+            className="bdp-icon-btn"
+            title="Create Pull Request"
+            onClick={() => onModalOpen({ mode: 'create-pr', fullName: repo.fullName, owner: repo.owner, repoName: repo.name })}
+          >
+            @pr
+          </button>
+        )}
+        <button
+          className="bdp-icon-btn"
+          title="Assign"
+          onClick={() => onModalOpen({ mode: 'assign', fullName: repo.fullName, number, type, currentAssignees: [] })}
+        >
+          &#x1F464;
+        </button>
         <button
           className="bdp-claude-btn"
           onClick={() => onModalOpen({ mode: 'trigger-claude', fullName: repo.fullName, number, type })}

@@ -122,6 +122,20 @@ export const api = {
       body: JSON.stringify(params),
     }),
 
+  getCollaborators: (owner: string, name: string) =>
+    request<{ login: string; name: string | null; avatar_url: string }[]>(`/github/collaborators/${owner}/${name}`),
+
+  assign: (params: {
+    fullName: string
+    number: number
+    type: 'pr' | 'issue'
+    assignees: string[]
+  }) =>
+    request<{ ok: boolean }>('/github/assign', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    }),
+
   createRepo: (params: {
     name: string
     description?: string

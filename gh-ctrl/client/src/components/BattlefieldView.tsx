@@ -658,6 +658,7 @@ export function BattlefieldView() {
         onClose={() => setModalState(null)}
         onSuccess={(msg) => addToast(msg, 'success')}
         onError={(msg) => addToast(msg, 'error')}
+        onNavigate={(state) => setModalState(state)}
       />
 
       {/* Construction dialog */}

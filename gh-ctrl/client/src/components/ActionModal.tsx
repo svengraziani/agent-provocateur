@@ -8,11 +8,12 @@ import { CloseIcon } from './Icons'
 export type ModalState =
   | { mode: 'comment'; fullName: string; number: number; type: 'pr' | 'issue' }
   | { mode: 'label'; fullName: string; number: number; type: 'pr' | 'issue'; currentLabels: string[] }
-  | { mode: 'create-pr'; fullName: string; owner: string; repoName: string; head: string }
+  | { mode: 'create-pr'; fullName: string; owner: string; repoName: string; head?: string }
   | { mode: 'create-issue'; fullName: string; owner: string; repoName: string }
   | { mode: 'issue-detail'; fullName: string; owner: string; repoName: string; number: number }
   | { mode: 'pr-detail'; fullName: string; owner: string; repoName: string; number: number }
   | { mode: 'trigger-claude'; fullName: string; number: number; type: 'pr' | 'issue' }
+  | { mode: 'assign'; fullName: string; number: number; type: 'pr' | 'issue'; currentAssignees: string[] }
   | null
 
 interface Props {
@@ -20,10 +21,13 @@ interface Props {
   onClose: () => void
   onSuccess: (message: string) => void
   onError: (message: string) => void
+  onNavigate?: (state: ModalState) => void
 }
 
-export function ActionModal({ state, onClose, onSuccess, onError }: Props) {
+export function ActionModal({ state, onClose, onSuccess, onError, onNavigate }: Props) {
   if (!state) return null
+
+  const navigate = onNavigate ?? onClose
 
   return (
     <div className="modal-overlay" onClick={onClose} onWheel={(e) => e.stopPropagation()}>
@@ -42,13 +46,16 @@ export function ActionModal({ state, onClose, onSuccess, onError }: Props) {
           <CreateIssueForm state={state} onClose={onClose} onSuccess={onSuccess} onError={onError} />
         )}
         {state.mode === 'issue-detail' && (
-          <IssueDetailView state={state} onClose={onClose} onError={onError} />
+          <IssueDetailView state={state} onClose={onClose} onError={onError} onNavigate={navigate} />
         )}
         {state.mode === 'pr-detail' && (
-          <PRDetailView state={state} onClose={onClose} onError={onError} />
+          <PRDetailView state={state} onClose={onClose} onError={onError} onNavigate={navigate} />
         )}
         {state.mode === 'trigger-claude' && (
           <TriggerClaudeForm state={state} onClose={onClose} onSuccess={onSuccess} onError={onError} />
+        )}
+        {state.mode === 'assign' && (
+          <AssignForm state={state} onClose={onClose} onSuccess={onSuccess} onError={onError} />
         )}
       </div>
     </div>
@@ -208,15 +215,17 @@ function CreatePRForm({ state, onClose, onSuccess, onError }: {
   const [title, setTitle] = useState('')
   const [prBody, setPrBody] = useState('')
   const [base, setBase] = useState('')
-  const [branches, setBranches] = useState<string[]>([])
+  const [head, setHead] = useState(state.head ?? '')
+  const [allBranches, setAllBranches] = useState<string[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     api.getBranches(state.owner, state.repoName)
       .then(({ branches: br, defaultBranch }) => {
-        setBranches(br)
+        setAllBranches(br.map((b: any) => b.name ?? b))
         setBase(defaultBranch)
+        if (!state.head) setHead(defaultBranch)
       })
       .catch((err) => onError(`Failed to load branches: ${err.message}`))
       .finally(() => setLoading(false))
@@ -224,17 +233,17 @@ function CreatePRForm({ state, onClose, onSuccess, onError }: {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!title.trim() || !base) return
+    if (!title.trim() || !base || !head) return
     setSubmitting(true)
     try {
       const result = await api.createPR({
         fullName: state.fullName,
-        head: state.head,
+        head,
         base,
         title: title.trim(),
         prBody: prBody.trim() || undefined,
       })
-      onSuccess(`PR created: ${result.url || `${state.head} → ${base}`}`)
+      onSuccess(`PR created: ${result.url || `${head} → ${base}`}`)
       onClose()
     } catch (err: any) {
       onError(`Failed: ${err.message}`)
@@ -243,7 +252,8 @@ function CreatePRForm({ state, onClose, onSuccess, onError }: {
     }
   }
 
-  const otherBranches = branches.filter((b) => b !== state.head)
+  const headBranches = allBranches.filter((b) => b !== base)
+  const baseBranches = allBranches.filter((b) => b !== head)
 
   return (
     <form onSubmit={handleSubmit}>
@@ -254,21 +264,23 @@ function CreatePRForm({ state, onClose, onSuccess, onError }: {
 
       <div className="modal-field">
         <label className="modal-label">Head branch</label>
-        <div className="input modal-readonly">{state.head}</div>
+        {state.head ? (
+          <div className="input modal-readonly">{state.head}</div>
+        ) : loading ? (
+          <div className="input modal-readonly">Loading...</div>
+        ) : (
+          <select className="input" value={head} onChange={(e) => setHead(e.target.value)}>
+            {headBranches.map((b) => <option key={b} value={b}>{b}</option>)}
+          </select>
+        )}
       </div>
       <div className="modal-field">
         <label className="modal-label">Base branch</label>
         {loading ? (
           <div className="input modal-readonly">Loading...</div>
         ) : (
-          <select
-            className="input"
-            value={base}
-            onChange={(e) => setBase(e.target.value)}
-          >
-            {otherBranches.map((b) => (
-              <option key={b} value={b}>{b}</option>
-            ))}
+          <select className="input" value={base} onChange={(e) => setBase(e.target.value)}>
+            {baseBranches.map((b) => <option key={b} value={b}>{b}</option>)}
           </select>
         )}
       </div>
@@ -294,7 +306,7 @@ function CreatePRForm({ state, onClose, onSuccess, onError }: {
       </div>
       <div className="modal-actions">
         <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
-        <button type="submit" className="btn btn-primary" disabled={submitting || loading || !title.trim()}>
+        <button type="submit" className="btn btn-primary" disabled={submitting || loading || !title.trim() || !head}>
           {submitting ? 'Creating...' : 'Create PR'}
         </button>
       </div>
@@ -468,10 +480,88 @@ function TriggerClaudeForm({ state, onClose, onSuccess, onError }: {
   )
 }
 
-function PRDetailView({ state, onClose, onError }: {
+function AssignForm({ state, onClose, onSuccess, onError }: {
+  state: Extract<ModalState, { mode: 'assign' }>
+  onClose: () => void
+  onSuccess: (msg: string) => void
+  onError: (msg: string) => void
+}) {
+  const [collaborators, setCollaborators] = useState<{ login: string }[]>([])
+  const [selected, setSelected] = useState<Set<string>>(new Set(state.currentAssignees))
+  const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
+
+  const [owner, name] = state.fullName.split('/')
+
+  useEffect(() => {
+    api.getCollaborators(owner, name)
+      .then(setCollaborators)
+      .catch((err) => onError(`Failed to load collaborators: ${err.message}`))
+      .finally(() => setLoading(false))
+  }, [owner, name])
+
+  const toggle = (login: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(login)) next.delete(login)
+      else next.add(login)
+      return next
+    })
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSubmitting(true)
+    try {
+      await api.assign({ fullName: state.fullName, number: state.number, type: state.type, assignees: [...selected] })
+      onSuccess(`Assigned on ${state.type} #${state.number}`)
+      onClose()
+    } catch (err: any) {
+      onError(`Failed: ${err.message}`)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <div className="modal-title">
+        Assign {state.type} #{state.number}
+        <span className="modal-subtitle">{state.fullName}</span>
+      </div>
+      {loading ? (
+        <div className="modal-loading">Loading collaborators...</div>
+      ) : collaborators.length === 0 ? (
+        <div className="modal-loading">No collaborators found.</div>
+      ) : (
+        <div className="label-grid">
+          {collaborators.map((c) => (
+            <button
+              key={c.login}
+              type="button"
+              className={`label-chip${selected.has(c.login) ? ' selected' : ''}`}
+              onClick={() => toggle(c.login)}
+            >
+              {c.login}
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="modal-actions">
+        <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
+        <button type="submit" className="btn btn-primary" disabled={submitting || loading}>
+          {submitting ? 'Saving...' : 'Save Assignees'}
+        </button>
+      </div>
+    </form>
+  )
+}
+
+function PRDetailView({ state, onClose, onError, onNavigate }: {
   state: Extract<ModalState, { mode: 'pr-detail' }>
   onClose: () => void
   onError: (msg: string) => void
+  onNavigate: (s: ModalState) => void
 }) {
   const [pr, setPR] = useState<PRDetail | null>(null)
   const [loading, setLoading] = useState(true)
@@ -549,6 +639,18 @@ function PRDetailView({ state, onClose, onError }: {
             <a href={pr.url} target="_blank" rel="noopener noreferrer" className="btn btn-ghost">
               View on GitHub ↗
             </a>
+            <button type="button" className="btn btn-ghost" onClick={() => onNavigate({ mode: 'comment', fullName: state.fullName, number: state.number, type: 'pr' })}>
+              Comment
+            </button>
+            <button type="button" className="btn btn-ghost" onClick={() => onNavigate({ mode: 'label', fullName: state.fullName, number: state.number, type: 'pr', currentLabels: pr.labels.map(l => l.name) })}>
+              Labels
+            </button>
+            <button type="button" className="btn btn-ghost" onClick={() => onNavigate({ mode: 'assign', fullName: state.fullName, number: state.number, type: 'pr', currentAssignees: pr.assignees?.map((a: any) => a.login) ?? [] })}>
+              Assign
+            </button>
+            <button type="button" className="btn btn-claude" onClick={() => onNavigate({ mode: 'trigger-claude', fullName: state.fullName, number: state.number, type: 'pr' })}>
+              @claude
+            </button>
             <button type="button" className="btn btn-primary" onClick={onClose}>Close</button>
           </div>
         </div>
@@ -557,10 +659,11 @@ function PRDetailView({ state, onClose, onError }: {
   )
 }
 
-function IssueDetailView({ state, onClose, onError }: {
+function IssueDetailView({ state, onClose, onError, onNavigate }: {
   state: Extract<ModalState, { mode: 'issue-detail' }>
   onClose: () => void
   onError: (msg: string) => void
+  onNavigate: (s: ModalState) => void
 }) {
   const [issue, setIssue] = useState<IssueDetail | null>(null)
   const [loading, setLoading] = useState(true)
@@ -637,6 +740,21 @@ function IssueDetailView({ state, onClose, onError }: {
             <a href={issue.url} target="_blank" rel="noopener noreferrer" className="btn btn-ghost">
               View on GitHub ↗
             </a>
+            <button type="button" className="btn btn-ghost" onClick={() => onNavigate({ mode: 'comment', fullName: state.fullName, number: state.number, type: 'issue' })}>
+              Comment
+            </button>
+            <button type="button" className="btn btn-ghost" onClick={() => onNavigate({ mode: 'label', fullName: state.fullName, number: state.number, type: 'issue', currentLabels: issue.labels.map(l => l.name) })}>
+              Labels
+            </button>
+            <button type="button" className="btn btn-ghost" onClick={() => onNavigate({ mode: 'assign', fullName: state.fullName, number: state.number, type: 'issue', currentAssignees: issue.assignees?.map((a: any) => a.login) ?? [] })}>
+              Assign
+            </button>
+            <button type="button" className="btn btn-ghost" onClick={() => onNavigate({ mode: 'create-pr', fullName: state.fullName, owner: state.owner, repoName: state.repoName })}>
+              @pr
+            </button>
+            <button type="button" className="btn btn-claude" onClick={() => onNavigate({ mode: 'trigger-claude', fullName: state.fullName, number: state.number, type: 'issue' })}>
+              @claude
+            </button>
             <button type="button" className="btn btn-primary" onClick={onClose}>Close</button>
           </div>
         </div>
