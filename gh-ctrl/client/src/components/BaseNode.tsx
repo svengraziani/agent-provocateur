@@ -58,6 +58,7 @@ export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, on
   const { stats } = data
   const [showDetail, setShowDetail] = useState(false)
   const [scanning, setScanning] = useState(false)
+  const [isHovering, setIsHovering] = useState(false)
 
   const handleScanBase = useCallback(async (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -132,6 +133,8 @@ export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, on
         } as React.CSSProperties}
         onMouseDown={handleMouseDown}
         onClick={handleClick}
+        onMouseEnter={() => setIsHovering(true)}
+        onMouseLeave={() => setIsHovering(false)}
       >
         {/* Status beacons */}
         <div className="base-beacons">
@@ -177,9 +180,6 @@ export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, on
           <IsoBaseBuilding />
         </div>
 
-        {/* Repo meta strip — always visible below base */}
-        <RepoMetaPanel owner={repo.owner} name={repo.name} repoColor={repo.color} />
-
         {/* Floating HUD toolbar — appears on hover */}
         <div className="base-hud">
           <div className="base-name">{repo.name}</div>
@@ -221,6 +221,9 @@ export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, on
           onModalOpen={onModalOpen}
         />
       )}
+
+      {/* Floating repo meta strip — shown when not hovering (HUD takes over on hover) */}
+      <RepoMetaPanel owner={repo.owner} name={repo.name} repoColor={repo.color} position={position} isHovering={isHovering} />
     </>
   )
 }
@@ -511,7 +514,7 @@ function CommitSparkline({ weeks }: { weeks: number[] }) {
   )
 }
 
-function RepoMetaPanel({ owner, name, repoColor }: { owner: string; name: string; repoColor: string }) {
+function RepoMetaPanel({ owner, name, repoColor, position, isHovering }: { owner: string; name: string; repoColor: string; position: Position; isHovering: boolean }) {
   const [meta, setMeta] = useState<RepoMeta | null>(null)
   const [loading, setLoading] = useState(false)
   const [expanded, setExpanded] = useState(false)
@@ -526,9 +529,14 @@ function RepoMetaPanel({ owner, name, repoColor }: { owner: string; name: string
     return () => { cancelled = true }
   }, [owner, name])
 
+  // Centered below the 120px building; visible when idle, hidden when HUD is showing (unless expanded)
+  const stripLeft = position.x - 10
+  const stripTop = position.y + 118
+  const visible = !isHovering || expanded
+
   if (loading) {
     return (
-      <div className="repo-meta-strip">
+      <div className="repo-meta-strip" style={{ left: stripLeft, top: stripTop, opacity: visible ? 1 : 0, pointerEvents: visible ? 'all' : 'none' }}>
         <span className="meta-loading">⌛ loading intel…</span>
       </div>
     )
@@ -541,7 +549,11 @@ function RepoMetaPanel({ owner, name, repoColor }: { owner: string; name: string
   const topContributors = meta.contributors.slice(0, 4)
 
   return (
-    <div className="repo-meta-strip" onClick={(e) => e.stopPropagation()}>
+    <div
+      className={`repo-meta-strip${expanded ? ' meta-strip-expanded' : ''}`}
+      style={{ left: stripLeft, top: stripTop, opacity: visible ? 1 : 0, pointerEvents: visible ? 'all' : 'none' }}
+      onClick={(e) => e.stopPropagation()}
+    >
       {/* Always-visible summary row */}
       <div className="meta-summary-row">
         {meta.stars > 0 && (

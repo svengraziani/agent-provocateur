@@ -1453,7 +1453,7 @@ select.input {
 }
 
 .base-node:hover {
-  z-index: 5;
+  z-index: 20;
 }
 
 /* Status glow via drop-shadow on the building image */
@@ -3094,16 +3094,21 @@ select.input {
 /* ── Repo Meta Strip ─────────────────────────────────────────────────────── */
 
 .repo-meta-strip {
-  position: relative;
-  width: 100%;
-  background: rgba(10, 21, 16, 0.88);
+  position: absolute;
+  width: 160px;
+  z-index: 6;
+  background: rgba(10, 21, 16, 0.92);
   border: 1px solid rgba(57, 255, 20, 0.18);
-  border-top: none;
   padding: 4px 6px;
   font-size: 9px;
   font-family: var(--font-mono);
   color: var(--text-2);
   pointer-events: all;
+  transition: opacity 0.15s;
+}
+
+.repo-meta-strip.meta-strip-expanded {
+  z-index: 16;
 }
 
 .meta-loading {
