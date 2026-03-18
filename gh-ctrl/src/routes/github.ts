@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { db } from '../db'
 import { repos } from '../db/schema'
+import { uploadImages } from '../lib/uploadImages'
 
 interface GHResult {
   data: any
@@ -279,14 +280,35 @@ app.get('/branches/:owner/:name', async (c) => {
 
 // POST /api/github/trigger-claude — post @claude comment
 app.post('/trigger-claude', async (c) => {
-  const body = await c.req.json()
-  const { fullName, number, type, message } = body
+  let fullName: string, number: number, type: string, message: string | undefined
+  let imageFiles: File[] = []
+
+  const ct = c.req.header('content-type') || ''
+  if (ct.includes('multipart/form-data')) {
+    const fd = await c.req.formData()
+    fullName = fd.get('fullName') as string
+    number = Number(fd.get('number'))
+    type = fd.get('type') as string
+    message = (fd.get('message') as string) || undefined
+    imageFiles = fd.getAll('images').filter((f) => f instanceof File) as File[]
+  } else {
+    const body = await c.req.json()
+    ;({ fullName, number, type, message } = body)
+  }
 
   if (!fullName || !number || !type) {
     return c.json({ error: 'Missing required fields: fullName, number, type' }, 400)
   }
 
-  const comment = message || '@claude Please review and help resolve this.'
+  let comment = message || '@claude Please review and help resolve this.'
+
+  if (imageFiles.length > 0) {
+    const urls = await uploadImages(imageFiles, fullName)
+    if (urls.length > 0) {
+      comment += '\n\n' + urls.map((url) => `![](${url})`).join('\n')
+    }
+  }
+
   const ghType = type === 'pr' ? 'pr' : 'issue'
 
   const result = gh([
@@ -303,15 +325,37 @@ app.post('/trigger-claude', async (c) => {
 
 // POST /api/github/comment — post a custom comment on an issue or PR
 app.post('/comment', async (c) => {
-  const body = await c.req.json()
-  const { fullName, number, type, comment } = body
+  let fullName: string, number: number, type: string, comment: string
+  let imageFiles: File[] = []
+
+  const ct = c.req.header('content-type') || ''
+  if (ct.includes('multipart/form-data')) {
+    const fd = await c.req.formData()
+    fullName = fd.get('fullName') as string
+    number = Number(fd.get('number'))
+    type = fd.get('type') as string
+    comment = fd.get('comment') as string
+    imageFiles = fd.getAll('images').filter((f) => f instanceof File) as File[]
+  } else {
+    const body = await c.req.json()
+    ;({ fullName, number, type, comment } = body)
+  }
 
   if (!fullName || !number || !type || !comment) {
     return c.json({ error: 'Missing required fields: fullName, number, type, comment' }, 400)
   }
 
+  let finalComment = comment
+
+  if (imageFiles.length > 0) {
+    const urls = await uploadImages(imageFiles, fullName)
+    if (urls.length > 0) {
+      finalComment += '\n\n' + urls.map((url) => `![](${url})`).join('\n')
+    }
+  }
+
   const ghType = type === 'pr' ? 'pr' : 'issue'
-  const result = gh([ghType, 'comment', String(number), '--repo', fullName, '--body', comment])
+  const result = gh([ghType, 'comment', String(number), '--repo', fullName, '--body', finalComment])
 
   if (result.error) {
     return c.json({ error: result.error }, 500)
@@ -426,15 +470,39 @@ app.get('/issue/:owner/:name/:number', async (c) => {
 
 // POST /api/github/create-issue — create a new issue
 app.post('/create-issue', async (c) => {
-  const body = await c.req.json()
-  const { fullName, title, issueBody, labels } = body
+  let fullName: string, title: string, issueBody: string | undefined, labels: string[] | undefined
+  let imageFiles: File[] = []
+
+  const ct = c.req.header('content-type') || ''
+  if (ct.includes('multipart/form-data')) {
+    const fd = await c.req.formData()
+    fullName = fd.get('fullName') as string
+    title = fd.get('title') as string
+    issueBody = (fd.get('issueBody') as string) || undefined
+    const labelsJson = fd.get('labels') as string
+    labels = labelsJson ? JSON.parse(labelsJson) : undefined
+    imageFiles = fd.getAll('images').filter((f) => f instanceof File) as File[]
+  } else {
+    const body = await c.req.json()
+    ;({ fullName, title, issueBody, labels } = body)
+  }
 
   if (!fullName || !title) {
     return c.json({ error: 'Missing required fields: fullName, title' }, 400)
   }
 
+  let finalBody = issueBody
+
+  if (imageFiles.length > 0) {
+    const urls = await uploadImages(imageFiles, fullName)
+    if (urls.length > 0) {
+      const imgMarkdown = urls.map((url) => `![](${url})`).join('\n')
+      finalBody = finalBody ? `${finalBody}\n\n${imgMarkdown}` : imgMarkdown
+    }
+  }
+
   const args = ['issue', 'create', '--repo', fullName, '--title', title]
-  if (issueBody) args.push('--body', issueBody)
+  if (finalBody) args.push('--body', finalBody)
   if (labels && labels.length > 0) {
     args.push('--label', labels.join(','))
   }

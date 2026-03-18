@@ -3090,3 +3090,85 @@ select.input {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }
 }
+
+/* Image attachment UI */
+.image-attach-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.attach-btn {
+  font-size: 11px;
+  padding: 3px 8px;
+  opacity: 0.75;
+}
+
+.attach-btn:hover {
+  opacity: 1;
+}
+
+.image-preview-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.image-preview-item {
+  position: relative;
+  display: inline-block;
+}
+
+.image-preview-thumb {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  display: block;
+}
+
+.image-preview-remove {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  background: var(--red);
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  font-size: 9px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  line-height: 1;
+}
+
+.image-preview-remove:hover {
+  background: #ff3333;
+}
+
+/* Construct dialog attach button */
+.construct-btn-attach {
+  background: none;
+  border: 1px solid var(--chrome-dark);
+  color: var(--green-mid);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 3px 10px;
+  cursor: pointer;
+  letter-spacing: 0.05em;
+  margin-top: 6px;
+  opacity: 0.75;
+}
+
+.construct-btn-attach:hover {
+  border-color: var(--green-mid);
+  color: var(--green-primary);
+  opacity: 1;
+}

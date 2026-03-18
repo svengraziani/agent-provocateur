@@ -18,6 +18,7 @@ const BOOT_SEQUENCE = `> CONSTRUCTION YARD ONLINE
 export function ConstructDialog({ entry, onClose, onSuccess, onError }: Props) {
   const [title, setTitle] = useState('')
   const [issueBody, setIssueBody] = useState('')
+  const [images, setImages] = useState<File[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [availableLabels, setAvailableLabels] = useState<GHLabel[]>([])
   const [selectedLabels, setSelectedLabels] = useState<Set<string>>(new Set())
@@ -25,6 +26,7 @@ export function ConstructDialog({ entry, onClose, onSuccess, onError }: Props) {
   const [bootText, setBootText] = useState('')
   const [bootDone, setBootDone] = useState(false)
   const titleRef = useRef<HTMLInputElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Typewriter boot sequence
   useEffect(() => {
@@ -58,6 +60,20 @@ export function ConstructDialog({ entry, onClose, onSuccess, onError }: Props) {
     })
   }
 
+  const addImages = (files: FileList | File[]) => {
+    const imgFiles = Array.from(files).filter((f) => f.type.startsWith('image/'))
+    if (imgFiles.length) setImages((prev) => [...prev, ...imgFiles])
+  }
+
+  const handleBodyPaste = (e: React.ClipboardEvent) => {
+    if (e.clipboardData.files.length) addImages(e.clipboardData.files)
+  }
+
+  const handleBodyDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    if (e.dataTransfer.files.length) addImages(e.dataTransfer.files)
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!title.trim()) return
@@ -68,7 +84,7 @@ export function ConstructDialog({ entry, onClose, onSuccess, onError }: Props) {
         title: title.trim(),
         issueBody: issueBody.trim() || undefined,
         labels: selectedLabels.size > 0 ? [...selectedLabels] : undefined,
-      })
+      }, images.length ? images : undefined)
       onSuccess(`ISSUE DEPLOYED: ${result.url || title}`)
     } catch (err: any) {
       onError(`DEPLOYMENT FAILED: ${err.message}`)
@@ -130,11 +146,16 @@ export function ConstructDialog({ entry, onClose, onSuccess, onError }: Props) {
 
           <div className="construct-field">
             <label className="construct-label">&#x25b6; INTEL REPORT:</label>
-            <div className="voice-input-group">
+            <div
+              className="voice-input-group"
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={handleBodyDrop}
+            >
               <textarea
                 className="construct-input construct-textarea"
                 value={issueBody}
                 onChange={(e) => setIssueBody(e.target.value)}
+                onPaste={handleBodyPaste}
                 placeholder="Describe the situation... (optional)"
                 rows={4}
               />
@@ -144,6 +165,20 @@ export function ConstructDialog({ entry, onClose, onSuccess, onError }: Props) {
                 title="Dictate intel report"
               />
             </div>
+            <div className="image-attach-bar">
+              <input ref={fileInputRef} type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={(e) => e.target.files && addImages(e.target.files)} />
+              <button type="button" className="construct-btn-attach" onClick={() => fileInputRef.current?.click()}>&#128247; ATTACH IMAGE</button>
+            </div>
+            {images.length > 0 && (
+              <div className="image-preview-strip">
+                {images.map((img, i) => (
+                  <div key={i} className="image-preview-item">
+                    <img src={URL.createObjectURL(img)} alt={img.name} className="image-preview-thumb" />
+                    <button type="button" className="image-preview-remove" onClick={() => setImages((prev) => prev.filter((_, j) => j !== i))}>&#x2715;</button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {!labelsLoading && availableLabels.length > 0 && (

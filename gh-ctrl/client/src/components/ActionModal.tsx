@@ -72,19 +72,35 @@ function CommentForm({ state, onClose, onSuccess, onError }: {
   onError: (msg: string) => void
 }) {
   const [comment, setComment] = useState('')
+  const [images, setImages] = useState<File[]>([])
   const [submitting, setSubmitting] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     textareaRef.current?.focus()
   }, [])
+
+  const addImages = (files: FileList | File[]) => {
+    const imgFiles = Array.from(files).filter((f) => f.type.startsWith('image/'))
+    if (imgFiles.length) setImages((prev) => [...prev, ...imgFiles])
+  }
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    if (e.clipboardData.files.length) addImages(e.clipboardData.files)
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    if (e.dataTransfer.files.length) addImages(e.dataTransfer.files)
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!comment.trim()) return
     setSubmitting(true)
     try {
-      await api.postComment({ fullName: state.fullName, number: state.number, type: state.type, comment: comment.trim() })
+      await api.postComment({ fullName: state.fullName, number: state.number, type: state.type, comment: comment.trim() }, images.length ? images : undefined)
       onSuccess(`Comment posted on ${state.type} #${state.number}`)
       onClose()
     } catch (err: any) {
@@ -100,17 +116,36 @@ function CommentForm({ state, onClose, onSuccess, onError }: {
         Comment on {state.type} #{state.number}
         <span className="modal-subtitle">{state.fullName}</span>
       </div>
-      <div className="voice-input-group">
+      <div
+        className="voice-input-group"
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={handleDrop}
+      >
         <textarea
           ref={textareaRef}
           className="input modal-textarea"
           value={comment}
           onChange={(e) => setComment(e.target.value)}
+          onPaste={handlePaste}
           placeholder="Write a comment..."
           rows={5}
         />
         <VoiceButton onTranscript={(text) => setComment((prev) => prev ? `${prev} ${text}` : text)} />
       </div>
+      <div className="image-attach-bar">
+        <input ref={fileInputRef} type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={(e) => e.target.files && addImages(e.target.files)} />
+        <button type="button" className="btn btn-ghost btn-sm attach-btn" onClick={() => fileInputRef.current?.click()}>&#128247; Attach image</button>
+      </div>
+      {images.length > 0 && (
+        <div className="image-preview-strip">
+          {images.map((img, i) => (
+            <div key={i} className="image-preview-item">
+              <img src={URL.createObjectURL(img)} alt={img.name} className="image-preview-thumb" />
+              <button type="button" className="image-preview-remove" onClick={() => setImages((prev) => prev.filter((_, j) => j !== i))}>&#x2715;</button>
+            </div>
+          ))}
+        </div>
+      )}
       <div className="modal-actions">
         <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
         <button type="submit" className="btn btn-primary" disabled={submitting || !comment.trim()}>
@@ -473,11 +508,13 @@ function CreateIssueForm({ state, onClose, onSuccess, onError, onIssueCreated }:
 }) {
   const [title, setTitle] = useState('')
   const [issueBody, setIssueBody] = useState('')
+  const [images, setImages] = useState<File[]>([])
   const [availableLabels, setAvailableLabels] = useState<GHLabel[]>([])
   const [selectedLabels, setSelectedLabels] = useState<Set<string>>(new Set())
   const [submitting, setSubmitting] = useState(false)
   const [labelsLoading, setLabelsLoading] = useState(true)
   const titleRef = useRef<HTMLInputElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     titleRef.current?.focus()
@@ -496,6 +533,20 @@ function CreateIssueForm({ state, onClose, onSuccess, onError, onIssueCreated }:
     })
   }
 
+  const addImages = (files: FileList | File[]) => {
+    const imgFiles = Array.from(files).filter((f) => f.type.startsWith('image/'))
+    if (imgFiles.length) setImages((prev) => [...prev, ...imgFiles])
+  }
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    if (e.clipboardData.files.length) addImages(e.clipboardData.files)
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    if (e.dataTransfer.files.length) addImages(e.dataTransfer.files)
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!title.trim()) return
@@ -506,7 +557,7 @@ function CreateIssueForm({ state, onClose, onSuccess, onError, onIssueCreated }:
         title: title.trim(),
         issueBody: issueBody.trim() || undefined,
         labels: selectedLabels.size > 0 ? [...selectedLabels] : undefined,
-      })
+      }, images.length ? images : undefined)
       onSuccess(`Issue created: ${result.url || title}`)
       onIssueCreated?.(state.owner, state.repoName)
       onClose()
@@ -535,13 +586,33 @@ function CreateIssueForm({ state, onClose, onSuccess, onError, onIssueCreated }:
       </div>
       <div className="modal-field">
         <label className="modal-label">Description (optional)</label>
-        <textarea
-          className="input modal-textarea"
-          value={issueBody}
-          onChange={(e) => setIssueBody(e.target.value)}
-          placeholder="Describe the issue..."
-          rows={4}
-        />
+        <div
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={handleDrop}
+        >
+          <textarea
+            className="input modal-textarea"
+            value={issueBody}
+            onChange={(e) => setIssueBody(e.target.value)}
+            onPaste={handlePaste}
+            placeholder="Describe the issue..."
+            rows={4}
+          />
+        </div>
+        <div className="image-attach-bar">
+          <input ref={fileInputRef} type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={(e) => e.target.files && addImages(e.target.files)} />
+          <button type="button" className="btn btn-ghost btn-sm attach-btn" onClick={() => fileInputRef.current?.click()}>&#128247; Attach image</button>
+        </div>
+        {images.length > 0 && (
+          <div className="image-preview-strip">
+            {images.map((img, i) => (
+              <div key={i} className="image-preview-item">
+                <img src={URL.createObjectURL(img)} alt={img.name} className="image-preview-thumb" />
+                <button type="button" className="image-preview-remove" onClick={() => setImages((prev) => prev.filter((_, j) => j !== i))}>&#x2715;</button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
       {!labelsLoading && availableLabels.length > 0 && (
         <div className="modal-field">
@@ -579,8 +650,10 @@ function TriggerClaudeForm({ state, onClose, onSuccess, onError }: {
   onError: (msg: string) => void
 }) {
   const [message, setMessage] = useState('@claude ')
+  const [images, setImages] = useState<File[]>([])
   const [submitting, setSubmitting] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     const el = textareaRef.current
@@ -590,12 +663,26 @@ function TriggerClaudeForm({ state, onClose, onSuccess, onError }: {
     }
   }, [])
 
+  const addImages = (files: FileList | File[]) => {
+    const imgFiles = Array.from(files).filter((f) => f.type.startsWith('image/'))
+    if (imgFiles.length) setImages((prev) => [...prev, ...imgFiles])
+  }
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    if (e.clipboardData.files.length) addImages(e.clipboardData.files)
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    if (e.dataTransfer.files.length) addImages(e.dataTransfer.files)
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!message.trim()) return
     setSubmitting(true)
     try {
-      await api.triggerClaude({ fullName: state.fullName, number: state.number, type: state.type, message: message.trim() })
+      await api.triggerClaude({ fullName: state.fullName, number: state.number, type: state.type, message: message.trim() }, images.length ? images : undefined)
       onSuccess(`@claude triggered on ${state.type} #${state.number}`)
       onClose()
     } catch (err: any) {
@@ -611,17 +698,36 @@ function TriggerClaudeForm({ state, onClose, onSuccess, onError }: {
         Trigger Claude on {state.type} #{state.number}
         <span className="modal-subtitle">{state.fullName}</span>
       </div>
-      <div className="voice-input-group">
+      <div
+        className="voice-input-group"
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={handleDrop}
+      >
         <textarea
           ref={textareaRef}
           className="input modal-textarea"
           value={message}
           onChange={(e) => setMessage(e.target.value)}
+          onPaste={handlePaste}
           placeholder="@claude ..."
           rows={5}
         />
         <VoiceButton onTranscript={(text) => setMessage((prev) => prev ? `${prev} ${text}` : text)} />
       </div>
+      <div className="image-attach-bar">
+        <input ref={fileInputRef} type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={(e) => e.target.files && addImages(e.target.files)} />
+        <button type="button" className="btn btn-ghost btn-sm attach-btn" onClick={() => fileInputRef.current?.click()}>&#128247; Attach image</button>
+      </div>
+      {images.length > 0 && (
+        <div className="image-preview-strip">
+          {images.map((img, i) => (
+            <div key={i} className="image-preview-item">
+              <img src={URL.createObjectURL(img)} alt={img.name} className="image-preview-thumb" />
+              <button type="button" className="image-preview-remove" onClick={() => setImages((prev) => prev.filter((_, j) => j !== i))}>&#x2715;</button>
+            </div>
+          ))}
+        </div>
+      )}
       <div className="modal-actions">
         <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
         <button type="submit" className="btn btn-claude" disabled={submitting || !message.trim()}>

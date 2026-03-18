@@ -48,22 +48,48 @@ export const api = {
     number: number
     type: 'pr' | 'issue'
     message?: string
-  }) =>
-    request<{ ok: boolean }>('/github/trigger-claude', {
+  }, images?: File[]) => {
+    if (images && images.length > 0) {
+      const fd = new FormData()
+      fd.append('fullName', params.fullName)
+      fd.append('number', String(params.number))
+      fd.append('type', params.type)
+      if (params.message) fd.append('message', params.message)
+      for (const img of images) fd.append('images', img)
+      return fetch(`${BASE}/github/trigger-claude`, { method: 'POST', body: fd }).then(async (res) => {
+        if (!res.ok) { const err = await res.json().catch(() => ({ error: res.statusText })); throw new Error(err.error || res.statusText) }
+        return res.json() as Promise<{ ok: boolean }>
+      })
+    }
+    return request<{ ok: boolean }>('/github/trigger-claude', {
       method: 'POST',
       body: JSON.stringify(params),
-    }),
+    })
+  },
 
   postComment: (params: {
     fullName: string
     number: number
     type: 'pr' | 'issue'
     comment: string
-  }) =>
-    request<{ ok: boolean }>('/github/comment', {
+  }, images?: File[]) => {
+    if (images && images.length > 0) {
+      const fd = new FormData()
+      fd.append('fullName', params.fullName)
+      fd.append('number', String(params.number))
+      fd.append('type', params.type)
+      fd.append('comment', params.comment)
+      for (const img of images) fd.append('images', img)
+      return fetch(`${BASE}/github/comment`, { method: 'POST', body: fd }).then(async (res) => {
+        if (!res.ok) { const err = await res.json().catch(() => ({ error: res.statusText })); throw new Error(err.error || res.statusText) }
+        return res.json() as Promise<{ ok: boolean }>
+      })
+    }
+    return request<{ ok: boolean }>('/github/comment', {
       method: 'POST',
       body: JSON.stringify(params),
-    }),
+    })
+  },
 
   addLabel: (params: {
     fullName: string
@@ -131,11 +157,24 @@ export const api = {
     title: string
     issueBody?: string
     labels?: string[]
-  }) =>
-    request<{ ok: boolean; url: string }>('/github/create-issue', {
+  }, images?: File[]) => {
+    if (images && images.length > 0) {
+      const fd = new FormData()
+      fd.append('fullName', params.fullName)
+      fd.append('title', params.title)
+      if (params.issueBody) fd.append('issueBody', params.issueBody)
+      if (params.labels) fd.append('labels', JSON.stringify(params.labels))
+      for (const img of images) fd.append('images', img)
+      return fetch(`${BASE}/github/create-issue`, { method: 'POST', body: fd }).then(async (res) => {
+        if (!res.ok) { const err = await res.json().catch(() => ({ error: res.statusText })); throw new Error(err.error || res.statusText) }
+        return res.json() as Promise<{ ok: boolean; url: string }>
+      })
+    }
+    return request<{ ok: boolean; url: string }>('/github/create-issue', {
       method: 'POST',
       body: JSON.stringify(params),
-    }),
+    })
+  },
 
   getCollaborators: (owner: string, name: string) =>
     request<{ login: string }[]>(`/github/collaborators/${owner}/${name}`),
