@@ -319,9 +319,7 @@ export function BattlefieldView() {
   const onRefreshRepo = useAppStore((s) => s.loadSingleRepo)
   const addToast = useAppStore((s) => s.addToast)
   const loadRepos = useAppStore((s) => s.loadRepos)
-  const loadDashboard = useAppStore((s) => s.loadDashboard)
-  const onToast = addToast
-  const onReposChange = () => { loadRepos(); loadDashboard() }
+  const onReposChange = () => { loadRepos(); onRefresh() }
   const [offset, setOffset] = useState<Position>({ x: 0, y: 0 })
   const [zoom, setZoom] = useState(1)
   const [isDraggingMap, setIsDraggingMap] = useState(false)
@@ -620,7 +618,7 @@ export function BattlefieldView() {
               onConstruct={() => { play('hydraulic'); setConstructTarget(entry) }}
               onStartRelocate={(mouseX, mouseY) => handleStartRelocate(entry.repo.id, mouseX, mouseY)}
               onRefreshRepo={onRefreshRepo}
-              onToast={onToast}
+              addToast={addToast}
               onModalOpen={(state) => { play('peep'); setModalState(state) }}
             />
           )
@@ -658,8 +656,8 @@ export function BattlefieldView() {
       <ActionModal
         state={modalState}
         onClose={() => setModalState(null)}
-        onSuccess={(msg) => onToast(msg, 'success')}
-        onError={(msg) => onToast(msg, 'error')}
+        onSuccess={(msg) => addToast(msg, 'success')}
+        onError={(msg) => addToast(msg, 'error')}
       />
 
       {/* Construction dialog */}
@@ -667,8 +665,8 @@ export function BattlefieldView() {
         <ConstructDialog
           entry={constructTarget}
           onClose={() => setConstructTarget(null)}
-          onSuccess={(msg) => { onToast(msg, 'success'); setConstructTarget(null) }}
-          onError={(msg) => onToast(msg, 'error')}
+          onSuccess={(msg) => { addToast(msg, 'success'); setConstructTarget(null) }}
+          onError={(msg) => addToast(msg, 'error')}
         />
       )}
 
@@ -677,11 +675,11 @@ export function BattlefieldView() {
         <CreateBaseDialog
           onClose={() => setShowCreateBase(false)}
           onSuccess={(msg) => {
-            onToast(msg, 'success')
+            addToast(msg, 'success')
             setShowCreateBase(false)
             onReposChange()
           }}
-          onError={(msg) => onToast(msg, 'error')}
+          onError={(msg) => addToast(msg, 'error')}
         />
       )}
 

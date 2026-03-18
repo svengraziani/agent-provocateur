@@ -28,10 +28,6 @@ interface AppStore {
   refreshInterval: number
   toasts: Toast[]
 
-  // Setters
-  setEntries: (entries: DashboardEntry[]) => void
-  setRefreshInterval: (ms: number) => void
-
   // Toast
   addToast: (message: string, type?: ToastType) => void
   removeToast: (id: number) => void
@@ -50,9 +46,6 @@ export const useAppStore = create<AppStore>((set, get) => ({
   lastRefresh: null,
   refreshInterval: getStoredRefreshInterval(),
   toasts: [],
-
-  setEntries: (entries) => set({ entries }),
-  setRefreshInterval: (ms) => set({ refreshInterval: ms }),
 
   addToast: (message, type = 'info') => {
     const id = nextToastId++

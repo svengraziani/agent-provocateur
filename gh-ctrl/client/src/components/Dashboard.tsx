@@ -5,7 +5,6 @@ export function Dashboard() {
   const entries = useAppStore((s) => s.entries)
   const loading = useAppStore((s) => s.loading)
   const loadDashboard = useAppStore((s) => s.loadDashboard)
-  const addToast = useAppStore((s) => s.addToast)
 
   const totalConflicts = entries.reduce((sum, e) => sum + e.data.stats.conflicts, 0)
 
@@ -43,7 +42,6 @@ export function Dashboard() {
           <RepoCard
             key={entry.repo.id}
             entry={entry}
-            onToast={addToast}
           />
         ))}
       </div>
