@@ -327,7 +327,7 @@ function CreatePRForm({ state, onClose, onSuccess, onError }: {
       })
       .catch((err) => onError(`Failed to load branches: ${err.message}`))
       .finally(() => setLoading(false))
-  }, [state.owner, state.repoName])
+  }, [state.owner, state.repoName, state.base])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
