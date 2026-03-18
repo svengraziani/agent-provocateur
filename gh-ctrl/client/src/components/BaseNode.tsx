@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react'
 import type { DashboardEntry, GHPR, GHIssue, Branch, WorkflowRun } from '../types'
 import type { ModalState } from './ActionModal'
-import { CloseIcon, LinkIcon, LabelIcon, CommentIcon, RefreshIcon, ExternalLinkIcon } from './Icons'
+import { CloseIcon, LinkIcon, LabelIcon, CommentIcon, RefreshIcon, ExternalLinkIcon, AssigneeIcon } from './Icons'
 import { api } from '../api'
 
 // ── Isometric building PNG components ─────────────────────────────────────────
@@ -315,6 +315,7 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
               repo={repo}
               onModalOpen={onModalOpen}
               labels={pr.labels}
+              assignees={pr.assignees}
             />
           ))}
           {data.conflicts.length > 4 && <div className="bdp-more">+{data.conflicts.length - 4} more</div>}
@@ -334,6 +335,7 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
               repo={repo}
               onModalOpen={onModalOpen}
               labels={pr.labels}
+              assignees={pr.assignees}
             />
           ))}
           {data.needsReview.length > 4 && <div className="bdp-more">+{data.needsReview.length - 4} more</div>}
@@ -352,6 +354,7 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
               repo={repo}
               onModalOpen={onModalOpen}
               labels={issue.labels}
+              assignees={issue.assignees}
               isClaudeActive={activeClaudeSet.has(issue.number)}
             />
           ))}
@@ -401,6 +404,7 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
               repo={repo}
               onModalOpen={onModalOpen}
               labels={pr.labels}
+              assignees={pr.assignees}
             />
           ))}
         </div>
@@ -420,6 +424,7 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
               repo={repo}
               onModalOpen={onModalOpen}
               labels={issue.labels}
+              assignees={issue.assignees}
               isClaudeActive={activeClaudeSet.has(issue.number)}
               isUntouched
             />
@@ -535,7 +540,7 @@ function PRBuilding({ pr, position, repo, onModalOpen }: {
   )
 }
 
-function BdpItemRow({ number, title, type, repo, onModalOpen, previewUrl, labels, isClaudeActive, isUntouched }: {
+function BdpItemRow({ number, title, type, repo, onModalOpen, previewUrl, labels, assignees, isClaudeActive, isUntouched }: {
   number: number
   title: string
   type: 'pr' | 'issue'
@@ -543,6 +548,7 @@ function BdpItemRow({ number, title, type, repo, onModalOpen, previewUrl, labels
   onModalOpen: (state: ModalState) => void
   previewUrl?: string | null
   labels: { name: string; color: string }[]
+  assignees: { login: string }[]
   isClaudeActive?: boolean
   isUntouched?: boolean
 }) {
@@ -588,6 +594,13 @@ function BdpItemRow({ number, title, type, repo, onModalOpen, previewUrl, labels
           onClick={() => onModalOpen({ mode: 'label', fullName: repo.fullName, number, type, currentLabels: labels.map((l) => l.name) })}
         >
           <LabelIcon size={12} />
+        </button>
+        <button
+          className="bdp-icon-btn"
+          title="Manage assignees"
+          onClick={() => onModalOpen({ mode: 'assignee', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, number, type, currentAssignees: assignees.map((a) => a.login) })}
+        >
+          <AssigneeIcon size={12} />
         </button>
         <button
           className="bdp-icon-btn"

@@ -8,6 +8,7 @@ import { CloseIcon } from './Icons'
 export type ModalState =
   | { mode: 'comment'; fullName: string; number: number; type: 'pr' | 'issue' }
   | { mode: 'label'; fullName: string; number: number; type: 'pr' | 'issue'; currentLabels: string[] }
+  | { mode: 'assignee'; fullName: string; owner: string; repoName: string; number: number; type: 'pr' | 'issue'; currentAssignees: string[] }
   | { mode: 'create-pr'; fullName: string; owner: string; repoName: string; head: string }
   | { mode: 'create-issue'; fullName: string; owner: string; repoName: string }
   | { mode: 'issue-detail'; fullName: string; owner: string; repoName: string; number: number }
@@ -34,6 +35,9 @@ export function ActionModal({ state, onClose, onSuccess, onError }: Props) {
         )}
         {state.mode === 'label' && (
           <LabelForm state={state} onClose={onClose} onSuccess={onSuccess} onError={onError} />
+        )}
+        {state.mode === 'assignee' && (
+          <AssigneeForm state={state} onClose={onClose} onSuccess={onSuccess} onError={onError} />
         )}
         {state.mode === 'create-pr' && (
           <CreatePRForm state={state} onClose={onClose} onSuccess={onSuccess} onError={onError} />
@@ -193,6 +197,90 @@ function LabelForm({ state, onClose, onSuccess, onError }: {
         <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
         <button type="submit" className="btn btn-primary" disabled={submitting || loading}>
           {submitting ? 'Saving...' : 'Save Labels'}
+        </button>
+      </div>
+    </form>
+  )
+}
+
+function AssigneeForm({ state, onClose, onSuccess, onError }: {
+  state: Extract<ModalState, { mode: 'assignee' }>
+  onClose: () => void
+  onSuccess: (msg: string) => void
+  onError: (msg: string) => void
+}) {
+  const [collaborators, setCollaborators] = useState<{ login: string }[]>([])
+  const [selected, setSelected] = useState<Set<string>>(new Set(state.currentAssignees))
+  const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    api.getCollaborators(state.owner, state.repoName)
+      .then(setCollaborators)
+      .catch((err) => onError(`Failed to load collaborators: ${err.message}`))
+      .finally(() => setLoading(false))
+  }, [state.owner, state.repoName])
+
+  const toggle = (login: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(login)) next.delete(login)
+      else next.add(login)
+      return next
+    })
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSubmitting(true)
+    try {
+      const original = new Set(state.currentAssignees)
+      const toAdd = [...selected].filter((l) => !original.has(l))
+      const toRemove = [...original].filter((l) => !selected.has(l))
+
+      await Promise.all([
+        ...toAdd.map((assignee) => api.addAssignee({ fullName: state.fullName, number: state.number, type: state.type, assignee })),
+        ...toRemove.map((assignee) => api.removeAssignee({ fullName: state.fullName, number: state.number, type: state.type, assignee })),
+      ])
+
+      const changes = toAdd.length + toRemove.length
+      onSuccess(`Assignees updated on ${state.type} #${state.number} (${changes} change${changes !== 1 ? 's' : ''})`)
+      onClose()
+    } catch (err: any) {
+      onError(`Failed: ${err.message}`)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <div className="modal-title">
+        Assignees on {state.type} #{state.number}
+        <span className="modal-subtitle">{state.fullName}</span>
+      </div>
+      {loading ? (
+        <div className="modal-loading">Loading collaborators...</div>
+      ) : collaborators.length === 0 ? (
+        <div className="modal-loading">No collaborators found for this repo.</div>
+      ) : (
+        <div className="label-grid">
+          {collaborators.map((c) => (
+            <button
+              key={c.login}
+              type="button"
+              className={`label-chip${selected.has(c.login) ? ' selected' : ''}`}
+              onClick={() => toggle(c.login)}
+            >
+              @{c.login}
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="modal-actions">
+        <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
+        <button type="submit" className="btn btn-primary" disabled={submitting || loading}>
+          {submitting ? 'Saving...' : 'Save Assignees'}
         </button>
       </div>
     </form>
