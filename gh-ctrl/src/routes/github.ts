@@ -70,16 +70,23 @@ function parseGitHubComparePRLink(urlStr: string): ClaudeIssuePRInfo | null {
     const base = comparePart.slice(0, sepIdx)
     const head = comparePart.slice(sepIdx + 3)
     if (!base || !head) return null
-    const title = decodeURIComponent(url.searchParams.get('title') || '')
-    const body = decodeURIComponent(url.searchParams.get('body') || '')
+    const title = url.searchParams.get('title') || ''
+    const body = url.searchParams.get('body') || ''
     return { base, head, title, body }
   } catch {
     return null
   }
 }
 
+const PR_LINKS_CACHE_TTL_MS = 30_000
+const prLinksCache = new Map<string, { data: Record<number, ClaudeIssuePRInfo>; expiresAt: number }>()
+
 function fetchClaudeIssuePRLinks(fullName: string, issueNumbers: number[]): Record<number, ClaudeIssuePRInfo> {
   if (issueNumbers.length === 0) return {}
+
+  const cached = prLinksCache.get(fullName)
+  if (cached && cached.expiresAt > Date.now()) return cached.data
+
   const result: Record<number, ClaudeIssuePRInfo> = {}
   for (const issueNumber of issueNumbers) {
     const res = gh(['issue', 'view', String(issueNumber), '--repo', fullName, '--json', 'comments'])
@@ -92,25 +99,9 @@ function fetchClaudeIssuePRLinks(fullName: string, issueNumbers: number[]): Reco
       if (info) { result[issueNumber] = info; break }
     }
   }
+
+  prLinksCache.set(fullName, { data: result, expiresAt: Date.now() + PR_LINKS_CACHE_TTL_MS })
   return result
-}
-
-function fetchClaudeIssueBranches(fullName: string): Record<number, string> {
-  const result = gh(['api', `repos/${fullName}/branches?per_page=100`])
-  if (result.error || !Array.isArray(result.data)) return {}
-
-  const branchMap: Record<number, string> = {}
-  for (const branch of result.data) {
-    const match = branch.name?.match(CLAUDE_BRANCH_RE)
-    if (match) {
-      const issueNumber = Number(match[1])
-      // Keep the most recently listed branch if multiple exist for same issue
-      if (!branchMap[issueNumber]) {
-        branchMap[issueNumber] = branch.name
-      }
-    }
-  }
-  return branchMap
 }
 
 interface WorkflowRun {
@@ -178,7 +169,6 @@ function fetchRepoData(fullName: string) {
       needsReview: [],
       claudeIssues: [],
       activeClaudeIssues: [],
-      claudeIssueBranches: {},
       claudeIssuePRLinks: {},
       runningWorkflows: [],
       error: prResult.error || issueResult.error,
@@ -207,7 +197,6 @@ function fetchRepoData(fullName: string) {
   )
 
   const { activeClaudeIssues, runningWorkflows } = fetchRunningWorkflows(fullName)
-  const claudeIssueBranches = fetchClaudeIssueBranches(fullName)
   const claudeIssuePRLinks = fetchClaudeIssuePRLinks(fullName, claudeIssues.map((i: any) => i.number))
 
   return {
@@ -228,7 +217,6 @@ function fetchRepoData(fullName: string) {
     needsReview,
     claudeIssues,
     activeClaudeIssues,
-    claudeIssueBranches,
     claudeIssuePRLinks,
     runningWorkflows,
     error: null,
