@@ -69,6 +69,13 @@ export interface WorkflowRun {
   workflowName: string
 }
 
+export interface ClaudeIssuePRInfo {
+  head: string
+  base: string
+  title: string
+  body: string
+}
+
 export interface RepoData {
   fullName: string
   prs: GHPR[]
@@ -78,7 +85,7 @@ export interface RepoData {
   needsReview: GHPR[]
   claudeIssues: GHIssue[]
   activeClaudeIssues: number[]
-  claudeIssueBranches: Record<number, string>
+  claudeIssuePRLinks: Record<number, ClaudeIssuePRInfo>
   runningWorkflows: WorkflowRun[]
   error: string | null
 }
