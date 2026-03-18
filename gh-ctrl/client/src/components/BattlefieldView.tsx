@@ -8,15 +8,7 @@ import { ConstructDialog } from './ConstructDialog'
 import { CreateBaseDialog } from './CreateBaseDialog'
 import { CloseIcon, RelocateIcon, RefreshIcon } from './Icons'
 import { useSound } from '../hooks/useSound'
-
-interface Props {
-  entries: DashboardEntry[]
-  loading: boolean
-  onRefresh: () => void
-  onRefreshRepo: (owner: string, name: string) => Promise<void>
-  onReposChange: () => void
-  onToast: (message: string, type: 'success' | 'error' | 'info') => void
-}
+import { useAppStore } from '../store'
 
 interface Position {
   x: number
@@ -320,7 +312,14 @@ function savePositions(positions: Record<number, Position>) {
   localStorage.setItem('battlefield-positions', JSON.stringify(positions))
 }
 
-export function BattlefieldView({ entries, loading, onRefresh, onRefreshRepo, onReposChange, onToast }: Props) {
+export function BattlefieldView() {
+  const entries = useAppStore((s) => s.entries)
+  const loading = useAppStore((s) => s.loading)
+  const onRefresh = useAppStore((s) => s.loadDashboard)
+  const onRefreshRepo = useAppStore((s) => s.loadSingleRepo)
+  const addToast = useAppStore((s) => s.addToast)
+  const loadRepos = useAppStore((s) => s.loadRepos)
+  const onReposChange = () => { loadRepos(); onRefresh() }
   const [offset, setOffset] = useState<Position>({ x: 0, y: 0 })
   const [zoom, setZoom] = useState(1)
   const [isDraggingMap, setIsDraggingMap] = useState(false)
@@ -390,12 +389,12 @@ export function BattlefieldView({ entries, loading, onRefresh, onRefreshRepo, on
 
   const handleIssueCreated = useCallback((owner: string, repoName: string) => {
     if (autoScanTimerRef.current !== null) clearTimeout(autoScanTimerRef.current)
-    onToast('Base scan scheduled in 15 seconds...', 'info')
+    addToast('Base scan scheduled in 15 seconds...', 'info')
     autoScanTimerRef.current = setTimeout(() => {
       autoScanTimerRef.current = null
       onRefreshRepo(owner, repoName)
     }, 15000)
-  }, [onRefreshRepo, onToast])
+  }, [onRefreshRepo, addToast])
 
   const handleLoadMap = useCallback((map: GameMap) => {
     setActiveMap(map)
@@ -636,7 +635,7 @@ export function BattlefieldView({ entries, loading, onRefresh, onRefreshRepo, on
               onConstruct={() => { play('hydraulic'); setConstructTarget(entry) }}
               onStartRelocate={(mouseX, mouseY) => handleStartRelocate(entry.repo.id, mouseX, mouseY)}
               onRefreshRepo={onRefreshRepo}
-              onToast={onToast}
+              addToast={addToast}
               onModalOpen={(state) => { play('peep'); setModalState(state) }}
             />
           )
@@ -674,8 +673,8 @@ export function BattlefieldView({ entries, loading, onRefresh, onRefreshRepo, on
       <ActionModal
         state={modalState}
         onClose={() => setModalState(null)}
-        onSuccess={(msg) => onToast(msg, 'success')}
-        onError={(msg) => onToast(msg, 'error')}
+        onSuccess={(msg) => addToast(msg, 'success')}
+        onError={(msg) => addToast(msg, 'error')}
         onIssueCreated={handleIssueCreated}
       />
 
@@ -684,8 +683,8 @@ export function BattlefieldView({ entries, loading, onRefresh, onRefreshRepo, on
         <ConstructDialog
           entry={constructTarget}
           onClose={() => setConstructTarget(null)}
-          onSuccess={(msg) => { onToast(msg, 'success'); setConstructTarget(null) }}
-          onError={(msg) => onToast(msg, 'error')}
+          onSuccess={(msg) => { addToast(msg, 'success'); setConstructTarget(null) }}
+          onError={(msg) => addToast(msg, 'error')}
         />
       )}
 
@@ -694,11 +693,11 @@ export function BattlefieldView({ entries, loading, onRefresh, onRefreshRepo, on
         <CreateBaseDialog
           onClose={() => setShowCreateBase(false)}
           onSuccess={(msg) => {
-            onToast(msg, 'success')
+            addToast(msg, 'success')
             setShowCreateBase(false)
             onReposChange()
           }}
-          onError={(msg) => onToast(msg, 'error')}
+          onError={(msg) => addToast(msg, 'error')}
         />
       )}
 

@@ -3,14 +3,15 @@ import type { DashboardEntry, GHPR, GHIssue, Branch } from '../types'
 import { api } from '../api'
 import { ActionModal } from './ActionModal'
 import type { ModalState } from './ActionModal'
-import { LinkIcon, LabelIcon, CommentIcon, BranchIcon, RefreshIcon } from './Icons'
+import { LinkIcon, LabelIcon, CommentIcon, BranchIcon, RefreshIcon, AssigneeIcon } from './Icons'
+import { useAppStore } from '../store'
 
 interface Props {
   entry: DashboardEntry
-  onToast: (message: string, type: 'success' | 'error' | 'info') => void
 }
 
-export function RepoCard({ entry, onToast }: Props) {
+export function RepoCard({ entry }: Props) {
+  const addToast = useAppStore((s) => s.addToast)
   const { repo, data } = entry
   const { stats } = data
   const [modalState, setModalState] = useState<ModalState>(null)
@@ -35,8 +36,16 @@ export function RepoCard({ entry, onToast }: Props) {
     setModalState({ mode: 'label', fullName: repo.fullName, number, type, currentLabels })
   }
 
-  const openCreatePR = (head: string) => {
+  const openAssignee = (number: number, type: 'pr' | 'issue', currentAssignees: string[]) => {
+    setModalState({ mode: 'assignee', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, number, type, currentAssignees })
+  }
+
+  const openCreatePR = (head?: string) => {
     setModalState({ mode: 'create-pr', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, head })
+  }
+
+  const openAssign = (number: number, type: 'pr' | 'issue', currentAssignees: string[]) => {
+    setModalState({ mode: 'assign', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, number, type, currentAssignees })
   }
 
   const openCreateIssue = () => {
@@ -59,7 +68,7 @@ export function RepoCard({ entry, onToast }: Props) {
         setBranches(result.branches)
         setDefaultBranch(result.defaultBranch)
       } catch (err: any) {
-        onToast(`Failed to load branches: ${err.message}`, 'error')
+        addToast(`Failed to load branches: ${err.message}`, 'error')
       } finally {
         setBranchesLoading(false)
       }
@@ -80,8 +89,9 @@ export function RepoCard({ entry, onToast }: Props) {
       <ActionModal
         state={modalState}
         onClose={() => setModalState(null)}
-        onSuccess={(msg) => onToast(msg, 'success')}
-        onError={(msg) => onToast(msg, 'error')}
+        onSuccess={(msg) => addToast(msg, 'success')}
+        onError={(msg) => addToast(msg, 'error')}
+        onTransition={setModalState}
       />
 
       <div className={`repo-card${hasConflicts ? ' has-conflicts' : ''}`}>
@@ -146,6 +156,8 @@ export function RepoCard({ entry, onToast }: Props) {
                   onClaude={() => openTriggerClaude(pr.number, 'pr')}
                   onComment={() => openComment(pr.number, 'pr')}
                   onLabel={() => openLabel(pr.number, 'pr', pr.labels.map((l) => l.name))}
+                  onAssignee={() => openAssignee(pr.number, 'pr', pr.assignees.map((a) => a.login))}
+                  onAssign={() => openAssign(pr.number, 'pr', pr.assignees.map((a) => a.login))}
                   onDetail={() => openPRDetail(pr.number)}
                 />
               ))}
@@ -167,6 +179,8 @@ export function RepoCard({ entry, onToast }: Props) {
                   onClaude={() => openTriggerClaude(pr.number, 'pr')}
                   onComment={() => openComment(pr.number, 'pr')}
                   onLabel={() => openLabel(pr.number, 'pr', pr.labels.map((l) => l.name))}
+                  onAssignee={() => openAssignee(pr.number, 'pr', pr.assignees.map((a) => a.login))}
+                  onAssign={() => openAssign(pr.number, 'pr', pr.assignees.map((a) => a.login))}
                   onDetail={() => openPRDetail(pr.number)}
                 />
               ))}
@@ -191,6 +205,9 @@ export function RepoCard({ entry, onToast }: Props) {
                     onClaude={() => openTriggerClaude(issue.number, 'issue')}
                     onComment={() => openComment(issue.number, 'issue')}
                     onLabel={() => openLabel(issue.number, 'issue', issue.labels.map((l) => l.name))}
+                    onAssignee={() => openAssignee(issue.number, 'issue', issue.assignees.map((a) => a.login))}
+                    onAssign={() => openAssign(issue.number, 'issue', issue.assignees.map((a) => a.login))}
+                    onPR={() => openCreatePR(claudeBranch || undefined)}
                     onDetail={() => openIssueDetail(issue.number)}
                     onCreatePR={showCreatePR ? () => openCreatePR(claudeBranch) : undefined}
                   />
@@ -217,6 +234,8 @@ export function RepoCard({ entry, onToast }: Props) {
                   onClaude={() => openTriggerClaude(pr.number, 'pr')}
                   onComment={() => openComment(pr.number, 'pr')}
                   onLabel={() => openLabel(pr.number, 'pr', pr.labels.map((l) => l.name))}
+                  onAssignee={() => openAssignee(pr.number, 'pr', pr.assignees.map((a) => a.login))}
+                  onAssign={() => openAssign(pr.number, 'pr', pr.assignees.map((a) => a.login))}
                   onDetail={() => openPRDetail(pr.number)}
                 />
               ))}
@@ -241,6 +260,9 @@ export function RepoCard({ entry, onToast }: Props) {
                   onClaude={() => openTriggerClaude(issue.number, 'issue')}
                   onComment={() => openComment(issue.number, 'issue')}
                   onLabel={() => openLabel(issue.number, 'issue', issue.labels.map((l) => l.name))}
+                  onAssignee={() => openAssignee(issue.number, 'issue', issue.assignees.map((a) => a.login))}
+                  onAssign={() => openAssign(issue.number, 'issue', issue.assignees.map((a) => a.login))}
+                  onPR={() => openCreatePR()}
                   onDetail={() => openIssueDetail(issue.number)}
                 />
               ))}
@@ -302,7 +324,7 @@ function labelTextColor(hex: string): string {
 }
 
 function ItemRow({
-  number, title, labels, assignees, badge, previewUrl, isClaudeActive, isUntouched, onClaude, onComment, onLabel, onDetail, onCreatePR,
+  number, title, labels, assignees, badge, previewUrl, isClaudeActive, isUntouched, onClaude, onComment, onLabel, onAssignee, onDetail, onCreatePR, onPR, onAssign,
 }: {
   number: number
   title: string
@@ -315,8 +337,11 @@ function ItemRow({
   onClaude: () => void
   onComment: () => void
   onLabel: () => void
+  onAssignee: () => void
   onDetail?: () => void
   onCreatePR?: () => void
+  onPR?: () => void
+  onAssign?: () => void
 }) {
   return (
     <div className={`list-item${isUntouched ? ' untouched-issue' : ''}`}>
@@ -380,12 +405,25 @@ function ItemRow({
             Create PR
           </button>
         )}
+        {onAssign && (
+          <button className="btn btn-ghost btn-xs item-claude-btn" onClick={onAssign} title="Assign">
+            Assign
+          </button>
+        )}
         <button className="btn btn-ghost btn-xs item-claude-btn" onClick={onLabel} title="Manage labels">
           <LabelIcon size={12} />
+        </button>
+        <button className="btn btn-ghost btn-xs item-claude-btn" onClick={onAssignee} title="Manage assignees">
+          <AssigneeIcon size={12} />
         </button>
         <button className="btn btn-ghost btn-xs item-claude-btn" onClick={onComment} title="Post comment">
           <CommentIcon size={12} />
         </button>
+        {onPR && (
+          <button className="btn btn-success btn-xs item-claude-btn" onClick={onPR} title="Create pull request">
+            @pr
+          </button>
+        )}
         <button className="btn btn-claude item-claude-btn" onClick={onClaude}>
           @claude
         </button>

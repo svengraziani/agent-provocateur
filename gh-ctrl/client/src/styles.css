@@ -782,6 +782,11 @@ a:hover { text-decoration: underline; }
   margin-top: 16px;
 }
 
+.modal-actions.detail-actions {
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+
 .modal-loading {
   color: var(--text-2);
   font-size: 12px;

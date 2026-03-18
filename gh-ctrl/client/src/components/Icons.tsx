@@ -112,3 +112,13 @@ export function RelocateIcon({ size = 12, className, title }: IconProps) {
     </svg>
   )
 }
+
+export function AssigneeIcon({ size = 12, className, title }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" className={className} aria-hidden={!title} role={title ? 'img' : undefined}>
+      {title && <title>{title}</title>}
+      <circle cx="8" cy="5" r="3" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M2 14c0-3.314 2.686-5 6-5s6 1.686 6 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  )
+}
