@@ -20,9 +20,10 @@ interface Props {
   onClose: () => void
   onSuccess: (message: string) => void
   onError: (message: string) => void
+  onIssueCreated?: (owner: string, repoName: string) => void
 }
 
-export function ActionModal({ state, onClose, onSuccess, onError }: Props) {
+export function ActionModal({ state, onClose, onSuccess, onError, onIssueCreated }: Props) {
   if (!state) return null
 
   return (
@@ -39,7 +40,7 @@ export function ActionModal({ state, onClose, onSuccess, onError }: Props) {
           <CreatePRForm state={state} onClose={onClose} onSuccess={onSuccess} onError={onError} />
         )}
         {state.mode === 'create-issue' && (
-          <CreateIssueForm state={state} onClose={onClose} onSuccess={onSuccess} onError={onError} />
+          <CreateIssueForm state={state} onClose={onClose} onSuccess={onSuccess} onError={onError} onIssueCreated={onIssueCreated} />
         )}
         {state.mode === 'issue-detail' && (
           <IssueDetailView state={state} onClose={onClose} onError={onError} />
@@ -302,11 +303,12 @@ function CreatePRForm({ state, onClose, onSuccess, onError }: {
   )
 }
 
-function CreateIssueForm({ state, onClose, onSuccess, onError }: {
+function CreateIssueForm({ state, onClose, onSuccess, onError, onIssueCreated }: {
   state: Extract<ModalState, { mode: 'create-issue' }>
   onClose: () => void
   onSuccess: (msg: string) => void
   onError: (msg: string) => void
+  onIssueCreated?: (owner: string, repoName: string) => void
 }) {
   const [title, setTitle] = useState('')
   const [issueBody, setIssueBody] = useState('')
@@ -345,6 +347,7 @@ function CreateIssueForm({ state, onClose, onSuccess, onError }: {
         labels: selectedLabels.size > 0 ? [...selectedLabels] : undefined,
       })
       onSuccess(`Issue created: ${result.url || title}`)
+      onIssueCreated?.(state.owner, state.repoName)
       onClose()
     } catch (err: any) {
       onError(`Failed: ${err.message}`)
