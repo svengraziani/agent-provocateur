@@ -457,7 +457,7 @@ export function BattlefieldView() {
     }
   }, [isDraggingMap, dragStart, relocatingId, relocatingStart])
 
-  const handleWheel = useCallback((e: React.WheelEvent) => {
+  const handleWheel = useCallback((e: WheelEvent) => {
     e.preventDefault()
     // Use actual deltaY magnitude for smooth trackpad support; clamp to avoid huge jumps
     const clampedDelta = Math.max(-100, Math.min(100, e.deltaY))
@@ -474,6 +474,13 @@ export function BattlefieldView() {
       return newZoom
     })
   }, [])
+
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    el.addEventListener('wheel', handleWheel, { passive: false })
+    return () => el.removeEventListener('wheel', handleWheel)
+  }, [handleWheel])
 
   const handleZoomIn = useCallback(() => {
     setZoom(prev => {
@@ -538,7 +545,6 @@ export function BattlefieldView() {
       onMouseMove={handleMapMouseMove}
       onMouseUp={handleMapMouseUp}
       onMouseLeave={handleMapMouseUp}
-      onWheel={handleWheel}
       ref={containerRef}
       style={{ cursor: isDraggingMap ? 'grabbing' : (isRelocateMode ? 'crosshair' : 'grab') }}
     >

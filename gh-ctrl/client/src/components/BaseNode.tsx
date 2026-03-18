@@ -348,7 +348,8 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
         <div className="bdp-section">
           <div className="bdp-section-title claude">&#x2605; CLAUDE ISSUES</div>
           {data.claudeIssues.slice(0, 4).map((issue: GHIssue) => {
-            const claudeBranch = (data.claudeIssueBranches ?? {})[issue.number]
+            const isActive = activeClaudeSet.has(issue.number)
+            const prLink = !isActive ? (data.claudeIssuePRLinks ?? {})[issue.number] : undefined
             return (
               <BdpItemRow
                 key={issue.number}
@@ -359,8 +360,9 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
                 onModalOpen={onModalOpen}
                 labels={issue.labels}
                 assignees={issue.assignees}
-                isClaudeActive={activeClaudeSet.has(issue.number)}
-                onPR={() => onModalOpen({ mode: 'create-pr', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, head: claudeBranch || undefined })}
+                isClaudeActive={isActive}
+                prLink={prLink}
+                onPR={prLink ? () => onModalOpen({ mode: 'create-pr', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, head: prLink.head, base: prLink.base, title: prLink.title, prBody: prLink.body, issueNumber: issue.number }) : undefined}
               />
             )
           })}
@@ -422,21 +424,26 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
           <button className="bdp-toggle" onClick={() => setShowAllIssues((v) => !v)}>
             <span>{showAllIssues ? '▾' : '▸'}</span> All Issues ({remainingIssues.length}) <span className="untouched-count-badge" title="Issues with no @claude interaction">● {remainingIssues.length} untouched</span>
           </button>
-          {showAllIssues && remainingIssues.slice(0, 5).map((issue: GHIssue) => (
-            <BdpItemRow
-              key={issue.number}
-              number={issue.number}
-              title={issue.title}
-              type="issue"
-              repo={repo}
-              onModalOpen={onModalOpen}
-              labels={issue.labels}
-              assignees={issue.assignees}
-              isClaudeActive={activeClaudeSet.has(issue.number)}
-              isUntouched
-              onPR={() => onModalOpen({ mode: 'create-pr', fullName: repo.fullName, owner: repo.owner, repoName: repo.name })}
-            />
-          ))}
+          {showAllIssues && remainingIssues.slice(0, 5).map((issue: GHIssue) => {
+            const isActive = activeClaudeSet.has(issue.number)
+            const prLink = !isActive ? (data.claudeIssuePRLinks ?? {})[issue.number] : undefined
+            return (
+              <BdpItemRow
+                key={issue.number}
+                number={issue.number}
+                title={issue.title}
+                type="issue"
+                repo={repo}
+                onModalOpen={onModalOpen}
+                labels={issue.labels}
+                assignees={issue.assignees}
+                isClaudeActive={isActive}
+                isUntouched
+                prLink={prLink}
+                onPR={prLink ? () => onModalOpen({ mode: 'create-pr', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, head: prLink.head, base: prLink.base, title: prLink.title, prBody: prLink.body, issueNumber: issue.number }) : undefined}
+              />
+            )
+          })}
         </div>
       )}
 
@@ -719,7 +726,7 @@ function PRBuilding({ pr, position, repo, onModalOpen }: {
   )
 }
 
-function BdpItemRow({ number, title, type, repo, onModalOpen, previewUrl, labels, assignees, isClaudeActive, isUntouched, createdAt, onPR }: {
+function BdpItemRow({ number, title, type, repo, onModalOpen, previewUrl, labels, assignees, isClaudeActive, isUntouched, createdAt, onPR, prLink }: {
   number: number
   title: string
   type: 'pr' | 'issue'
@@ -732,6 +739,7 @@ function BdpItemRow({ number, title, type, repo, onModalOpen, previewUrl, labels
   isUntouched?: boolean
   createdAt?: string
   onPR?: () => void
+  prLink?: { head: string; base: string; title: string; body: string }
 }) {
   return (
     <div className={`bdp-item${isUntouched ? ' untouched-issue' : ''}`}>
@@ -749,7 +757,7 @@ function BdpItemRow({ number, title, type, repo, onModalOpen, previewUrl, labels
           className="bdp-text-btn"
           onClick={() => onModalOpen(
             type === 'issue'
-              ? { mode: 'issue-detail', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, number }
+              ? { mode: 'issue-detail', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, number, prLink }
               : { mode: 'pr-detail', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, number }
           )}
           title="View details"

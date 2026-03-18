@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { DashboardEntry, GHPR, GHIssue, Branch } from '../types'
+import type { DashboardEntry, GHPR, GHIssue, Branch, ClaudeIssuePRInfo } from '../types'
 import { api } from '../api'
 import { ActionModal } from './ActionModal'
 import type { ModalState } from './ActionModal'
@@ -40,16 +40,16 @@ export function RepoCard({ entry }: Props) {
     setModalState({ mode: 'assignee', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, number, type, currentAssignees })
   }
 
-  const openCreatePR = (head?: string) => {
-    setModalState({ mode: 'create-pr', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, head })
+  const openCreatePR = (head?: string, base?: string, title?: string, prBody?: string, issueNumber?: number) => {
+    setModalState({ mode: 'create-pr', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, head, base, title, prBody, issueNumber })
   }
 
   const openCreateIssue = () => {
     setModalState({ mode: 'create-issue', fullName: repo.fullName, owner: repo.owner, repoName: repo.name })
   }
 
-  const openIssueDetail = (number: number) => {
-    setModalState({ mode: 'issue-detail', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, number })
+  const openIssueDetail = (number: number, prLink?: ClaudeIssuePRInfo) => {
+    setModalState({ mode: 'issue-detail', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, number, prLink })
   }
 
   const openPRDetail = (number: number) => {
@@ -185,9 +185,8 @@ export function RepoCard({ entry }: Props) {
             <div className="card-section">
               <div className="card-section-title claude">Claude Issues</div>
               {data.claudeIssues.map((issue: GHIssue) => {
-                const claudeBranch = (data.claudeIssueBranches ?? {})[issue.number]
                 const isActive = activeClaudeSet.has(issue.number)
-                const showCreatePR = !!claudeBranch && !isActive
+                const prLink = !isActive ? (data.claudeIssuePRLinks ?? {})[issue.number] : undefined
                 return (
                   <ItemRow
                     key={issue.number}
@@ -200,9 +199,8 @@ export function RepoCard({ entry }: Props) {
                     onComment={() => openComment(issue.number, 'issue')}
                     onLabel={() => openLabel(issue.number, 'issue', issue.labels.map((l) => l.name))}
                     onAssignee={() => openAssignee(issue.number, 'issue', issue.assignees.map((a) => a.login))}
-                      onPR={() => openCreatePR(claudeBranch || undefined)}
-                    onDetail={() => openIssueDetail(issue.number)}
-                    onCreatePR={showCreatePR ? () => openCreatePR(claudeBranch) : undefined}
+                    onDetail={() => openIssueDetail(issue.number, prLink)}
+                    onCreatePR={prLink ? () => openCreatePR(prLink.head, prLink.base, prLink.title, prLink.body, issue.number) : undefined}
                   />
                 )
               })}
@@ -240,23 +238,27 @@ export function RepoCard({ entry }: Props) {
                 <span>{showAllIssues ? '▾' : '▸'}</span>
                 All Issues ({remainingIssues.length} more) <span className="untouched-count-badge" title="Issues with no @claude interaction">● {remainingIssues.length} untouched</span>
               </button>
-              {showAllIssues && remainingIssues.map((issue: GHIssue) => (
-                <ItemRow
-                  key={issue.number}
-                  number={issue.number}
-                  title={issue.title}
-                  labels={issue.labels}
-                  assignees={issue.assignees}
-                  isClaudeActive={activeClaudeSet.has(issue.number)}
-                  isUntouched
-                  onClaude={() => openTriggerClaude(issue.number, 'issue')}
-                  onComment={() => openComment(issue.number, 'issue')}
-                  onLabel={() => openLabel(issue.number, 'issue', issue.labels.map((l) => l.name))}
-                  onAssignee={() => openAssignee(issue.number, 'issue', issue.assignees.map((a) => a.login))}
-                  onPR={() => openCreatePR()}
-                  onDetail={() => openIssueDetail(issue.number)}
-                />
-              ))}
+              {showAllIssues && remainingIssues.map((issue: GHIssue) => {
+                const isActive = activeClaudeSet.has(issue.number)
+                const prLink = !isActive ? (data.claudeIssuePRLinks ?? {})[issue.number] : undefined
+                return (
+                  <ItemRow
+                    key={issue.number}
+                    number={issue.number}
+                    title={issue.title}
+                    labels={issue.labels}
+                    assignees={issue.assignees}
+                    isClaudeActive={isActive}
+                    isUntouched
+                    onClaude={() => openTriggerClaude(issue.number, 'issue')}
+                    onComment={() => openComment(issue.number, 'issue')}
+                    onLabel={() => openLabel(issue.number, 'issue', issue.labels.map((l) => l.name))}
+                    onAssignee={() => openAssignee(issue.number, 'issue', issue.assignees.map((a) => a.login))}
+                    onDetail={() => openIssueDetail(issue.number, prLink)}
+                    onCreatePR={prLink ? () => openCreatePR(prLink.head, prLink.base, prLink.title, prLink.body, issue.number) : undefined}
+                  />
+                )
+              })}
             </div>
           )}
 
@@ -315,7 +317,7 @@ function labelTextColor(hex: string): string {
 }
 
 function ItemRow({
-  number, title, labels, assignees, badge, previewUrl, isClaudeActive, isUntouched, onClaude, onComment, onLabel, onAssignee, onDetail, onCreatePR, onPR,
+  number, title, labels, assignees, badge, previewUrl, isClaudeActive, isUntouched, onClaude, onComment, onLabel, onAssignee, onDetail, onCreatePR,
 }: {
   number: number
   title: string
@@ -331,7 +333,6 @@ function ItemRow({
   onAssignee: () => void
   onDetail?: () => void
   onCreatePR?: () => void
-  onPR?: () => void
 }) {
   return (
     <div className={`list-item${isUntouched ? ' untouched-issue' : ''}`}>
@@ -404,11 +405,6 @@ function ItemRow({
         <button className="btn btn-ghost btn-xs item-claude-btn" onClick={onComment} title="Post comment">
           <CommentIcon size={12} />
         </button>
-        {onPR && (
-          <button className="btn btn-success btn-xs item-claude-btn" onClick={onPR} title="Create pull request">
-            @pr
-          </button>
-        )}
         <button className="btn btn-claude item-claude-btn" onClick={onClaude}>
           @claude
         </button>

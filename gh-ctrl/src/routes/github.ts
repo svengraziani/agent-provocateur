@@ -59,22 +59,67 @@ async function fetchNetlifyUrls(fullName: string, prs: any[]): Promise<Record<nu
 
 const CLAUDE_BRANCH_RE = /^claude\/issue-(\d+)-/
 
+interface ClaudeIssuePRInfo {
+  head: string
+  base: string
+  title: string
+  body: string
+}
+
 async function fetchClaudeIssueBranches(fullName: string): Promise<Record<number, string>> {
   const result = await gh(['api', `repos/${fullName}/branches?per_page=100`])
   if (result.error || !Array.isArray(result.data)) return {}
-
-  const branchMap: Record<number, string> = {}
+  const map: Record<number, string> = {}
   for (const branch of result.data) {
-    const match = branch.name?.match(CLAUDE_BRANCH_RE)
-    if (match) {
-      const issueNumber = Number(match[1])
-      // Keep the most recently listed branch if multiple exist for same issue
-      if (!branchMap[issueNumber]) {
-        branchMap[issueNumber] = branch.name
-      }
+    const match = (branch.name as string)?.match(CLAUDE_BRANCH_RE)
+    if (match) map[Number(match[1])] = branch.name as string
+  }
+  return map
+}
+
+function parseGitHubComparePRLink(urlStr: string): ClaudeIssuePRInfo | null {
+  try {
+    const url = new URL(urlStr)
+    const compareMatch = url.pathname.match(/\/compare\/(.+)$/)
+    if (!compareMatch) return null
+    const comparePart = compareMatch[1]
+    const sepIdx = comparePart.indexOf('...')
+    if (sepIdx === -1) return null
+    const base = comparePart.slice(0, sepIdx)
+    const head = comparePart.slice(sepIdx + 3)
+    if (!base || !head) return null
+    const title = url.searchParams.get('title') || ''
+    const body = url.searchParams.get('body') || ''
+    return { base, head, title, body }
+  } catch {
+    return null
+  }
+}
+
+const PR_LINKS_CACHE_TTL_MS = 30_000
+const prLinksCache = new Map<string, { data: Record<number, ClaudeIssuePRInfo>; expiresAt: number }>()
+
+function fetchClaudeIssuePRLinks(fullName: string, issueNumbers: number[], existingPrHeads: Set<string>): Record<number, ClaudeIssuePRInfo> {
+  if (issueNumbers.length === 0) return {}
+
+  const cached = prLinksCache.get(fullName)
+  if (cached && cached.expiresAt > Date.now()) return cached.data
+
+  const result: Record<number, ClaudeIssuePRInfo> = {}
+  for (const issueNumber of issueNumbers) {
+    const res = gh(['issue', 'view', String(issueNumber), '--repo', fullName, '--json', 'comments'])
+    if (res.error || !Array.isArray(res.data?.comments)) continue
+    const comments: { body: string }[] = res.data.comments
+    for (const comment of [...comments].reverse()) {
+      const m = comment.body?.match(/\[Create (?:a )?PR[^\]]*\]\((https:\/\/github\.com\/[^)]+)\)/)
+      if (!m) continue
+      const info = parseGitHubComparePRLink(m[1])
+      if (info && !existingPrHeads.has(info.head)) { result[issueNumber] = info; break }
     }
   }
-  return branchMap
+
+  prLinksCache.set(fullName, { data: result, expiresAt: Date.now() + PR_LINKS_CACHE_TTL_MS })
+  return result
 }
 
 interface WorkflowRun {
@@ -144,7 +189,7 @@ async function fetchRepoData(fullName: string) {
       needsReview: [],
       claudeIssues: [],
       activeClaudeIssues: [],
-      claudeIssueBranches: {},
+      claudeIssuePRLinks: {},
       runningWorkflows: [],
       error: prResult.error || issueResult.error,
     }
@@ -177,6 +222,10 @@ async function fetchRepoData(fullName: string) {
     )
   )
 
+  const existingPrHeads = new Set<string>(prs.map((pr: any) => pr.headRefName as string))
+  const claudeIssuePRLinks = fetchClaudeIssuePRLinks(fullName, issues.map((i: any) => i.number), existingPrHeads)
+
+
   return {
     fullName,
     prs: enrichedPrs,
@@ -195,7 +244,7 @@ async function fetchRepoData(fullName: string) {
     needsReview,
     claudeIssues,
     activeClaudeIssues,
-    claudeIssueBranches,
+    claudeIssuePRLinks,
     runningWorkflows,
     error: null,
   }
