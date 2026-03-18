@@ -314,6 +314,7 @@ function savePositions(positions: Record<number, Position>) {
 
 export function BattlefieldView() {
   const entries = useAppStore((s) => s.entries)
+  const repos = useAppStore((s) => s.repos)
   const loading = useAppStore((s) => s.loading)
   const onRefresh = useAppStore((s) => s.loadDashboard)
   const onRefreshRepo = useAppStore((s) => s.loadSingleRepo)
@@ -514,6 +515,8 @@ export function BattlefieldView() {
 
   const totalConflicts = entries.reduce((sum, e) => sum + e.data.stats.conflicts, 0)
   const totalRunningActions = entries.reduce((sum, e) => sum + (e.data.stats.runningActions ?? 0), 0)
+  const loadedFullNames = new Set(entries.map((e) => e.repo.fullName))
+  const pendingRepos = loading ? repos.filter((r) => !loadedFullNames.has(r.fullName)) : []
 
 
   return (
@@ -640,22 +643,36 @@ export function BattlefieldView() {
             />
           )
         })}
+
+        {pendingRepos.map((repo, i) => {
+          const pos = positions[repo.id] ?? { x: ISO_MAP_CENTER_X + (i % COLS) * ISO_HALF_W, y: ISO_MAP_OFFSET_Y + Math.floor(i / COLS) * ISO_HALF_H }
+          return (
+            <div
+              key={`pending-${repo.id}`}
+              className="base-node base-node-ghost"
+              style={{ left: pos.x, top: pos.y, borderColor: repo.color }}
+            >
+              <div className="base-node-ghost-label" style={{ color: repo.color }}>{repo.name}</div>
+              <div className="base-node-ghost-status spinning-radar">&#x25CF;</div>
+            </div>
+          )
+        })}
       </div>
 
       {/* Minimap */}
-      {entries.length > 0 && (
+      {(entries.length > 0 || pendingRepos.length > 0) && (
         <Minimap entries={entries} positions={positions} offset={offset} zoom={zoom} onJump={setOffset} />
       )}
 
       {/* Empty state */}
-      {entries.length === 0 && !loading && (
+      {repos.length === 0 && !loading && (
         <div className="battlefield-empty">
           <div className="battlefield-empty-title">&#x25a0; NO BASES DETECTED</div>
           <div className="battlefield-empty-sub">Add repositories in the Repositories panel to deploy bases.</div>
         </div>
       )}
 
-      {entries.length === 0 && loading && (
+      {repos.length === 0 && loading && (
         <div className="battlefield-empty">
           <div className="battlefield-empty-title spinning-radar">&#x25CF;</div>
           <div className="battlefield-empty-sub">SCANNING TERRITORY...</div>
