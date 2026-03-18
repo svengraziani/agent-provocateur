@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import type { GameMap, MapTile } from '../types'
 import { api } from '../api'
+import { useAppStore } from '../store'
 
 // ─── Tile type definitions ────────────────────────────────────────────────────
 
@@ -412,15 +413,12 @@ function LoadMapDialog({ maps, currentMapId, onLoad, onDelete, onClose }: LoadMa
 
 // ─── Main MapEditor component ─────────────────────────────────────────────────
 
-interface Props {
-  onToast: (message: string, type: 'success' | 'error' | 'info') => void
-}
-
 const ZOOM_MIN = 0.3
 const ZOOM_MAX = 3
 const ZOOM_FACTOR = 1.15
 
-export function MapEditor({ onToast }: Props) {
+export function MapEditor() {
+  const onToast = useAppStore((s) => s.addToast)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 

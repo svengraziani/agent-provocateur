@@ -1,21 +1,18 @@
-import type { DashboardEntry } from '../types'
+import { useAppStore } from '../store'
 import { RepoCard } from './RepoCard'
 
-interface Props {
-  entries: DashboardEntry[]
-  loading: boolean
-  onRefresh: () => void
-  onToast: (message: string, type: 'success' | 'error' | 'info') => void
-}
+export function Dashboard() {
+  const entries = useAppStore((s) => s.entries)
+  const loading = useAppStore((s) => s.loading)
+  const loadDashboard = useAppStore((s) => s.loadDashboard)
 
-export function Dashboard({ entries, loading, onRefresh, onToast }: Props) {
   const totalConflicts = entries.reduce((sum, e) => sum + e.data.stats.conflicts, 0)
 
   return (
     <div>
       <div className="topbar">
         <h1>Dashboard</h1>
-        <button className="btn btn-ghost" onClick={onRefresh} disabled={loading}>
+        <button className="btn btn-ghost" onClick={loadDashboard} disabled={loading}>
           <span className={loading ? 'spinning' : ''}>&#x21bb;</span>
           {loading ? ' Refreshing...' : ' Refresh'}
         </button>
@@ -45,7 +42,6 @@ export function Dashboard({ entries, loading, onRefresh, onToast }: Props) {
           <RepoCard
             key={entry.repo.id}
             entry={entry}
-            onToast={onToast}
           />
         ))}
       </div>
