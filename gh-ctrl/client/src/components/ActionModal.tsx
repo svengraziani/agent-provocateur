@@ -3,16 +3,18 @@ import type { GHLabel, IssueDetail, PRDetail } from '../types'
 import { api } from '../api'
 import { MarkdownContent } from './MarkdownContent'
 import { VoiceButton } from './VoiceButton'
-import { CloseIcon } from './Icons'
+import { CloseIcon, LabelIcon, CommentIcon } from './Icons'
 
 export type ModalState =
   | { mode: 'comment'; fullName: string; number: number; type: 'pr' | 'issue' }
   | { mode: 'label'; fullName: string; number: number; type: 'pr' | 'issue'; currentLabels: string[] }
-  | { mode: 'create-pr'; fullName: string; owner: string; repoName: string; head: string }
+  | { mode: 'assignee'; fullName: string; owner: string; repoName: string; number: number; type: 'pr' | 'issue'; currentAssignees: string[] }
+  | { mode: 'create-pr'; fullName: string; owner: string; repoName: string; head?: string }
   | { mode: 'create-issue'; fullName: string; owner: string; repoName: string }
   | { mode: 'issue-detail'; fullName: string; owner: string; repoName: string; number: number }
   | { mode: 'pr-detail'; fullName: string; owner: string; repoName: string; number: number }
   | { mode: 'trigger-claude'; fullName: string; number: number; type: 'pr' | 'issue' }
+  | { mode: 'assign'; fullName: string; owner: string; repoName: string; number: number; type: 'pr' | 'issue'; currentAssignees: string[] }
   | null
 
 interface Props {
@@ -21,9 +23,10 @@ interface Props {
   onSuccess: (message: string) => void
   onError: (message: string) => void
   onIssueCreated?: (owner: string, repoName: string) => void
+  onTransition?: (newState: ModalState) => void
 }
 
-export function ActionModal({ state, onClose, onSuccess, onError, onIssueCreated }: Props) {
+export function ActionModal({ state, onClose, onSuccess, onError, onIssueCreated, onTransition }: Props) {
   if (!state) return null
 
   return (
@@ -36,6 +39,9 @@ export function ActionModal({ state, onClose, onSuccess, onError, onIssueCreated
         {state.mode === 'label' && (
           <LabelForm state={state} onClose={onClose} onSuccess={onSuccess} onError={onError} />
         )}
+        {state.mode === 'assignee' && (
+          <AssigneeForm state={state} onClose={onClose} onSuccess={onSuccess} onError={onError} />
+        )}
         {state.mode === 'create-pr' && (
           <CreatePRForm state={state} onClose={onClose} onSuccess={onSuccess} onError={onError} />
         )}
@@ -43,13 +49,16 @@ export function ActionModal({ state, onClose, onSuccess, onError, onIssueCreated
           <CreateIssueForm state={state} onClose={onClose} onSuccess={onSuccess} onError={onError} onIssueCreated={onIssueCreated} />
         )}
         {state.mode === 'issue-detail' && (
-          <IssueDetailView state={state} onClose={onClose} onError={onError} />
+          <IssueDetailView state={state} onClose={onClose} onError={onError} onTransition={onTransition} />
         )}
         {state.mode === 'pr-detail' && (
-          <PRDetailView state={state} onClose={onClose} onError={onError} />
+          <PRDetailView state={state} onClose={onClose} onError={onError} onTransition={onTransition} />
         )}
         {state.mode === 'trigger-claude' && (
           <TriggerClaudeForm state={state} onClose={onClose} onSuccess={onSuccess} onError={onError} />
+        )}
+        {state.mode === 'assign' && (
+          <AssignForm state={state} onClose={onClose} onSuccess={onSuccess} onError={onError} />
         )}
       </div>
     </div>
@@ -200,6 +209,90 @@ function LabelForm({ state, onClose, onSuccess, onError }: {
   )
 }
 
+function AssigneeForm({ state, onClose, onSuccess, onError }: {
+  state: Extract<ModalState, { mode: 'assignee' }>
+  onClose: () => void
+  onSuccess: (msg: string) => void
+  onError: (msg: string) => void
+}) {
+  const [collaborators, setCollaborators] = useState<{ login: string }[]>([])
+  const [selected, setSelected] = useState<Set<string>>(new Set(state.currentAssignees))
+  const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    api.getCollaborators(state.owner, state.repoName)
+      .then(setCollaborators)
+      .catch((err) => onError(`Failed to load collaborators: ${err.message}`))
+      .finally(() => setLoading(false))
+  }, [state.owner, state.repoName])
+
+  const toggle = (login: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(login)) next.delete(login)
+      else next.add(login)
+      return next
+    })
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSubmitting(true)
+    try {
+      const original = new Set(state.currentAssignees)
+      const toAdd = [...selected].filter((l) => !original.has(l))
+      const toRemove = [...original].filter((l) => !selected.has(l))
+
+      await Promise.all([
+        ...toAdd.map((assignee) => api.addAssignee({ fullName: state.fullName, number: state.number, type: state.type, assignee })),
+        ...toRemove.map((assignee) => api.removeAssignee({ fullName: state.fullName, number: state.number, type: state.type, assignee })),
+      ])
+
+      const changes = toAdd.length + toRemove.length
+      onSuccess(`Assignees updated on ${state.type} #${state.number} (${changes} change${changes !== 1 ? 's' : ''})`)
+      onClose()
+    } catch (err: any) {
+      onError(`Failed: ${err.message}`)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <div className="modal-title">
+        Assignees on {state.type} #{state.number}
+        <span className="modal-subtitle">{state.fullName}</span>
+      </div>
+      {loading ? (
+        <div className="modal-loading">Loading collaborators...</div>
+      ) : collaborators.length === 0 ? (
+        <div className="modal-loading">No collaborators found for this repo.</div>
+      ) : (
+        <div className="label-grid">
+          {collaborators.map((c) => (
+            <button
+              key={c.login}
+              type="button"
+              className={`label-chip${selected.has(c.login) ? ' selected' : ''}`}
+              onClick={() => toggle(c.login)}
+            >
+              @{c.login}
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="modal-actions">
+        <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
+        <button type="submit" className="btn btn-primary" disabled={submitting || loading}>
+          {submitting ? 'Saving...' : 'Save Assignees'}
+        </button>
+      </div>
+    </form>
+  )
+}
+
 function CreatePRForm({ state, onClose, onSuccess, onError }: {
   state: Extract<ModalState, { mode: 'create-pr' }>
   onClose: () => void
@@ -209,33 +302,52 @@ function CreatePRForm({ state, onClose, onSuccess, onError }: {
   const [title, setTitle] = useState('')
   const [prBody, setPrBody] = useState('')
   const [base, setBase] = useState('')
-  const [branches, setBranches] = useState<string[]>([])
+  const [head, setHead] = useState(state.head || '')
+  const [allBranchNames, setAllBranchNames] = useState<string[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [collaborators, setCollaborators] = useState<string[]>([])
+  const [selectedAssignees, setSelectedAssignees] = useState<Set<string>>(new Set())
 
   useEffect(() => {
-    api.getBranches(state.owner, state.repoName)
-      .then(({ branches: br, defaultBranch }) => {
-        setBranches(br)
+    Promise.all([
+      api.getBranches(state.owner, state.repoName),
+      api.getCollaborators(state.owner, state.repoName).catch(() => [] as string[]),
+    ])
+      .then(([{ branches: br, defaultBranch }, collabs]) => {
+        const names = br.map((b) => b.name)
+        setAllBranchNames(names)
         setBase(defaultBranch)
+        setCollaborators(collabs)
       })
-      .catch((err) => onError(`Failed to load branches: ${err.message}`))
+      .catch((err) => onError(`Failed to load data: ${err.message}`))
       .finally(() => setLoading(false))
   }, [state.owner, state.repoName])
 
+  const toggleAssignee = (login: string) => {
+    setSelectedAssignees((prev) => {
+      const next = new Set(prev)
+      if (next.has(login)) next.delete(login)
+      else next.add(login)
+      return next
+    })
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!title.trim() || !base) return
+    const effectiveHead = state.head || head
+    if (!title.trim() || !base || !effectiveHead) return
     setSubmitting(true)
     try {
       const result = await api.createPR({
         fullName: state.fullName,
-        head: state.head,
+        head: effectiveHead,
         base,
         title: title.trim(),
         prBody: prBody.trim() || undefined,
+        assignees: selectedAssignees.size > 0 ? [...selectedAssignees] : undefined,
       })
-      onSuccess(`PR created: ${result.url || `${state.head} → ${base}`}`)
+      onSuccess(`PR created: ${result.url || `${effectiveHead} → ${base}`}`)
       onClose()
     } catch (err: any) {
       onError(`Failed: ${err.message}`)
@@ -244,7 +356,9 @@ function CreatePRForm({ state, onClose, onSuccess, onError }: {
     }
   }
 
-  const otherBranches = branches.filter((b) => b !== state.head)
+  const effectiveHead = state.head || head
+  const headBranches = allBranchNames
+  const baseBranches = allBranchNames.filter((b) => b !== effectiveHead)
 
   return (
     <form onSubmit={handleSubmit}>
@@ -253,10 +367,32 @@ function CreatePRForm({ state, onClose, onSuccess, onError }: {
         <span className="modal-subtitle">{state.fullName}</span>
       </div>
 
-      <div className="modal-field">
-        <label className="modal-label">Head branch</label>
-        <div className="input modal-readonly">{state.head}</div>
-      </div>
+      {state.head ? (
+        <div className="modal-field">
+          <label className="modal-label">Head branch</label>
+          <div className="input modal-readonly">{state.head}</div>
+        </div>
+      ) : (
+        <div className="modal-field">
+          <label className="modal-label">Head branch</label>
+          {loading ? (
+            <div className="input modal-readonly">Loading...</div>
+          ) : (
+            <select
+              className="input"
+              value={head}
+              onChange={(e) => setHead(e.target.value)}
+              required
+            >
+              <option value="">Select head branch...</option>
+              {headBranches.map((b) => (
+                <option key={b} value={b}>{b}</option>
+              ))}
+            </select>
+          )}
+        </div>
+      )}
+
       <div className="modal-field">
         <label className="modal-label">Base branch</label>
         {loading ? (
@@ -267,12 +403,13 @@ function CreatePRForm({ state, onClose, onSuccess, onError }: {
             value={base}
             onChange={(e) => setBase(e.target.value)}
           >
-            {otherBranches.map((b) => (
+            {baseBranches.map((b) => (
               <option key={b} value={b}>{b}</option>
             ))}
           </select>
         )}
       </div>
+
       <div className="modal-field">
         <label className="modal-label">Title</label>
         <input
@@ -283,6 +420,7 @@ function CreatePRForm({ state, onClose, onSuccess, onError }: {
           autoFocus
         />
       </div>
+
       <div className="modal-field">
         <label className="modal-label">Description (optional)</label>
         <textarea
@@ -293,9 +431,32 @@ function CreatePRForm({ state, onClose, onSuccess, onError }: {
           rows={4}
         />
       </div>
+
+      {!loading && collaborators.length > 0 && (
+        <div className="modal-field">
+          <label className="modal-label">Assignees (optional)</label>
+          <div className="label-grid">
+            {collaborators.map((login) => (
+              <button
+                key={login}
+                type="button"
+                className={`label-chip${selectedAssignees.has(login) ? ' selected' : ''}`}
+                onClick={() => toggleAssignee(login)}
+              >
+                @{login}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="modal-actions">
         <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
-        <button type="submit" className="btn btn-primary" disabled={submitting || loading || !title.trim()}>
+        <button
+          type="submit"
+          className="btn btn-primary"
+          disabled={submitting || loading || !title.trim() || !effectiveHead}
+        >
           {submitting ? 'Creating...' : 'Create PR'}
         </button>
       </div>
@@ -471,10 +632,94 @@ function TriggerClaudeForm({ state, onClose, onSuccess, onError }: {
   )
 }
 
-function PRDetailView({ state, onClose, onError }: {
+function AssignForm({ state, onClose, onSuccess, onError }: {
+  state: Extract<ModalState, { mode: 'assign' }>
+  onClose: () => void
+  onSuccess: (msg: string) => void
+  onError: (msg: string) => void
+}) {
+  const [collaborators, setCollaborators] = useState<string[]>([])
+  const [selected, setSelected] = useState<Set<string>>(new Set(state.currentAssignees))
+  const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    api.getCollaborators(state.owner, state.repoName)
+      .then(setCollaborators)
+      .catch((err) => onError(`Failed to load collaborators: ${err.message}`))
+      .finally(() => setLoading(false))
+  }, [state.owner, state.repoName])
+
+  const toggle = (login: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(login)) next.delete(login)
+      else next.add(login)
+      return next
+    })
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const currentSet = new Set(state.currentAssignees)
+    const toAdd = [...selected].filter((l) => !currentSet.has(l))
+    if (toAdd.length === 0) { onClose(); return }
+    setSubmitting(true)
+    try {
+      await api.assignUser({
+        fullName: state.fullName,
+        number: state.number,
+        type: state.type,
+        assignees: toAdd,
+      })
+      onSuccess(`Assigned ${toAdd.join(', ')} to ${state.type} #${state.number}`)
+      onClose()
+    } catch (err: any) {
+      onError(`Failed: ${err.message}`)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <div className="modal-title">
+        Assign {state.type} #{state.number}
+        <span className="modal-subtitle">{state.fullName}</span>
+      </div>
+      {loading ? (
+        <div className="modal-loading">Loading collaborators...</div>
+      ) : collaborators.length === 0 ? (
+        <div className="modal-loading">No collaborators found.</div>
+      ) : (
+        <div className="label-grid">
+          {collaborators.map((login) => (
+            <button
+              key={login}
+              type="button"
+              className={`label-chip${selected.has(login) ? ' selected' : ''}`}
+              onClick={() => toggle(login)}
+            >
+              @{login}
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="modal-actions">
+        <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
+        <button type="submit" className="btn btn-primary" disabled={submitting || loading}>
+          {submitting ? 'Saving...' : 'Save Assignees'}
+        </button>
+      </div>
+    </form>
+  )
+}
+
+function PRDetailView({ state, onClose, onError, onTransition }: {
   state: Extract<ModalState, { mode: 'pr-detail' }>
   onClose: () => void
   onError: (msg: string) => void
+  onTransition?: (newState: ModalState) => void
 }) {
   const [pr, setPR] = useState<PRDetail | null>(null)
   const [loading, setLoading] = useState(true)
@@ -548,11 +793,46 @@ function PRDetailView({ state, onClose, onError }: {
               ))}
             </div>
           )}
-          <div className="modal-actions">
-            <a href={pr.url} target="_blank" rel="noopener noreferrer" className="btn btn-ghost">
+          <div className="modal-actions detail-actions">
+            <a href={pr.url} target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm">
               View on GitHub ↗
             </a>
-            <button type="button" className="btn btn-primary" onClick={onClose}>Close</button>
+            {onTransition && (
+              <>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => onTransition({ mode: 'comment', fullName: state.fullName, number: state.number, type: 'pr' })}
+                  title="Post comment"
+                >
+                  <CommentIcon size={12} />
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => onTransition({ mode: 'label', fullName: state.fullName, number: state.number, type: 'pr', currentLabels: pr.labels.map((l) => l.name) })}
+                  title="Manage labels"
+                >
+                  <LabelIcon size={12} />
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => onTransition({ mode: 'assign', fullName: state.fullName, owner: state.owner, repoName: state.repoName, number: state.number, type: 'pr', currentAssignees: pr.assignees.map((a) => a.login) })}
+                  title="Assign"
+                >
+                  Assign
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-claude btn-sm"
+                  onClick={() => onTransition({ mode: 'trigger-claude', fullName: state.fullName, number: state.number, type: 'pr' })}
+                >
+                  @claude
+                </button>
+              </>
+            )}
+            <button type="button" className="btn btn-primary btn-sm" onClick={onClose}>Close</button>
           </div>
         </div>
       )}
@@ -560,10 +840,11 @@ function PRDetailView({ state, onClose, onError }: {
   )
 }
 
-function IssueDetailView({ state, onClose, onError }: {
+function IssueDetailView({ state, onClose, onError, onTransition }: {
   state: Extract<ModalState, { mode: 'issue-detail' }>
   onClose: () => void
   onError: (msg: string) => void
+  onTransition?: (newState: ModalState) => void
 }) {
   const [issue, setIssue] = useState<IssueDetail | null>(null)
   const [loading, setLoading] = useState(true)
@@ -636,11 +917,53 @@ function IssueDetailView({ state, onClose, onError }: {
               ))}
             </div>
           )}
-          <div className="modal-actions">
-            <a href={issue.url} target="_blank" rel="noopener noreferrer" className="btn btn-ghost">
+          <div className="modal-actions detail-actions">
+            <a href={issue.url} target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm">
               View on GitHub ↗
             </a>
-            <button type="button" className="btn btn-primary" onClick={onClose}>Close</button>
+            {onTransition && (
+              <>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => onTransition({ mode: 'comment', fullName: state.fullName, number: state.number, type: 'issue' })}
+                  title="Post comment"
+                >
+                  <CommentIcon size={12} />
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => onTransition({ mode: 'label', fullName: state.fullName, number: state.number, type: 'issue', currentLabels: issue.labels.map((l) => l.name) })}
+                  title="Manage labels"
+                >
+                  <LabelIcon size={12} />
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => onTransition({ mode: 'assign', fullName: state.fullName, owner: state.owner, repoName: state.repoName, number: state.number, type: 'issue', currentAssignees: issue.assignees.map((a) => a.login) })}
+                  title="Assign"
+                >
+                  Assign
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-success btn-sm"
+                  onClick={() => onTransition({ mode: 'create-pr', fullName: state.fullName, owner: state.owner, repoName: state.repoName })}
+                >
+                  @pr
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-claude btn-sm"
+                  onClick={() => onTransition({ mode: 'trigger-claude', fullName: state.fullName, number: state.number, type: 'issue' })}
+                >
+                  @claude
+                </button>
+              </>
+            )}
+            <button type="button" className="btn btn-primary btn-sm" onClick={onClose}>Close</button>
           </div>
         </div>
       )}
