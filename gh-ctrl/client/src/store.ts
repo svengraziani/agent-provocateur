@@ -11,6 +11,7 @@ export interface Toast {
 }
 
 let nextToastId = 0
+let dashboardStreamCleanup: (() => void) | null = null
 
 const DEFAULT_REFRESH_INTERVAL = 2 * 60 * 1000
 
@@ -65,16 +66,28 @@ export const useAppStore = create<AppStore>((set, get) => ({
     }
   },
 
-  loadDashboard: async () => {
-    set({ loading: true })
-    try {
-      const data = await api.getDashboard()
-      set({ entries: data, lastRefresh: new Date() })
-    } catch (err: any) {
-      get().addToast(`Failed to load dashboard: ${err.message}`, 'error')
-    } finally {
-      set({ loading: false })
+  loadDashboard: () => {
+    // Cancel any in-flight stream before starting a new one
+    if (dashboardStreamCleanup) {
+      dashboardStreamCleanup()
+      dashboardStreamCleanup = null
     }
+
+    set({ loading: true, entries: [] })
+
+    return new Promise<void>((resolve) => {
+      const cleanup = api.streamDashboard(
+        (entry) => {
+          set((state) => ({ entries: [...state.entries, entry] }))
+        },
+        () => {
+          set({ loading: false, lastRefresh: new Date() })
+          dashboardStreamCleanup = null
+          resolve()
+        }
+      )
+      dashboardStreamCleanup = cleanup
+    })
   },
 
   loadSingleRepo: async (owner: string, name: string) => {

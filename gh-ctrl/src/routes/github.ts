@@ -1,4 +1,5 @@
 import { Hono } from 'hono'
+import { streamSSE } from 'hono/streaming'
 import { db } from '../db'
 import { repos } from '../db/schema'
 
@@ -7,13 +8,16 @@ interface GHResult {
   error: string | null
 }
 
-function gh(args: string[]): GHResult {
-  const proc = Bun.spawnSync(['gh', ...args], { env: { ...process.env } })
-  if (proc.exitCode !== 0) {
-    return { data: null, error: proc.stderr.toString() }
+async function gh(args: string[]): Promise<GHResult> {
+  const proc = Bun.spawn(['gh', ...args], { env: { ...process.env } })
+  const stdout = await new Response(proc.stdout).text()
+  const exitCode = await proc.exited
+  if (exitCode !== 0) {
+    const stderr = await new Response(proc.stderr).text()
+    return { data: null, error: stderr }
   }
   try {
-    return { data: JSON.parse(proc.stdout.toString()), error: null }
+    return { data: JSON.parse(stdout), error: null }
   } catch {
     return { data: null, error: 'Failed to parse gh output' }
   }
@@ -21,10 +25,10 @@ function gh(args: string[]): GHResult {
 
 const CLAUDE_LABELS = ['claude', 'ai', 'ai-fix', 'ai-feature']
 
-function fetchNetlifyUrls(fullName: string, prs: any[]): Record<number, string> {
+async function fetchNetlifyUrls(fullName: string, prs: any[]): Promise<Record<number, string>> {
   if (prs.length === 0) return {}
 
-  const deploymentsResult = gh(['api', `repos/${fullName}/deployments?per_page=50`])
+  const deploymentsResult = await gh(['api', `repos/${fullName}/deployments?per_page=50`])
   if (deploymentsResult.error || !deploymentsResult.data?.length) return {}
 
   const prsByRef = new Map<string, number>(prs.map((pr: any) => [pr.headRefName, pr.number]))
@@ -35,25 +39,28 @@ function fetchNetlifyUrls(fullName: string, prs: any[]): Record<number, string> 
     return env.includes('preview') || env.includes('deploy-preview') || env.includes('staging')
   })
 
-  for (const deployment of previewDeployments) {
-    const prNumber = prsByRef.get(deployment.ref)
-    if (!prNumber || urlsByPrNumber[prNumber]) continue
+  // Fetch all deployment statuses concurrently
+  await Promise.all(
+    previewDeployments.map(async (deployment: any) => {
+      const prNumber = prsByRef.get(deployment.ref)
+      if (!prNumber || urlsByPrNumber[prNumber]) return
 
-    const statusResult = gh(['api', `repos/${fullName}/deployments/${deployment.id}/statuses?per_page=1`])
-    if (!statusResult.error && statusResult.data?.length > 0) {
-      const status = statusResult.data[0]
-      const url = status.environment_url || status.target_url
-      if (url) urlsByPrNumber[prNumber] = url
-    }
-  }
+      const statusResult = await gh(['api', `repos/${fullName}/deployments/${deployment.id}/statuses?per_page=1`])
+      if (!statusResult.error && statusResult.data?.length > 0) {
+        const status = statusResult.data[0]
+        const url = status.environment_url || status.target_url
+        if (url && !urlsByPrNumber[prNumber]) urlsByPrNumber[prNumber] = url
+      }
+    })
+  )
 
   return urlsByPrNumber
 }
 
 const CLAUDE_BRANCH_RE = /^claude\/issue-(\d+)-/
 
-function fetchClaudeIssueBranches(fullName: string): Record<number, string> {
-  const result = gh(['api', `repos/${fullName}/branches?per_page=100`])
+async function fetchClaudeIssueBranches(fullName: string): Promise<Record<number, string>> {
+  const result = await gh(['api', `repos/${fullName}/branches?per_page=100`])
   if (result.error || !Array.isArray(result.data)) return {}
 
   const branchMap: Record<number, string> = {}
@@ -83,8 +90,8 @@ interface RunningWorkflowsResult {
   runningWorkflows: WorkflowRun[]
 }
 
-function fetchRunningWorkflows(fullName: string): RunningWorkflowsResult {
-  const result = gh([
+async function fetchRunningWorkflows(fullName: string): Promise<RunningWorkflowsResult> {
+  const result = await gh([
     'run', 'list', '--repo', fullName,
     '--json', 'status,headBranch,databaseId,name,workflowName',
     '--limit', '30',
@@ -112,17 +119,19 @@ function fetchRunningWorkflows(fullName: string): RunningWorkflowsResult {
   return { activeClaudeIssues: Array.from(activeIssues), runningWorkflows }
 }
 
-function fetchRepoData(fullName: string) {
-  const prResult = gh([
-    'pr', 'list', '--repo', fullName, '--json',
-    'number,title,state,reviewDecision,mergeable,headRefName,author,createdAt,updatedAt,labels,isDraft,assignees',
-    '--limit', '30',
-  ])
-
-  const issueResult = gh([
-    'issue', 'list', '--repo', fullName, '--json',
-    'number,title,state,labels,assignees,updatedAt,author',
-    '--limit', '30',
+async function fetchRepoData(fullName: string) {
+  // PRs and issues are independent — fetch in parallel
+  const [prResult, issueResult] = await Promise.all([
+    gh([
+      'pr', 'list', '--repo', fullName, '--json',
+      'number,title,state,reviewDecision,mergeable,headRefName,author,createdAt,updatedAt,labels,isDraft,assignees',
+      '--limit', '30',
+    ]),
+    gh([
+      'issue', 'list', '--repo', fullName, '--json',
+      'number,title,state,labels,assignees,updatedAt,author',
+      '--limit', '30',
+    ]),
   ])
 
   if (prResult.error && issueResult.error) {
@@ -144,7 +153,13 @@ function fetchRepoData(fullName: string) {
   const prs = prResult.data || []
   const issues = issueResult.data || []
 
-  const previewUrls = fetchNetlifyUrls(fullName, prs)
+  // Netlify URLs depend on prs, but workflows and branches are independent
+  const [previewUrls, { activeClaudeIssues, runningWorkflows }, claudeIssueBranches] = await Promise.all([
+    fetchNetlifyUrls(fullName, prs),
+    fetchRunningWorkflows(fullName),
+    fetchClaudeIssueBranches(fullName),
+  ])
+
   const enrichedPrs = prs.map((pr: any) => ({
     ...pr,
     previewUrl: previewUrls[pr.number] || null,
@@ -161,9 +176,6 @@ function fetchRepoData(fullName: string) {
       CLAUDE_LABELS.includes(label.name?.toLowerCase())
     )
   )
-
-  const { activeClaudeIssues, runningWorkflows } = fetchRunningWorkflows(fullName)
-  const claudeIssueBranches = fetchClaudeIssueBranches(fullName)
 
   return {
     fullName,
@@ -191,18 +203,37 @@ function fetchRepoData(fullName: string) {
 
 const app = new Hono()
 
-// GET /api/github/dashboard — fetch all repos in parallel
+// GET /api/github/dashboard — fetch all repos in parallel (non-streaming)
 app.get('/dashboard', async (c) => {
   const allRepos = await db.select().from(repos)
 
   const results = await Promise.all(
     allRepos.map(async (repo) => ({
       repo,
-      data: fetchRepoData(repo.fullName),
+      data: await fetchRepoData(repo.fullName),
     }))
   )
 
   return c.json(results)
+})
+
+// GET /api/github/dashboard/stream — SSE: emit each repo as it finishes loading
+app.get('/dashboard/stream', (c) => {
+  return streamSSE(c, async (stream) => {
+    const allRepos = await db.select().from(repos)
+
+    await Promise.all(
+      allRepos.map(async (repo) => {
+        const data = await fetchRepoData(repo.fullName)
+        await stream.writeSSE({
+          data: JSON.stringify({ repo, data }),
+          event: 'repo',
+        })
+      })
+    )
+
+    await stream.writeSSE({ data: 'done', event: 'done' })
+  })
 })
 
 // GET /api/github/repo/:owner/:name — refresh single repo
@@ -210,7 +241,7 @@ app.get('/repo/:owner/:name', async (c) => {
   const owner = c.req.param('owner')
   const name = c.req.param('name')
   const fullName = `${owner}/${name}`
-  const data = fetchRepoData(fullName)
+  const data = await fetchRepoData(fullName)
   return c.json(data)
 })
 
