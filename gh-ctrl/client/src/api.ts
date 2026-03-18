@@ -137,6 +137,31 @@ export const api = {
       body: JSON.stringify(params),
     }),
 
+  getCollaborators: (owner: string, name: string) =>
+    request<{ login: string }[]>(`/github/collaborators/${owner}/${name}`),
+
+  addAssignee: (params: {
+    fullName: string
+    number: number
+    type: 'pr' | 'issue'
+    assignee: string
+  }) =>
+    request<{ ok: boolean }>('/github/assignee', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    }),
+
+  removeAssignee: (params: {
+    fullName: string
+    number: number
+    type: 'pr' | 'issue'
+    assignee: string
+  }) =>
+    request<{ ok: boolean }>('/github/assignee', {
+      method: 'DELETE',
+      body: JSON.stringify(params),
+    }),
+
   createRepo: (params: {
     name: string
     description?: string
