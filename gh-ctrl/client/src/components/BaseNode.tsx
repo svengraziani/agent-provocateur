@@ -424,20 +424,26 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
           <button className="bdp-toggle" onClick={() => setShowAllIssues((v) => !v)}>
             <span>{showAllIssues ? '▾' : '▸'}</span> All Issues ({remainingIssues.length}) <span className="untouched-count-badge" title="Issues with no @claude interaction">● {remainingIssues.length} untouched</span>
           </button>
-          {showAllIssues && remainingIssues.slice(0, 5).map((issue: GHIssue) => (
-            <BdpItemRow
-              key={issue.number}
-              number={issue.number}
-              title={issue.title}
-              type="issue"
-              repo={repo}
-              onModalOpen={onModalOpen}
-              labels={issue.labels}
-              assignees={issue.assignees}
-              isClaudeActive={activeClaudeSet.has(issue.number)}
-              isUntouched
-            />
-          ))}
+          {showAllIssues && remainingIssues.slice(0, 5).map((issue: GHIssue) => {
+            const isActive = activeClaudeSet.has(issue.number)
+            const prLink = !isActive ? (data.claudeIssuePRLinks ?? {})[issue.number] : undefined
+            return (
+              <BdpItemRow
+                key={issue.number}
+                number={issue.number}
+                title={issue.title}
+                type="issue"
+                repo={repo}
+                onModalOpen={onModalOpen}
+                labels={issue.labels}
+                assignees={issue.assignees}
+                isClaudeActive={isActive}
+                isUntouched
+                prLink={prLink}
+                onPR={prLink ? () => onModalOpen({ mode: 'create-pr', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, head: prLink.head, base: prLink.base, title: prLink.title, prBody: prLink.body, issueNumber: issue.number }) : undefined}
+              />
+            )
+          })}
         </div>
       )}
 
