@@ -1,19 +1,102 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import type { DashboardEntry, GHPR, GHIssue, Branch, WorkflowRun, RepoMeta } from '../types'
 import type { ModalState } from './ActionModal'
 import { CloseIcon, LinkIcon, LabelIcon, CommentIcon, RefreshIcon, ExternalLinkIcon, AssigneeIcon } from './Icons'
 import { api } from '../api'
 
+// ── Canvas color utilities ────────────────────────────────────────────────────
+
+function hexToRgb(hex: string): [number, number, number] {
+  const clean = hex.replace('#', '')
+  const full = clean.length === 3
+    ? clean.split('').map(c => c + c).join('')
+    : clean
+  const n = parseInt(full, 16)
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255]
+}
+
+// ── ColorizedBuilding: canvas-based chroma-key color replacement ──────────────
+// Green pixels (G dominant, high saturation) are replaced with the repo color
+// while preserving the original luminance so shading/depth is maintained.
+
+interface ColorizedBuildingProps {
+  src: string
+  fallback?: string
+  width: number
+  height: number
+  color: string
+}
+
+function ColorizedBuilding({ src, fallback = src, width, height, color }: ColorizedBuildingProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d', { willReadFrequently: true })
+    if (!ctx) return
+
+    const dpr = window.devicePixelRatio || 1
+    const pw = width * dpr
+    const ph = height * dpr
+
+    canvas.width = pw
+    canvas.height = ph
+    ctx.scale(dpr, dpr)
+
+    const applyColorReplacement = (source: string) => {
+      const img = new Image()
+      img.onload = () => {
+        ctx.clearRect(0, 0, width, height)
+        ctx.drawImage(img, 0, 0, width, height)
+
+        const imageData = ctx.getImageData(0, 0, pw, ph)
+        const d = imageData.data
+        const [rr, rg, rb] = hexToRgb(color)
+
+        for (let i = 0; i < d.length; i += 4) {
+          const r = d[i], g = d[i + 1], b = d[i + 2], a = d[i + 3]
+          if (a === 0) continue
+          // Detect chroma-key green: green channel dominant with high saturation
+          if (g > 100 && g > r * 1.4 && g > b * 1.4) {
+            // Preserve relative luminance so shading / depth is maintained
+            const lum = g / 255
+            d[i]     = Math.round(rr * lum)
+            d[i + 1] = Math.round(rg * lum)
+            d[i + 2] = Math.round(rb * lum)
+          }
+        }
+
+        ctx.putImageData(imageData, 0, 0)
+      }
+      img.onerror = () => {
+        // Fallback: draw the original building without color replacement
+        if (source !== fallback) applyColorReplacement(fallback)
+      }
+      img.src = source
+    }
+
+    applyColorReplacement(src)
+  }, [src, fallback, color, width, height])
+
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{ display: 'block', width, height }}
+    />
+  )
+}
+
 // ── Isometric building PNG components ─────────────────────────────────────────
 
-function IsoBaseBuilding() {
+function IsoBaseBuilding({ color }: { color: string }) {
   return (
-    <img
-      src="/buildings/repository_kommando.png"
-      width="120"
-      height="120"
-      style={{ display: 'block', imageRendering: 'pixelated' }}
-      draggable={false}
+    <ColorizedBuilding
+      src="/buildings/kommando_chromakey.png"
+      fallback="/buildings/repository_kommando.png"
+      width={120}
+      height={120}
+      color={color}
     />
   )
 }
@@ -172,9 +255,9 @@ export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, on
           )}
         </div>
 
-        {/* Building graphic — isometric PNG */}
+        {/* Building graphic — isometric PNG with repo-color overlay */}
         <div className="base-building">
-          <IsoBaseBuilding />
+          <IsoBaseBuilding color={repo.color || '#00ff88'} />
         </div>
 
         {/* Floating HUD toolbar — appears on hover */}
