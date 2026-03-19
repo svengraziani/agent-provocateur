@@ -153,7 +153,7 @@ export function RepoCard({ entry }: Props) {
                     {run.claudeIssueNumber !== undefined ? (
                       <button
                         className="btn btn-ghost btn-xs item-claude-btn"
-                        onClick={() => openIssueDetail(run.claudeIssueNumber!)}
+                        onClick={() => openIssueDetail(run.claudeIssueNumber)}
                         title={`View Issue #${run.claudeIssueNumber}`}
                       >
                         Issue #{run.claudeIssueNumber}

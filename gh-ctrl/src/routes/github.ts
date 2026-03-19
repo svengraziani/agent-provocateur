@@ -99,7 +99,7 @@ function parseGitHubComparePRLink(urlStr: string): ClaudeIssuePRInfo | null {
 const PR_LINKS_CACHE_TTL_MS = 30_000
 const prLinksCache = new Map<string, { data: Record<number, ClaudeIssuePRInfo>; expiresAt: number }>()
 
-function fetchClaudeIssuePRLinks(fullName: string, issueNumbers: number[], existingPrHeads: Set<string>): Record<number, ClaudeIssuePRInfo> {
+async function fetchClaudeIssuePRLinks(fullName: string, issueNumbers: number[], existingPrHeads: Set<string>): Promise<Record<number, ClaudeIssuePRInfo>> {
   if (issueNumbers.length === 0) return {}
 
   const cached = prLinksCache.get(fullName)
@@ -107,7 +107,7 @@ function fetchClaudeIssuePRLinks(fullName: string, issueNumbers: number[], exist
 
   const result: Record<number, ClaudeIssuePRInfo> = {}
   for (const issueNumber of issueNumbers) {
-    const res = gh(['issue', 'view', String(issueNumber), '--repo', fullName, '--json', 'comments'])
+    const res = await gh(['issue', 'view', String(issueNumber), '--repo', fullName, '--json', 'comments'])
     if (res.error || !Array.isArray(res.data?.comments)) continue
     const comments: { body: string }[] = res.data.comments
     for (const comment of [...comments].reverse()) {
@@ -228,7 +228,7 @@ async function fetchRepoData(fullName: string) {
   )
 
   const existingPrHeads = new Set<string>(prs.map((pr: any) => pr.headRefName as string))
-  const claudeIssuePRLinks = fetchClaudeIssuePRLinks(fullName, issues.map((i: any) => i.number), existingPrHeads)
+  const claudeIssuePRLinks = await fetchClaudeIssuePRLinks(fullName, claudeIssues.map((i: any) => i.number), existingPrHeads)
 
 
   return {
@@ -379,16 +379,6 @@ app.get('/labels/:owner/:name', async (c) => {
   const result = await gh(['label', 'list', '--repo', fullName, '--json', 'name,color,description', '--limit', '100'])
   if (result.error) return c.json({ error: result.error }, 500)
   return c.json(result.data || [])
-})
-
-// GET /api/github/collaborators/:owner/:name — list collaborator logins for assignee picker
-app.get('/collaborators/:owner/:name', async (c) => {
-  const owner = c.req.param('owner')
-  const name = c.req.param('name')
-  const result = await gh(['api', `repos/${owner}/${name}/collaborators`])
-  if (result.error) return c.json({ error: result.error }, 500)
-  const logins = (result.data || []).map((u: any) => u.login as string)
-  return c.json(logins)
 })
 
 // GET /api/github/branches/:owner/:name — list branches for a repo, sorted by commit date desc
