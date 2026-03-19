@@ -726,9 +726,9 @@ export function BattlefieldView() {
           </button>
           <button
             className={`hud-btn${isRelocateMode ? ' active' : ''}`}
-            onClick={() => { play('hydraulic'); setIsRelocateMode(v => !v); setRelocatingId(null); setRelocatingStart(null) }}
+            onClick={() => { play('hydraulic'); setIsRelocateMode(v => !v); setRelocatingId(null); setRelocatingStart(null); setRelocatingKaserne(false); setRelocatingKaserneStart(null) }}
           >
-            {isRelocateMode ? <><CloseIcon size={10} /> CANCEL RELOCATE</> : <><RelocateIcon size={12} /> RELOCATE BASE</>}
+            {isRelocateMode ? <><CloseIcon size={10} /> CANCEL RELOCATE</> : <><RelocateIcon size={12} /> RELOCATE</>}
           </button>
           <button
             className="hud-btn hud-btn-new-base"
@@ -851,7 +851,7 @@ export function BattlefieldView() {
 
       {/* Minimap */}
       {(entries.length > 0 || pendingRepos.length > 0) && (
-        <Minimap entries={entries} positions={positions} offset={offset} zoom={zoom} onJump={setOffset} />
+        <Minimap entries={entries} positions={positions} kasernePos={kasernePos} offset={offset} zoom={zoom} onJump={setOffset} />
       )}
 
       {/* Empty state */}
@@ -872,7 +872,7 @@ export function BattlefieldView() {
       {/* Relocate mode banner */}
       {isRelocateMode && (
         <div className="battlefield-relocate-banner">
-          &#x2295; RELOCATE MODE — Drag a base to reposition it. Click again to cancel.
+          &#x2295; RELOCATE MODE — Drag a base or the Kaserne to reposition it. Click again to cancel.
         </div>
       )}
 
@@ -934,23 +934,25 @@ export function BattlefieldView() {
 interface MinimapProps {
   entries: DashboardEntry[]
   positions: Record<number, Position>
+  kasernePos: Position
   offset: Position
   zoom: number
   onJump: (pos: Position) => void
 }
 
-function Minimap({ entries, positions, offset, zoom, onJump }: MinimapProps) {
+function Minimap({ entries, positions, kasernePos, offset, zoom, onJump }: MinimapProps) {
   const MINIMAP_W = 160
   const MINIMAP_H = 100
   const LABEL_H = 12
   const PADDING = 10
 
-  // Compute bounding box of all base positions so the minimap auto-fits
+  // Compute bounding box of all building positions so the minimap auto-fits
   const posArray = entries.map(e => positions[e.repo.id]).filter((p): p is Position => !!p)
-  const minX = posArray.length > 0 ? Math.min(...posArray.map(p => p.x)) : 0
-  const maxX = posArray.length > 0 ? Math.max(...posArray.map(p => p.x)) : 800
-  const minY = posArray.length > 0 ? Math.min(...posArray.map(p => p.y)) : 0
-  const maxY = posArray.length > 0 ? Math.max(...posArray.map(p => p.y)) : 600
+  const allPositions = [...posArray, kasernePos]
+  const minX = allPositions.length > 0 ? Math.min(...allPositions.map(p => p.x)) : 0
+  const maxX = allPositions.length > 0 ? Math.max(...allPositions.map(p => p.x)) : 800
+  const minY = allPositions.length > 0 ? Math.min(...allPositions.map(p => p.y)) : 0
+  const maxY = allPositions.length > 0 ? Math.max(...allPositions.map(p => p.y)) : 600
 
   const worldW = Math.max(maxX - minX, 1)
   const worldH = Math.max(maxY - minY, 1)
@@ -1003,6 +1005,12 @@ function Minimap({ entries, positions, offset, zoom, onJump }: MinimapProps) {
           />
         )
       })}
+      {/* Kaserne indicator */}
+      <div
+        className="minimap-kaserne"
+        style={{ left: toMiniX(kasernePos.x), top: toMiniY(kasernePos.y) }}
+        title="Kaserne"
+      />
       {/* viewport indicator */}
       <div
         className="minimap-viewport"

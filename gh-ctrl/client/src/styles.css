@@ -2411,6 +2411,15 @@ select.input {
   outline-offset: 1px;
 }
 
+.minimap-kaserne {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: #ffb000;
+  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+  transform: translate(-4px, -4px);
+}
+
 .minimap-viewport {
   position: absolute;
   border: 1px solid rgba(57, 255, 20, 0.4);
