@@ -147,6 +147,13 @@ function MapPreviewCanvas({ map, width = 120, height = 80 }: { map: GameMap; wid
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
+    const dpr = window.devicePixelRatio || 1
+    canvas.width = width * dpr
+    canvas.height = height * dpr
+    canvas.style.width = `${width}px`
+    canvas.style.height = `${height}px`
+    ctx.scale(dpr, dpr)
+
     ctx.fillStyle = '#0a1510'
     ctx.fillRect(0, 0, width, height)
 
@@ -213,7 +220,7 @@ function MapPreviewCanvas({ map, width = 120, height = 80 }: { map: GameMap; wid
     }
   }, [map, width, height])
 
-  return <canvas ref={ref} width={width} height={height} style={{ display: 'block', borderRadius: 4 }} />
+  return <canvas ref={ref} style={{ display: 'block', borderRadius: 4 }} />
 }
 
 // ─── Flood fill ────────────────────────────────────────────────────────────────
@@ -531,14 +538,20 @@ export function MapEditor() {
     if (!canvas) return
     const ctx = canvas.getContext('2d')
     if (!ctx) return
+    const dpr = window.devicePixelRatio || 1
+    const logW = canvas.width / dpr
+    const logH = canvas.height / dpr
     const map = mapRef.current
     if (!map) {
       ctx.fillStyle = '#0a1510'
       ctx.fillRect(0, 0, canvas.width, canvas.height)
+      ctx.save()
+      ctx.scale(dpr, dpr)
       ctx.fillStyle = 'rgba(57,255,20,0.3)'
       ctx.font = '14px JetBrains Mono, monospace'
       ctx.textAlign = 'center'
-      ctx.fillText('NO MAP LOADED — CREATE OR LOAD A MAP', canvas.width / 2, canvas.height / 2)
+      ctx.fillText('NO MAP LOADED — CREATE OR LOAD A MAP', logW / 2, logH / 2)
+      ctx.restore()
       return
     }
 
@@ -551,7 +564,7 @@ export function MapEditor() {
     ctx.save()
     ctx.fillStyle = '#0a1510'
     ctx.fillRect(0, 0, canvas.width, canvas.height)
-    ctx.scale(sc, sc)
+    ctx.scale(dpr * sc, dpr * sc)
     ctx.translate(ox, oy)
 
     // Draw rows back-to-front for correct depth
@@ -584,15 +597,18 @@ export function MapEditor() {
     const canvas = canvasRef.current
     if (!container || !canvas) return
 
-    const observer = new ResizeObserver(() => {
-      canvas.width = container.clientWidth
-      canvas.height = container.clientHeight
+    const resizeCanvas = () => {
+      const dpr = window.devicePixelRatio || 1
+      canvas.width = container.clientWidth * dpr
+      canvas.height = container.clientHeight * dpr
+      canvas.style.width = `${container.clientWidth}px`
+      canvas.style.height = `${container.clientHeight}px`
       render()
-    })
+    }
+
+    const observer = new ResizeObserver(resizeCanvas)
     observer.observe(container)
-    canvas.width = container.clientWidth
-    canvas.height = container.clientHeight
-    render()
+    resizeCanvas()
     return () => observer.disconnect()
   }, [render])
 
