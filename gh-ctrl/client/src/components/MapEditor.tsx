@@ -265,6 +265,59 @@ function floodFill(
   return result
 }
 
+// ─── Rename Map Dialog ────────────────────────────────────────────────────────
+
+interface RenameMapDialogProps {
+  currentName: string
+  onClose: () => void
+  onRename: (name: string) => Promise<void>
+}
+
+function RenameMapDialog({ currentName, onClose, onRename }: RenameMapDialogProps) {
+  const [name, setName] = useState(currentName)
+  const [renaming, setRenaming] = useState(false)
+
+  const handleSubmit = async () => {
+    const trimmed = name.trim()
+    if (!trimmed || trimmed === currentName) { onClose(); return }
+    setRenaming(true)
+    try {
+      await onRename(trimmed)
+      onClose()
+    } finally {
+      setRenaming(false)
+    }
+  }
+
+  return (
+    <div className="map-dialog-overlay" onClick={onClose}>
+      <div className="map-dialog" onClick={e => e.stopPropagation()}>
+        <div className="map-dialog-title">&#x270e; RENAME MAP</div>
+        <div className="map-dialog-field">
+          <label>New Name</label>
+          <input
+            className="map-dialog-input"
+            value={name}
+            onChange={e => setName(e.target.value)}
+            autoFocus
+            onKeyDown={e => { if (e.key === 'Enter') handleSubmit(); if (e.key === 'Escape') onClose() }}
+          />
+        </div>
+        <div className="map-dialog-actions">
+          <button className="hud-btn" onClick={onClose}>CANCEL</button>
+          <button
+            className="hud-btn hud-btn-new-base"
+            onClick={handleSubmit}
+            disabled={renaming || !name.trim() || name.trim() === currentName}
+          >
+            {renaming ? 'RENAMING...' : 'RENAME'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── New Map Dialog ───────────────────────────────────────────────────────────
 
 interface NewMapDialogProps {
@@ -446,6 +499,7 @@ export function MapEditor() {
   // Dialog state
   const [showNewMap, setShowNewMap] = useState(false)
   const [showLoadMap, setShowLoadMap] = useState(false)
+  const [showRenameMap, setShowRenameMap] = useState(false)
   const [editingName, setEditingName] = useState(false)
   const [nameInput, setNameInput] = useState('')
 
@@ -699,6 +753,14 @@ export function MapEditor() {
     }
   }
 
+  const handleRenameDialog = async (newName: string) => {
+    if (!currentMap) return
+    const updated = await api.saveMap(currentMap.id, { name: newName })
+    setCurrentMap(updated)
+    setAllMaps(prev => prev.map(m => m.id === updated.id ? updated : m))
+    onToast('Map renamed', 'success')
+  }
+
   // ── Load map ─────────────────────────────────────────────────────────────────
 
   const handleLoadMap = (map: GameMap) => {
@@ -797,6 +859,14 @@ export function MapEditor() {
           {/* Map management */}
           <button className="hud-btn hud-btn-new-base" onClick={() => setShowNewMap(true)}>&#x2b; NEW</button>
           <button className="hud-btn" onClick={() => setShowLoadMap(true)}>&#x25bc; LOAD</button>
+          <button
+            className="hud-btn"
+            onClick={() => setShowRenameMap(true)}
+            disabled={!currentMap}
+            title="Rename current map"
+          >
+            &#x270e; RENAME
+          </button>
           <button
             className="hud-btn"
             onClick={handleSave}
@@ -926,6 +996,13 @@ export function MapEditor() {
           onLoad={handleLoadMap}
           onDelete={handleMapDeleted}
           onClose={() => setShowLoadMap(false)}
+        />
+      )}
+      {showRenameMap && currentMap && (
+        <RenameMapDialog
+          currentName={currentMap.name}
+          onClose={() => setShowRenameMap(false)}
+          onRename={handleRenameDialog}
         />
       )}
     </div>
