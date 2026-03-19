@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { Pencil, Eraser, PaintBucket, Plus, FolderOpen, Save, Trash2, ZoomIn, ZoomOut } from 'lucide-react'
+import { Pencil, Eraser, PaintBucket, Plus, FolderOpen, Save, Trash2, ZoomIn, ZoomOut, Stamp } from 'lucide-react'
 import type { GameMap, MapTile } from '../types'
 import { api } from '../api'
 import { useAppStore } from '../store'
@@ -44,6 +44,28 @@ function darkenColor(hex: string, factor: number): string {
 function lightenColor(hex: string, factor: number): string {
   const [r, g, b] = hexToRgb(hex)
   return `rgb(${Math.round(r + (255 - r) * factor)},${Math.round(g + (255 - g) * factor)},${Math.round(b + (255 - b) * factor)})`
+}
+
+function colorDistance(r1: number, g1: number, b1: number, r2: number, g2: number, b2: number): number {
+  return Math.sqrt((r1 - r2) ** 2 + (g1 - g2) ** 2 + (b1 - b2) ** 2)
+}
+
+function findNearestTileType(r: number, g: number, b: number, customColor: string): { type: string; color: string } {
+  let bestType = 'ground'
+  let bestColor = TILE_TYPES['ground'].color
+  let bestDist = Infinity
+
+  for (const [key, def] of Object.entries(TILE_TYPES)) {
+    const color = key === 'custom' ? customColor : def.color
+    const [cr, cg, cb] = hexToRgb(color)
+    const dist = colorDistance(r, g, b, cr, cg, cb)
+    if (dist < bestDist) {
+      bestDist = dist
+      bestType = key
+      bestColor = color
+    }
+  }
+  return { type: bestType, color: bestColor }
 }
 
 // ─── Coordinate conversion ────────────────────────────────────────────────────
@@ -465,6 +487,194 @@ function LoadMapDialog({ maps, currentMapId, onLoad, onDelete, onClose }: LoadMa
   )
 }
 
+// ─── Stamp Image Dialog ───────────────────────────────────────────────────────
+
+interface StampImageDialogProps {
+  mapWidth: number
+  mapHeight: number
+  customColor: string
+  onClose: () => void
+  onStamp: (stampedTiles: Record<string, MapTile>, offsetCol: number, offsetRow: number) => void
+  onToast: (msg: string, type: 'success' | 'error' | 'info') => void
+}
+
+function StampImageDialog({ mapWidth, mapHeight, customColor, onClose, onStamp, onToast }: StampImageDialogProps) {
+  const [imageUrl, setImageUrl] = useState<string | null>(null)
+  const [isDragging, setIsDragging] = useState(false)
+  const [stampWidth, setStampWidth] = useState(mapWidth)
+  const [stampHeight, setStampHeight] = useState(mapHeight)
+  const [offsetCol, setOffsetCol] = useState(0)
+  const [offsetRow, setOffsetRow] = useState(0)
+  const [isProcessing, setIsProcessing] = useState(false)
+  const imgRef = useRef<HTMLImageElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleFile = (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      onToast('Please select an image file', 'error')
+      return
+    }
+    const url = URL.createObjectURL(file)
+    setImageUrl(prev => { if (prev) URL.revokeObjectURL(prev); return url })
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(false)
+    const file = e.dataTransfer.files[0]
+    if (file) handleFile(file)
+  }
+
+  const handleStamp = () => {
+    if (!imageUrl || !imgRef.current) return
+    const img = imgRef.current
+    if (!img.complete || img.naturalWidth === 0) {
+      onToast('Image not loaded yet', 'error')
+      return
+    }
+    setIsProcessing(true)
+    try {
+      const canvas = document.createElement('canvas')
+      canvas.width = stampWidth
+      canvas.height = stampHeight
+      const ctx = canvas.getContext('2d')!
+      ctx.drawImage(img, 0, 0, stampWidth, stampHeight)
+      const imageData = ctx.getImageData(0, 0, stampWidth, stampHeight)
+      const data = imageData.data
+
+      const stampedTiles: Record<string, MapTile> = {}
+      for (let row = 0; row < stampHeight; row++) {
+        for (let col = 0; col < stampWidth; col++) {
+          const idx = (row * stampWidth + col) * 4
+          const a = data[idx + 3]
+          if (a < 128) continue // skip transparent pixels
+          const r = data[idx]
+          const g = data[idx + 1]
+          const b = data[idx + 2]
+          const { type, color } = findNearestTileType(r, g, b, customColor)
+          stampedTiles[`${col},${row}`] = { type, color }
+        }
+      }
+
+      onStamp(stampedTiles, offsetCol, offsetRow)
+      onClose()
+    } catch (err: any) {
+      onToast(`Stamp failed: ${err.message}`, 'error')
+      setIsProcessing(false)
+    }
+  }
+
+  return (
+    <div className="map-dialog-overlay" onClick={onClose}>
+      <div className="map-dialog map-dialog-stamp" onClick={e => e.stopPropagation()}>
+        <div className="map-dialog-title">&#x25a3; STAMP IMAGE TO MAP</div>
+
+        {/* Drop zone / image preview */}
+        <div
+          className={`stamp-drop-zone${isDragging ? ' drag-over' : ''}${imageUrl ? ' has-image' : ''}`}
+          onDragOver={e => { e.preventDefault(); setIsDragging(true) }}
+          onDragLeave={() => setIsDragging(false)}
+          onDrop={handleDrop}
+          onClick={() => fileInputRef.current?.click()}
+        >
+          {imageUrl ? (
+            <img
+              ref={imgRef}
+              src={imageUrl}
+              alt="Stamp preview"
+              className="stamp-preview-img"
+            />
+          ) : (
+            <div className="stamp-drop-hint">
+              <span className="stamp-drop-icon">🖼</span>
+              <span>Drop image here or click to browse</span>
+              <span className="stamp-drop-sub">PNG · JPG · SVG · WebP · transparent supported</span>
+            </div>
+          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            style={{ display: 'none' }}
+            onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f) }}
+          />
+        </div>
+
+        {imageUrl && (
+          <button className="hud-btn stamp-change-btn" onClick={e => { e.stopPropagation(); fileInputRef.current?.click() }}>
+            &#x21ba; CHANGE IMAGE
+          </button>
+        )}
+
+        {/* Stamp dimensions */}
+        <div className="palette-section-title">STAMP SIZE (tiles)</div>
+        <div className="map-dialog-row">
+          <div className="map-dialog-field">
+            <label>Width</label>
+            <input
+              className="map-dialog-input"
+              type="number"
+              min={1} max={mapWidth}
+              value={stampWidth}
+              onChange={e => setStampWidth(Math.min(mapWidth, Math.max(1, Number(e.target.value))))}
+            />
+          </div>
+          <div className="map-dialog-field">
+            <label>Height</label>
+            <input
+              className="map-dialog-input"
+              type="number"
+              min={1} max={mapHeight}
+              value={stampHeight}
+              onChange={e => setStampHeight(Math.min(mapHeight, Math.max(1, Number(e.target.value))))}
+            />
+          </div>
+        </div>
+
+        {/* Position offset */}
+        <div className="palette-section-title">POSITION OFFSET</div>
+        <div className="map-dialog-row">
+          <div className="map-dialog-field">
+            <label>Col</label>
+            <input
+              className="map-dialog-input"
+              type="number"
+              min={0} max={mapWidth - 1}
+              value={offsetCol}
+              onChange={e => setOffsetCol(Math.min(mapWidth - 1, Math.max(0, Number(e.target.value))))}
+            />
+          </div>
+          <div className="map-dialog-field">
+            <label>Row</label>
+            <input
+              className="map-dialog-input"
+              type="number"
+              min={0} max={mapHeight - 1}
+              value={offsetRow}
+              onChange={e => setOffsetRow(Math.min(mapHeight - 1, Math.max(0, Number(e.target.value))))}
+            />
+          </div>
+        </div>
+
+        <div className="map-dialog-size-hint">
+          Stamps {stampWidth}×{stampHeight} tiles starting at col {offsetCol}, row {offsetRow} · each pixel → nearest tile color
+        </div>
+
+        <div className="map-dialog-actions">
+          <button className="hud-btn" onClick={onClose}>CANCEL</button>
+          <button
+            className="hud-btn hud-btn-new-base"
+            onClick={handleStamp}
+            disabled={!imageUrl || isProcessing}
+          >
+            {isProcessing ? 'STAMPING...' : '▣ STAMP'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Main MapEditor component ─────────────────────────────────────────────────
 
 const ZOOM_MIN = 0.3
@@ -501,6 +711,7 @@ export function MapEditor() {
   const [showNewMap, setShowNewMap] = useState(false)
   const [showLoadMap, setShowLoadMap] = useState(false)
   const [showRenameMap, setShowRenameMap] = useState(false)
+  const [showStampImage, setShowStampImage] = useState(false)
   const [editingName, setEditingName] = useState(false)
   const [nameInput, setNameInput] = useState('')
 
@@ -803,6 +1014,26 @@ export function MapEditor() {
     setIsDirty(true)
   }
 
+  // ── Stamp image to map ────────────────────────────────────────────────────────
+
+  const handleStampImage = useCallback((stampedTiles: Record<string, MapTile>, offsetCol: number, offsetRow: number) => {
+    const map = mapRef.current
+    if (!map) return
+    setTiles(prev => {
+      const next = { ...prev }
+      for (const [key, tile] of Object.entries(stampedTiles)) {
+        const [c, r] = key.split(',').map(Number)
+        const fc = c + offsetCol
+        const fr = r + offsetRow
+        if (fc < 0 || fc >= map.width || fr < 0 || fr >= map.height) continue
+        next[`${fc},${fr}`] = tile
+      }
+      return next
+    })
+    setIsDirty(true)
+    onToast('Image stamped to map', 'success')
+  }, [onToast])
+
   // ─── Render ─────────────────────────────────────────────────────────────────
 
   const activeTileColor = getActiveTileColor()
@@ -882,6 +1113,14 @@ export function MapEditor() {
             title="Clear all tiles"
           >
             <Trash2 size={12} /> CLEAR
+          </button>
+          <button
+            className="hud-btn"
+            onClick={() => setShowStampImage(true)}
+            disabled={!currentMap}
+            title="Stamp image to map"
+          >
+            <Stamp size={12} /> STAMP
           </button>
 
           <span className="hud-zoom-sep" />
@@ -1004,6 +1243,16 @@ export function MapEditor() {
           currentName={currentMap.name}
           onClose={() => setShowRenameMap(false)}
           onRename={handleRenameDialog}
+        />
+      )}
+      {showStampImage && currentMap && (
+        <StampImageDialog
+          mapWidth={currentMap.width}
+          mapHeight={currentMap.height}
+          customColor={customColor}
+          onClose={() => setShowStampImage(false)}
+          onStamp={handleStampImage}
+          onToast={onToast}
         />
       )}
     </div>

@@ -3192,6 +3192,73 @@ select.input {
   cursor: not-allowed;
 }
 
+/* ── Stamp Image Dialog ── */
+.map-dialog-stamp {
+  width: 440px;
+}
+
+.stamp-drop-zone {
+  border: 1px dashed rgba(57,255,20,0.4);
+  background: rgba(0,0,0,0.2);
+  min-height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  overflow: hidden;
+  border-radius: 3px;
+}
+
+.stamp-drop-zone:hover,
+.stamp-drop-zone.drag-over {
+  border-color: rgba(57,255,20,0.8);
+  background: rgba(57,255,20,0.05);
+}
+
+.stamp-drop-zone.has-image {
+  border-style: solid;
+  min-height: 140px;
+}
+
+.stamp-drop-hint {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-3);
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  text-align: center;
+  padding: 20px;
+  pointer-events: none;
+}
+
+.stamp-drop-icon {
+  font-size: 28px;
+  opacity: 0.5;
+}
+
+.stamp-drop-sub {
+  font-size: 9px;
+  color: var(--text-3);
+  opacity: 0.6;
+}
+
+.stamp-preview-img {
+  max-width: 100%;
+  max-height: 180px;
+  object-fit: contain;
+  display: block;
+  pointer-events: none;
+  image-rendering: pixelated;
+}
+
+.stamp-change-btn {
+  align-self: flex-start;
+  font-size: 9px;
+}
+
 /* ============================================================
    TERRAIN ELEMENTS — trees, rocks, crystals
    ============================================================ */
