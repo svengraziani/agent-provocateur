@@ -38,6 +38,7 @@ interface AppStore {
   loadDashboard: () => Promise<void>
   loadSingleRepo: (owner: string, name: string) => Promise<void>
   handleRefreshIntervalChange: (ms: number) => void
+  updateRepoColor: (id: number, color: string) => Promise<void>
 }
 
 export const useAppStore = create<AppStore>((set, get) => ({
@@ -107,5 +108,17 @@ export const useAppStore = create<AppStore>((set, get) => ({
   handleRefreshIntervalChange: (ms: number) => {
     localStorage.setItem('refreshInterval', String(ms))
     set({ refreshInterval: ms })
+  },
+
+  updateRepoColor: async (id: number, color: string) => {
+    try {
+      const updated = await api.updateRepo(id, { color })
+      set((state) => ({
+        repos: state.repos.map((r) => r.id === id ? { ...r, color: updated.color } : r),
+        entries: state.entries.map((e) => e.repo.id === id ? { ...e, repo: { ...e.repo, color: updated.color } } : e),
+      }))
+    } catch (err: any) {
+      get().addToast(`Failed to update color: ${err.message}`, 'error')
+    }
   },
 }))
