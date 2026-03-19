@@ -648,6 +648,132 @@ a:hover { text-decoration: underline; }
   font-size: 12px;
 }
 
+/* Tab bar for Settings */
+.tab-bar {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0;
+}
+
+.tab-btn {
+  background: none;
+  border: none;
+  padding: 6px 12px;
+  font-size: 13px;
+  color: var(--text-2);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.tab-btn:hover {
+  color: var(--text-1);
+}
+
+.tab-btn.active {
+  color: var(--green);
+  border-bottom-color: var(--green);
+  font-weight: 600;
+}
+
+/* Browse repos panel */
+.browse-repos {
+  display: flex;
+  flex-direction: column;
+}
+
+.browse-repo-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 320px;
+  overflow-y: auto;
+  margin-bottom: 8px;
+}
+
+.browse-repo-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 12px;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s, background 0.15s;
+  width: 100%;
+}
+
+.browse-repo-item:hover:not(:disabled) {
+  border-color: var(--green);
+  background: var(--bg-3);
+}
+
+.browse-repo-item:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.browse-repo-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.browse-repo-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.browse-repo-badge {
+  font-size: 10px;
+  background: var(--bg-3);
+  color: var(--text-3);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 1px 5px;
+  align-self: flex-start;
+}
+
+.browse-repo-desc {
+  font-size: 11px;
+  color: var(--text-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 360px;
+}
+
+.browse-repo-add {
+  font-size: 12px;
+  color: var(--green);
+  white-space: nowrap;
+  margin-left: 12px;
+  flex-shrink: 0;
+}
+
+.browse-loading {
+  text-align: center;
+  color: var(--text-3);
+  font-size: 13px;
+  padding: 16px;
+}
+
+.browse-fallback {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 /* Toast */
 .toast-area {
   position: fixed;

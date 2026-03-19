@@ -742,4 +742,56 @@ app.post('/create-pr', async (c) => {
   return c.json({ ok: true, url })
 })
 
+// GET /api/github/user-repos?page=1&per_page=30&search=
+app.get('/user-repos', async (c) => {
+  const page = Math.max(1, parseInt(c.req.query('page') || '1', 10))
+  const perPage = Math.min(100, Math.max(1, parseInt(c.req.query('per_page') || '30', 10)))
+  const search = c.req.query('search')?.trim() || ''
+
+  let result: GHResult
+
+  if (search) {
+    // Use gh search repos with user scope
+    result = await gh([
+      'search', 'repos', search,
+      '--owner', '@me',
+      '--json', 'name,fullName,description,url,isPrivate',
+      '--limit', String(perPage),
+    ])
+  } else {
+    // Use gh repo list for paginated browsing
+    const limit = perPage * page
+    result = await gh([
+      'repo', 'list',
+      '--json', 'name,nameWithOwner,description,url,isPrivate',
+      '--limit', String(limit),
+    ])
+  }
+
+  if (result.error) {
+    // gh CLI not available or not authenticated
+    return c.json({ error: result.error, ghAvailable: false }, 503)
+  }
+
+  let repoList: any[] = result.data || []
+
+  // Normalize field names (gh repo list uses nameWithOwner, gh search repos uses fullName)
+  repoList = repoList.map((r: any) => ({
+    name: r.name,
+    fullName: r.fullName || r.nameWithOwner,
+    description: r.description || null,
+    url: r.url,
+    isPrivate: r.isPrivate ?? false,
+  }))
+
+  // For non-search, slice to the current page
+  const total = search ? repoList.length : null
+  if (!search) {
+    const start = (page - 1) * perPage
+    repoList = repoList.slice(start, start + perPage)
+  }
+
+  return c.json({ repos: repoList, page, perPage, total, ghAvailable: true })
+})
+
 export default app

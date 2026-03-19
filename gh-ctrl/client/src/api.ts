@@ -194,6 +194,14 @@ export const api = {
       body: JSON.stringify(params),
     }),
 
+  getUserRepos: (params: { page?: number; per_page?: number; search?: string }) => {
+    const qs = new URLSearchParams()
+    if (params.page) qs.set('page', String(params.page))
+    if (params.per_page) qs.set('per_page', String(params.per_page))
+    if (params.search) qs.set('search', params.search)
+    return request<{ repos: { name: string; fullName: string; description: string | null; url: string; isPrivate: boolean }[]; page: number; perPage: number; total: number | null; ghAvailable: boolean }>(`/github/user-repos?${qs}`)
+  },
+
   listMaps: () => request<GameMap[]>('/maps'),
 
   createMap: (params: { name: string; width: number; height: number }) =>
