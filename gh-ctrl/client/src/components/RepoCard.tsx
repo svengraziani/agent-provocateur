@@ -158,6 +158,8 @@ export function RepoCard({ entry }: Props) {
                       >
                         Issue #{run.claudeIssueNumber}
                       </button>
+                    ) : run.displayTitle ? (
+                      <span className="branch-ref" title={run.displayTitle}>{run.displayTitle}</span>
                     ) : (
                       <span className="branch-ref" title={run.headBranch}>{run.headBranch}</span>
                     )}

@@ -128,6 +128,7 @@ interface WorkflowRun {
   status: 'in_progress' | 'queued' | 'waiting'
   headBranch: string
   workflowName: string
+  displayTitle?: string
   claudeIssueNumber?: number
 }
 
@@ -139,7 +140,7 @@ interface RunningWorkflowsResult {
 async function fetchRunningWorkflows(fullName: string): Promise<RunningWorkflowsResult> {
   const result = await gh([
     'run', 'list', '--repo', fullName,
-    '--json', 'status,headBranch,databaseId,name,workflowName',
+    '--json', 'status,headBranch,databaseId,name,workflowName,displayTitle',
     '--limit', '30',
   ])
   if (result.error || !result.data) return { activeClaudeIssues: [], runningWorkflows: [] }
@@ -159,6 +160,7 @@ async function fetchRunningWorkflows(fullName: string): Promise<RunningWorkflows
         status: status as WorkflowRun['status'],
         headBranch: run.headBranch || '',
         workflowName: run.workflowName || run.name || '',
+        ...(run.displayTitle ? { displayTitle: run.displayTitle } : {}),
         ...(claudeIssueNumber !== undefined ? { claudeIssueNumber } : {}),
       })
     }
