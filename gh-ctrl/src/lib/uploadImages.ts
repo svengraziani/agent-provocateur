@@ -15,23 +15,17 @@ export async function uploadImages(files: File[], fullName: string): Promise<str
 
       const proc = Bun.spawnSync([
         'gh', 'api', '-X', 'POST',
-        '-F', `file=@${tmpPath};type=${file.type || 'application/octet-stream'}`,
+        '-F', `file=@${tmpPath}`,
         `/repos/${fullName}/uploads`,
       ], { env: { ...process.env } })
 
       if (proc.exitCode !== 0) {
-        console.error(`Failed to upload image ${file.name}:`, proc.stderr.toString())
-        continue
+        throw new Error(`Upload failed for ${file.name}: ${proc.stderr.toString()}`)
       }
 
-      try {
-        const data = JSON.parse(proc.stdout.toString())
-        if (data.href) urls.push(data.href)
-      } catch {
-        console.error(`Failed to parse upload response for ${file.name}`)
-      }
-    } catch (err) {
-      console.error(`Error processing image ${file.name}:`, err)
+      const data = JSON.parse(proc.stdout.toString())
+      if (!data.href) throw new Error(`No URL in upload response for ${file.name}`)
+      urls.push(data.href)
     } finally {
       unlink(tmpPath).catch(() => {})
     }

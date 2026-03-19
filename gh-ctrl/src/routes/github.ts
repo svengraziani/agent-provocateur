@@ -455,9 +455,13 @@ app.post('/trigger-claude', async (c) => {
   let comment = message || '@claude Please review and help resolve this.'
 
   if (imageFiles.length > 0) {
-    const urls = await uploadImages(imageFiles, fullName)
-    if (urls.length > 0) {
-      comment += '\n\n' + urls.map((url) => `![](${url})`).join('\n')
+    try {
+      const urls = await uploadImages(imageFiles, fullName)
+      if (urls.length > 0) {
+        comment += '\n\n' + urls.map((url) => `![](${url})`).join('\n')
+      }
+    } catch (err: any) {
+      return c.json({ error: `Image upload failed: ${err.message}` }, 500)
     }
   }
 
@@ -500,9 +504,13 @@ app.post('/comment', async (c) => {
   let finalComment = comment
 
   if (imageFiles.length > 0) {
-    const urls = await uploadImages(imageFiles, fullName)
-    if (urls.length > 0) {
-      finalComment += '\n\n' + urls.map((url) => `![](${url})`).join('\n')
+    try {
+      const urls = await uploadImages(imageFiles, fullName)
+      if (urls.length > 0) {
+        finalComment += '\n\n' + urls.map((url) => `![](${url})`).join('\n')
+      }
+    } catch (err: any) {
+      return c.json({ error: `Image upload failed: ${err.message}` }, 500)
     }
   }
 
@@ -646,10 +654,14 @@ app.post('/create-issue', async (c) => {
   let finalBody = issueBody
 
   if (imageFiles.length > 0) {
-    const urls = await uploadImages(imageFiles, fullName)
-    if (urls.length > 0) {
-      const imgMarkdown = urls.map((url) => `![](${url})`).join('\n')
-      finalBody = finalBody ? `${finalBody}\n\n${imgMarkdown}` : imgMarkdown
+    try {
+      const urls = await uploadImages(imageFiles, fullName)
+      if (urls.length > 0) {
+        const imgMarkdown = urls.map((url) => `![](${url})`).join('\n')
+        finalBody = finalBody ? `${finalBody}\n\n${imgMarkdown}` : imgMarkdown
+      }
+    } catch (err: any) {
+      return c.json({ error: `Image upload failed: ${err.message}` }, 500)
     }
   }
 
