@@ -802,7 +802,7 @@ export function MapEditor() {
             onClick={handleSave}
             disabled={!currentMap || !isDirty || isSaving}
           >
-            {isSaving ? '◌ SAVING...' : '&#x25ce; SAVE'}
+            {isSaving ? '◌ SAVING...' : '◎ SAVE'}
           </button>
           <button
             className="hud-btn"
