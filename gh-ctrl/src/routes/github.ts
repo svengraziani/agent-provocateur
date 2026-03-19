@@ -467,6 +467,22 @@ app.get('/branches/:owner/:name', async (c) => {
   return c.json({ branches, defaultBranch })
 })
 
+// GET /api/github/branch-compare/:owner/:name/:branch — ahead/behind vs default branch
+app.get('/branch-compare/:owner/:name/:branch', async (c) => {
+  const owner = c.req.param('owner')
+  const name = c.req.param('name')
+  const branch = decodeURIComponent(c.req.param('branch'))
+  const base = c.req.query('base') || 'main'
+
+  const result = await gh(['api', `repos/${owner}/${name}/compare/${base}...${branch}`])
+  if (result.error) return c.json({ error: result.error }, 500)
+
+  return c.json({
+    ahead: result.data?.ahead_by ?? 0,
+    behind: result.data?.behind_by ?? 0,
+  })
+})
+
 // POST /api/github/trigger-claude — post @claude comment
 app.post('/trigger-claude', async (c) => {
   const body = await c.req.json()
