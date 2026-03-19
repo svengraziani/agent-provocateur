@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
+import { Pencil, Eraser, PaintBucket, Plus, FolderOpen, Save, Trash2, ZoomIn, ZoomOut } from 'lucide-react'
 import type { GameMap, MapTile } from '../types'
 import { api } from '../api'
 import { useAppStore } from '../store'
@@ -788,21 +789,21 @@ export function MapEditor() {
               className={`hud-btn${tool === t ? ' active' : ''}`}
               onClick={() => setTool(t)}
             >
-              {t === 'paint' ? '✏ PAINT' : t === 'erase' ? '⌫ ERASE' : '⬛ FILL'}
+              {t === 'paint' ? <><Pencil size={12} /> PAINT</> : t === 'erase' ? <><Eraser size={12} /> ERASE</> : <><PaintBucket size={12} /> FILL</>}
             </button>
           ))}
 
           <span className="hud-zoom-sep" />
 
           {/* Map management */}
-          <button className="hud-btn hud-btn-new-base" onClick={() => setShowNewMap(true)}>&#x2b; NEW</button>
-          <button className="hud-btn" onClick={() => setShowLoadMap(true)}>&#x25bc; LOAD</button>
+          <button className="hud-btn hud-btn-new-base" onClick={() => setShowNewMap(true)}><Plus size={12} /> NEW</button>
+          <button className="hud-btn" onClick={() => setShowLoadMap(true)}><FolderOpen size={12} /> LOAD</button>
           <button
             className="hud-btn"
             onClick={handleSave}
             disabled={!currentMap || !isDirty || isSaving}
           >
-            {isSaving ? '◌ SAVING...' : '&#x25ce; SAVE'}
+            <Save size={12} /> {isSaving ? 'SAVING...' : 'SAVE'}
           </button>
           <button
             className="hud-btn"
@@ -810,15 +811,15 @@ export function MapEditor() {
             disabled={!currentMap}
             title="Clear all tiles"
           >
-            &#x2715; CLEAR
+            <Trash2 size={12} /> CLEAR
           </button>
 
           <span className="hud-zoom-sep" />
 
           {/* Zoom */}
-          <button className="hud-btn hud-zoom-btn" onClick={zoomOut} disabled={zoom <= ZOOM_MIN}>−</button>
+          <button className="hud-btn hud-zoom-btn" onClick={zoomOut} disabled={zoom <= ZOOM_MIN}><ZoomOut size={12} /></button>
           <span className="hud-zoom-level" onClick={zoomReset} title="Reset zoom">{Math.round(zoom * 100)}%</span>
-          <button className="hud-btn hud-zoom-btn" onClick={zoomIn} disabled={zoom >= ZOOM_MAX}>+</button>
+          <button className="hud-btn hud-zoom-btn" onClick={zoomIn} disabled={zoom >= ZOOM_MAX}><ZoomIn size={12} /></button>
         </div>
       </div>
 
