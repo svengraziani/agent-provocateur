@@ -24,6 +24,11 @@ app.post('/', async (c) => {
   // This also normalizes URLs (e.g. https://github.com/owner/repo) to owner/repo format
   const check = Bun.spawnSync(['gh', 'repo', 'view', fullName, '--json', 'nameWithOwner'])
   if (check.exitCode !== 0) {
+    const stderr = check.stderr.toString()
+    const isAuthError = /not logged in|auth login|authentication|401|403|credentials|token/i.test(stderr)
+    if (isAuthError) {
+      return c.json({ error: 'Not authenticated with GitHub CLI. Please run "gh auth login" to authenticate.' }, 401)
+    }
     return c.json({ error: 'Repository not found on GitHub' }, 404)
   }
 
