@@ -346,6 +346,7 @@ export function BattlefieldView() {
   const zoomRef = useRef(zoom)
   const offsetRef = useRef(offset)
   const autoScanTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const hasAutoCenteredRef = useRef(false)
   useEffect(() => { zoomRef.current = zoom }, [zoom])
   useEffect(() => { offsetRef.current = offset }, [offset])
 
@@ -437,6 +438,23 @@ export function BattlefieldView() {
     }
   }, [loading])
 
+  // Auto-center the camera on the bounding box of all loaded nodes after the
+  // initial data load completes. Only runs once per mount.
+  useEffect(() => {
+    if (loading || entries.length === 0 || hasAutoCenteredRef.current) return
+    hasAutoCenteredRef.current = true
+    const posArray = entries.map(e => positions[e.repo.id]).filter((p): p is Position => !!p)
+    if (posArray.length === 0) return
+    const minX = Math.min(...posArray.map(p => p.x))
+    const maxX = Math.max(...posArray.map(p => p.x))
+    const minY = Math.min(...posArray.map(p => p.y))
+    const maxY = Math.max(...posArray.map(p => p.y))
+    setOffset({
+      x: window.innerWidth / 2 - (minX + maxX) / 2,
+      y: window.innerHeight / 2 - (minY + maxY) / 2,
+    })
+  }, [loading, entries, positions])
+
   const handleMapMouseDown = useCallback((e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('.base-node')) return
     if (isRelocateMode) return
@@ -513,11 +531,23 @@ export function BattlefieldView() {
 
   const handleZoomReset = useCallback(() => {
     setZoom(1)
-    setOffset({
-      x: window.innerWidth / 2 - ISO_MAP_CENTER_X,
-      y: window.innerHeight / 2 - ISO_MAP_OFFSET_Y,
-    })
-  }, [])
+    const posArray = Object.values(positions).filter((p): p is Position => !!p)
+    if (posArray.length > 0) {
+      const minX = Math.min(...posArray.map(p => p.x))
+      const maxX = Math.max(...posArray.map(p => p.x))
+      const minY = Math.min(...posArray.map(p => p.y))
+      const maxY = Math.max(...posArray.map(p => p.y))
+      setOffset({
+        x: window.innerWidth / 2 - (minX + maxX) / 2,
+        y: window.innerHeight / 2 - (minY + maxY) / 2,
+      })
+    } else {
+      setOffset({
+        x: window.innerWidth / 2 - ISO_MAP_CENTER_X,
+        y: window.innerHeight / 2 - ISO_MAP_OFFSET_Y,
+      })
+    }
+  }, [positions])
 
   const handleMapMouseUp = useCallback(() => {
     setIsDraggingMap(false)
