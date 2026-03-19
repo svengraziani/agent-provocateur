@@ -62,6 +62,9 @@ export const api = {
   getBranches: (owner: string, name: string) =>
     request<BranchesData>(`/github/branches/${owner}/${name}`),
 
+  getBranchCompare: (owner: string, repoName: string, branch: string, base: string) =>
+    request<{ ahead: number; behind: number }>(`/github/branch-compare/${owner}/${repoName}/${encodeURIComponent(branch)}?base=${encodeURIComponent(base)}`),
+
   getRepoMeta: (owner: string, name: string) =>
     request<RepoMeta>(`/github/meta/${owner}/${name}`),
 

@@ -323,6 +323,7 @@ export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, on
               y: position.y + BRANCH_BUILDING_OFFSET_Y + row * BRANCH_BUILDING_ROW_HEIGHT,
             }}
             repoFullName={repo.fullName}
+            defaultBranch={data.defaultBranch ?? 'main'}
           />
         )
       })}

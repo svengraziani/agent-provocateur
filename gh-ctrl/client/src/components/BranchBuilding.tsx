@@ -1,5 +1,6 @@
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useState, useCallback } from 'react'
 import type { Branch } from '../types'
+import { api } from '../api'
 
 const STALE_THRESHOLD_DAYS = 30
 const VERY_STALE_THRESHOLD_DAYS = 90
@@ -82,27 +83,47 @@ interface BranchBuildingProps {
   branch: Branch
   position: { x: number; y: number }
   repoFullName: string
+  defaultBranch: string
 }
 
-export function BranchBuilding({ branch, position, repoFullName }: BranchBuildingProps) {
+interface CompareData {
+  ahead: number
+  behind: number
+}
+
+export function BranchBuilding({ branch, position, repoFullName, defaultBranch }: BranchBuildingProps) {
   const state = getBranchState(branch.committedDate)
   const daysSince = getDaysSince(branch.committedDate)
   const commitDateStr = branch.committedDate
     ? new Date(branch.committedDate).toLocaleDateString()
     : 'unknown'
 
-  const tooltip = [
-    `⎇ ${branch.name}`,
-    `Last commit: ${commitDateStr}`,
-    daysSince > 0 ? `${daysSince} days ago` : 'Today',
-    state === 'very-stale' ? '⚠ Very stale branch' : state === 'stale' ? '⚠ Stale branch' : '✓ Active branch',
-  ].join('\n')
+  const [compare, setCompare] = useState<CompareData | null>(null)
+  const [compareLoading, setCompareLoading] = useState(false)
+  const fetchedRef = useRef(false)
+
+  const handleMouseEnter = useCallback(() => {
+    if (fetchedRef.current) return
+    fetchedRef.current = true
+    setCompareLoading(true)
+    const [owner, name] = repoFullName.split('/')
+    api.getBranchCompare(owner, name, branch.name, defaultBranch)
+      .then(data => setCompare(data))
+      .catch(() => { /* silently ignore */ })
+      .finally(() => setCompareLoading(false))
+  }, [repoFullName, branch.name, defaultBranch])
+
+  const stateLabel = state === 'very-stale'
+    ? '⚠ Very stale'
+    : state === 'stale'
+    ? '⚠ Stale'
+    : '✓ Active'
 
   return (
     <div
       className={`branch-building branch-building-${state}`}
       style={{ left: position.x, top: position.y }}
-      title={tooltip}
+      onMouseEnter={handleMouseEnter}
       onClick={(e) => {
         e.stopPropagation()
         window.open(`https://github.com/${repoFullName}/tree/${encodeURIComponent(branch.name)}`, '_blank', 'noopener,noreferrer')
@@ -112,6 +133,38 @@ export function BranchBuilding({ branch, position, repoFullName }: BranchBuildin
         <ColorizedSilo state={state} />
       </div>
       <div className="branch-bld-label">{branch.name.length > 10 ? branch.name.slice(0, 9) + '…' : branch.name}</div>
+
+      <div className="branch-bld-popover">
+        <div className="branch-bld-popover-name">⎇ {branch.name}</div>
+        <div className="branch-bld-popover-row">
+          <span className="branch-bld-popover-label">Last commit</span>
+          <span className="branch-bld-popover-value">{commitDateStr}</span>
+        </div>
+        <div className="branch-bld-popover-row">
+          <span className="branch-bld-popover-label">Age</span>
+          <span className="branch-bld-popover-value">{daysSince > 0 ? `${daysSince}d ago` : 'Today'}</span>
+        </div>
+        <div className="branch-bld-popover-row">
+          <span className="branch-bld-popover-status">{stateLabel}</span>
+        </div>
+        <div className="branch-bld-popover-divider" />
+        {compareLoading ? (
+          <div className="branch-bld-popover-row">
+            <span className="branch-bld-popover-loading">Loading…</span>
+          </div>
+        ) : compare ? (
+          <div className="branch-bld-popover-compare">
+            <span className="branch-bld-popover-behind" title={`${compare.behind} commits behind ${defaultBranch}`}>
+              ↓{compare.behind}
+            </span>
+            <span className="branch-bld-popover-sep">|</span>
+            <span className="branch-bld-popover-ahead" title={`${compare.ahead} commits ahead of ${defaultBranch}`}>
+              ↑{compare.ahead}
+            </span>
+            <span className="branch-bld-popover-base">vs {defaultBranch}</span>
+          </div>
+        ) : null}
+      </div>
     </div>
   )
 }

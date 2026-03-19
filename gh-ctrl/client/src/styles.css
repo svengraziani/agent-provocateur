@@ -2329,6 +2329,98 @@ select.input {
   animation: blink 2s ease-in-out infinite;
 }
 
+/* Branch building popover */
+.branch-bld-popover {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  background: rgba(8, 12, 18, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: #ccc;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s, transform 0.15s;
+  white-space: nowrap;
+  z-index: 10;
+  min-width: 130px;
+}
+
+.branch-building:hover .branch-bld-popover {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.branch-bld-popover-name {
+  font-size: 9px;
+  font-weight: bold;
+  color: currentColor;
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+}
+
+.branch-bld-popover-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 2px;
+}
+
+.branch-bld-popover-label {
+  color: #888;
+  flex-shrink: 0;
+}
+
+.branch-bld-popover-value {
+  color: #ddd;
+}
+
+.branch-bld-popover-status {
+  color: currentColor;
+  opacity: 0.85;
+}
+
+.branch-bld-popover-loading {
+  color: #666;
+  font-style: italic;
+}
+
+.branch-bld-popover-divider {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  margin: 4px 0;
+}
+
+.branch-bld-popover-compare {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.branch-bld-popover-behind {
+  color: #ff9944;
+}
+
+.branch-bld-popover-ahead {
+  color: #44dd88;
+}
+
+.branch-bld-popover-sep {
+  color: #555;
+}
+
+.branch-bld-popover-base {
+  color: #666;
+  font-size: 8px;
+  margin-left: 2px;
+}
+
 .branch-overflow-label {
   position: absolute;
   font-family: var(--font-mono);
