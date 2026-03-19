@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import type { GHLabel, IssueDetail, PRDetail } from '../types'
+import { getPROrigin } from '../types'
 import { api } from '../api'
 import { MarkdownContent } from './MarkdownContent'
 import { VoiceButton } from './VoiceButton'
@@ -734,6 +735,9 @@ function PRDetailView({ state, onClose, onError, onTransition }: {
             <h3 className="issue-detail-title">{pr.title}</h3>
             <div className="issue-detail-meta">
               <span className="issue-meta-author">opened by <strong>{pr.author.login}</strong></span>
+              {getPROrigin(pr) === 'external' && (
+                <span className="badge badge-external" title={`Author association: ${pr.authorAssociation ?? 'unknown'}`}>External Contributor</span>
+              )}
               <span className="issue-meta-date">on {formatDate(pr.createdAt)}</span>
               <span>{pr.headRefName} → {pr.baseRefName}</span>
               {pr.isDraft && <span>· Draft</span>}

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { DashboardEntry, GHPR, GHIssue, Branch, WorkflowRun, ClaudeIssuePRInfo } from '../types'
+import { getPROrigin } from '../types'
 import { api } from '../api'
 import { ActionModal } from './ActionModal'
 import type { ModalState } from './ActionModal'
@@ -192,6 +193,7 @@ export function RepoCard({ entry }: Props) {
                   assignees={pr.assignees}
                   badge={<span className="badge badge-conflict">Conflict</span>}
                   previewUrl={pr.previewUrl}
+                  prOrigin={getPROrigin(pr)}
                   onClaude={() => openTriggerClaude(pr.number, 'pr')}
                   onComment={() => openComment(pr.number, 'pr')}
                   onLabel={() => openLabel(pr.number, 'pr', pr.labels.map((l) => l.name))}
@@ -214,6 +216,7 @@ export function RepoCard({ entry }: Props) {
                   assignees={pr.assignees}
                   badge={<span className="badge badge-review">Review</span>}
                   previewUrl={pr.previewUrl}
+                  prOrigin={getPROrigin(pr)}
                   onClaude={() => openTriggerClaude(pr.number, 'pr')}
                   onComment={() => openComment(pr.number, 'pr')}
                   onLabel={() => openLabel(pr.number, 'pr', pr.labels.map((l) => l.name))}
@@ -265,6 +268,7 @@ export function RepoCard({ entry }: Props) {
                   assignees={pr.assignees}
                   badge={pr.isDraft ? <span className="badge badge-draft">Draft</span> : pr.reviewDecision === 'APPROVED' ? <span className="badge badge-approved">Approved</span> : undefined}
                   previewUrl={pr.previewUrl}
+                  prOrigin={getPROrigin(pr)}
                   onClaude={() => openTriggerClaude(pr.number, 'pr')}
                   onComment={() => openComment(pr.number, 'pr')}
                   onLabel={() => openLabel(pr.number, 'pr', pr.labels.map((l) => l.name))}
@@ -360,7 +364,7 @@ function labelTextColor(hex: string): string {
 }
 
 function ItemRow({
-  number, title, labels, assignees, badge, previewUrl, isClaudeActive, isUntouched, onClaude, onComment, onLabel, onAssignee, onDetail, onCreatePR,
+  number, title, labels, assignees, badge, previewUrl, isClaudeActive, isUntouched, prOrigin, onClaude, onComment, onLabel, onAssignee, onDetail, onCreatePR,
 }: {
   number: number
   title: string
@@ -370,6 +374,7 @@ function ItemRow({
   previewUrl?: string | null
   isClaudeActive?: boolean
   isUntouched?: boolean
+  prOrigin?: 'internal' | 'external'
   onClaude: () => void
   onComment: () => void
   onLabel: () => void
@@ -377,8 +382,9 @@ function ItemRow({
   onDetail?: () => void
   onCreatePR?: () => void
 }) {
+  const originClass = prOrigin ? ` pr-${prOrigin}` : ''
   return (
-    <div className={`list-item${isUntouched ? ' untouched-issue' : ''}`}>
+    <div className={`list-item${isUntouched ? ' untouched-issue' : ''}${originClass}`}>
       <div className="list-item-left">
         <span className="list-item-number">#{number}</span>
         {isClaudeActive && (
@@ -418,6 +424,9 @@ function ItemRow({
         )}
       </div>
       <div className="list-item-right">
+        {prOrigin === 'external' && (
+          <span className="badge badge-external" title="External contributor">EXT</span>
+        )}
         {badge}
         {previewUrl && (
           <a

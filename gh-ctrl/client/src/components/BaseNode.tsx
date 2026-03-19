@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import type { DashboardEntry, GHPR, GHIssue, Branch, WorkflowRun, RepoMeta } from '../types'
+import { getPROrigin } from '../types'
 import type { ModalState } from './ActionModal'
 import { CloseIcon, LinkIcon, LabelIcon, CommentIcon, RefreshIcon, ExternalLinkIcon, AssigneeIcon } from './Icons'
 import { api } from '../api'
@@ -760,6 +761,7 @@ function PRBuilding({ pr, position, repo, onModalOpen }: {
   const isApproved = pr.reviewDecision === 'APPROVED'
   const isReviewRequired = pr.reviewDecision === 'REVIEW_REQUIRED'
 
+  const isExternal = getPROrigin(pr) === 'external'
   const prColor = isConflict || isChangesRequested
     ? 'var(--crt-red)'
     : isApproved
@@ -768,6 +770,8 @@ function PRBuilding({ pr, position, repo, onModalOpen }: {
     ? 'var(--crt-amber)'
     : pr.isDraft
     ? 'var(--chrome-silver)'
+    : isExternal
+    ? 'var(--blue)'
     : repo.color
 
   const statusLabel = pr.isDraft ? 'DRAFT'
@@ -775,6 +779,7 @@ function PRBuilding({ pr, position, repo, onModalOpen }: {
     : isChangesRequested ? 'CHANGES'
     : isApproved ? 'APPROVED'
     : isReviewRequired ? 'REVIEW'
+    : isExternal ? 'EXT'
     : 'OPEN'
 
   const shortTitle = pr.title.length > 14 ? pr.title.slice(0, 12) + '…' : pr.title
