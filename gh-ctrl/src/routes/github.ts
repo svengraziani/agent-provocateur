@@ -174,7 +174,7 @@ async function fetchRepoData(fullName: string) {
   const [prResult, issueResult] = await Promise.all([
     gh([
       'pr', 'list', '--repo', fullName, '--json',
-      'number,title,state,reviewDecision,mergeable,headRefName,author,createdAt,updatedAt,labels,isDraft,assignees,authorAssociation',
+      'number,title,state,reviewDecision,mergeable,headRefName,author,createdAt,updatedAt,labels,isDraft,assignees',
       '--limit', '30',
     ]),
     gh([
@@ -354,7 +354,8 @@ app.get('/meta/:owner/:name', async (c) => {
   }))
 
   // Commit weeks — last 26 weeks (commitActivity gives 52 weeks of {week, total, days[]})
-  const allWeeks: any[] = commitActivityResult.data || []
+  // The API may return a non-array (e.g. {} / null) while GitHub computes stats async
+  const allWeeks: any[] = Array.isArray(commitActivityResult.data) ? commitActivityResult.data : []
   const commitWeeks = allWeeks.slice(-26).map((w: any) => w.total || 0)
 
   return c.json({
@@ -605,7 +606,7 @@ app.get('/pr/:owner/:name/:number', async (c) => {
 
   const result = await gh([
     'pr', 'view', number, '--repo', fullName,
-    '--json', 'number,title,body,state,labels,assignees,author,url,createdAt,comments,reviewDecision,mergeable,headRefName,baseRefName,isDraft,authorAssociation',
+    '--json', 'number,title,body,state,labels,assignees,author,url,createdAt,comments,reviewDecision,mergeable,headRefName,baseRefName,isDraft',
   ])
 
   if (result.error) return c.json({ error: result.error }, 500)
