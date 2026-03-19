@@ -313,6 +313,7 @@ function savePositions(positions: Record<number, Position>) {
 }
 
 export function BattlefieldView() {
+  const repos = useAppStore((s) => s.repos)
   const entries = useAppStore((s) => s.entries)
   const repos = useAppStore((s) => s.repos)
   const loading = useAppStore((s) => s.loading)
@@ -407,7 +408,10 @@ export function BattlefieldView() {
     saveActiveMapId(null)
   }, [])
 
-  // Update positions when entries change (new repos)
+  // Update positions when entries change (new repos arriving via SSE stream).
+  // Do NOT call savePositions here – during streaming entries arrive one at a time,
+  // so saving mid-stream would overwrite localStorage with only the repos seen so far,
+  // causing all other repos to lose their positions on the next load.
   useEffect(() => {
     if (entries.length === 0) return
     setPositions(prev => {
@@ -417,10 +421,19 @@ export function BattlefieldView() {
       const merged = { ...defaults, ...stored, ...prev }
       const valid: Record<number, Position> = {}
       entries.forEach(e => { valid[e.repo.id] = merged[e.repo.id] ?? defaults[e.repo.id] })
-      savePositions(valid)
       return valid
     })
   }, [entries])
+
+  // Persist positions once the full SSE stream has finished loading.
+  useEffect(() => {
+    if (!loading && entries.length > 0) {
+      setPositions(prev => {
+        savePositions(prev)
+        return prev
+      })
+    }
+  }, [loading])
 
   const handleMapMouseDown = useCallback((e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('.base-node')) return
@@ -445,7 +458,7 @@ export function BattlefieldView() {
     }
   }, [isDraggingMap, dragStart, relocatingId, relocatingStart])
 
-  const handleWheel = useCallback((e: React.WheelEvent) => {
+  const handleWheel = useCallback((e: WheelEvent) => {
     e.preventDefault()
     // Use actual deltaY magnitude for smooth trackpad support; clamp to avoid huge jumps
     const clampedDelta = Math.max(-100, Math.min(100, e.deltaY))
@@ -462,6 +475,13 @@ export function BattlefieldView() {
       return newZoom
     })
   }, [])
+
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    el.addEventListener('wheel', handleWheel, { passive: false })
+    return () => el.removeEventListener('wheel', handleWheel)
+  }, [handleWheel])
 
   const handleZoomIn = useCallback(() => {
     setZoom(prev => {
@@ -526,7 +546,6 @@ export function BattlefieldView() {
       onMouseMove={handleMapMouseMove}
       onMouseUp={handleMapMouseUp}
       onMouseLeave={handleMapMouseUp}
-      onWheel={handleWheel}
       ref={containerRef}
       style={{ cursor: isDraggingMap ? 'grabbing' : (isRelocateMode ? 'crosshair' : 'grab') }}
     >

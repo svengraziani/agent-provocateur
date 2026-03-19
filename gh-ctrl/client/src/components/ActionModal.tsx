@@ -9,9 +9,9 @@ export type ModalState =
   | { mode: 'comment'; fullName: string; number: number; type: 'pr' | 'issue' }
   | { mode: 'label'; fullName: string; number: number; type: 'pr' | 'issue'; currentLabels: string[] }
   | { mode: 'assignee'; fullName: string; owner: string; repoName: string; number: number; type: 'pr' | 'issue'; currentAssignees: string[] }
-  | { mode: 'create-pr'; fullName: string; owner: string; repoName: string; head?: string }
+  | { mode: 'create-pr'; fullName: string; owner: string; repoName: string; head?: string; base?: string; title?: string; prBody?: string; issueNumber?: number }
   | { mode: 'create-issue'; fullName: string; owner: string; repoName: string }
-  | { mode: 'issue-detail'; fullName: string; owner: string; repoName: string; number: number }
+  | { mode: 'issue-detail'; fullName: string; owner: string; repoName: string; number: number; prLink?: { head: string; base: string; title: string; body: string } }
   | { mode: 'pr-detail'; fullName: string; owner: string; repoName: string; number: number }
   | { mode: 'trigger-claude'; fullName: string; number: number; type: 'pr' | 'issue' }
   | { mode: 'assign'; fullName: string; owner: string; repoName: string; number: number; type: 'pr' | 'issue'; currentAssignees: string[] }
@@ -293,45 +293,41 @@ function AssigneeForm({ state, onClose, onSuccess, onError }: {
   )
 }
 
+function buildInitialPrBody(statePrBody: string | undefined, issueNumber: number | undefined): string {
+  let body = statePrBody || ''
+  if (issueNumber) {
+    const closesPattern = new RegExp(`closes\\s+#${issueNumber}`, 'i')
+    if (!closesPattern.test(body)) {
+      body = body ? `${body}\n\nCloses #${issueNumber}` : `Closes #${issueNumber}`
+    }
+  }
+  return body
+}
+
 function CreatePRForm({ state, onClose, onSuccess, onError }: {
   state: Extract<ModalState, { mode: 'create-pr' }>
   onClose: () => void
   onSuccess: (msg: string) => void
   onError: (msg: string) => void
 }) {
-  const [title, setTitle] = useState('')
-  const [prBody, setPrBody] = useState('')
-  const [base, setBase] = useState('')
+  const [title, setTitle] = useState(state.title || '')
+  const [prBody, setPrBody] = useState(() => buildInitialPrBody(state.prBody, state.issueNumber))
+  const [base, setBase] = useState(state.base || '')
   const [head, setHead] = useState(state.head || '')
   const [allBranchNames, setAllBranchNames] = useState<string[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [collaborators, setCollaborators] = useState<string[]>([])
-  const [selectedAssignees, setSelectedAssignees] = useState<Set<string>>(new Set())
 
   useEffect(() => {
-    Promise.all([
-      api.getBranches(state.owner, state.repoName),
-      api.getCollaborators(state.owner, state.repoName).catch(() => [] as string[]),
-    ])
-      .then(([{ branches: br, defaultBranch }, collabs]) => {
+    api.getBranches(state.owner, state.repoName)
+      .then(({ branches: br, defaultBranch }) => {
         const names = br.map((b) => b.name)
         setAllBranchNames(names)
-        setBase(defaultBranch)
-        setCollaborators(collabs)
+        if (!state.base) setBase(defaultBranch)
       })
-      .catch((err) => onError(`Failed to load data: ${err.message}`))
+      .catch((err) => onError(`Failed to load branches: ${err.message}`))
       .finally(() => setLoading(false))
-  }, [state.owner, state.repoName])
-
-  const toggleAssignee = (login: string) => {
-    setSelectedAssignees((prev) => {
-      const next = new Set(prev)
-      if (next.has(login)) next.delete(login)
-      else next.add(login)
-      return next
-    })
-  }
+  }, [state.owner, state.repoName, state.base])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -345,7 +341,6 @@ function CreatePRForm({ state, onClose, onSuccess, onError }: {
         base,
         title: title.trim(),
         prBody: prBody.trim() || undefined,
-        assignees: selectedAssignees.size > 0 ? [...selectedAssignees] : undefined,
       })
       onSuccess(`PR created: ${result.url || `${effectiveHead} → ${base}`}`)
       onClose()
@@ -397,6 +392,8 @@ function CreatePRForm({ state, onClose, onSuccess, onError }: {
         <label className="modal-label">Base branch</label>
         {loading ? (
           <div className="input modal-readonly">Loading...</div>
+        ) : state.base ? (
+          <div className="input modal-readonly">{state.base}</div>
         ) : (
           <select
             className="input"
@@ -431,24 +428,6 @@ function CreatePRForm({ state, onClose, onSuccess, onError }: {
           rows={4}
         />
       </div>
-
-      {!loading && collaborators.length > 0 && (
-        <div className="modal-field">
-          <label className="modal-label">Assignees (optional)</label>
-          <div className="label-grid">
-            {collaborators.map((login) => (
-              <button
-                key={login}
-                type="button"
-                className={`label-chip${selectedAssignees.has(login) ? ' selected' : ''}`}
-                onClick={() => toggleAssignee(login)}
-              >
-                @{login}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
 
       <div className="modal-actions">
         <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
@@ -950,7 +929,7 @@ function IssueDetailView({ state, onClose, onError, onTransition }: {
                 <button
                   type="button"
                   className="btn btn-success btn-sm"
-                  onClick={() => onTransition({ mode: 'create-pr', fullName: state.fullName, owner: state.owner, repoName: state.repoName })}
+                  onClick={() => onTransition({ mode: 'create-pr', fullName: state.fullName, owner: state.owner, repoName: state.repoName, issueNumber: state.number, ...(state.prLink ? { head: state.prLink.head, base: state.prLink.base, title: state.prLink.title, prBody: state.prLink.body } : {}) })}
                 >
                   @pr
                 </button>

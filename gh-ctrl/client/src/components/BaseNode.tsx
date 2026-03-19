@@ -1,19 +1,102 @@
-import { useState, useCallback, useEffect } from 'react'
-import type { DashboardEntry, GHPR, GHIssue, Branch, WorkflowRun } from '../types'
+import { useState, useCallback, useEffect, useRef } from 'react'
+import type { DashboardEntry, GHPR, GHIssue, Branch, WorkflowRun, RepoMeta } from '../types'
 import type { ModalState } from './ActionModal'
 import { CloseIcon, LinkIcon, LabelIcon, CommentIcon, RefreshIcon, ExternalLinkIcon, AssigneeIcon } from './Icons'
 import { api } from '../api'
 
+// ── Canvas color utilities ────────────────────────────────────────────────────
+
+function hexToRgb(hex: string): [number, number, number] {
+  const clean = hex.replace('#', '')
+  const full = clean.length === 3
+    ? clean.split('').map(c => c + c).join('')
+    : clean
+  const n = parseInt(full, 16)
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255]
+}
+
+// ── ColorizedBuilding: canvas-based chroma-key color replacement ──────────────
+// Green pixels (G dominant, high saturation) are replaced with the repo color
+// while preserving the original luminance so shading/depth is maintained.
+
+interface ColorizedBuildingProps {
+  src: string
+  fallback?: string
+  width: number
+  height: number
+  color: string
+}
+
+function ColorizedBuilding({ src, fallback = src, width, height, color }: ColorizedBuildingProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d', { willReadFrequently: true })
+    if (!ctx) return
+
+    const dpr = window.devicePixelRatio || 1
+    const pw = width * dpr
+    const ph = height * dpr
+
+    canvas.width = pw
+    canvas.height = ph
+    ctx.scale(dpr, dpr)
+
+    const applyColorReplacement = (source: string) => {
+      const img = new Image()
+      img.onload = () => {
+        ctx.clearRect(0, 0, width, height)
+        ctx.drawImage(img, 0, 0, width, height)
+
+        const imageData = ctx.getImageData(0, 0, pw, ph)
+        const d = imageData.data
+        const [rr, rg, rb] = hexToRgb(color)
+
+        for (let i = 0; i < d.length; i += 4) {
+          const r = d[i], g = d[i + 1], b = d[i + 2], a = d[i + 3]
+          if (a === 0) continue
+          // Detect chroma-key green: green channel dominant with high saturation
+          if (g > 100 && g > r * 1.4 && g > b * 1.4) {
+            // Preserve relative luminance so shading / depth is maintained
+            const lum = g / 255
+            d[i]     = Math.round(rr * lum)
+            d[i + 1] = Math.round(rg * lum)
+            d[i + 2] = Math.round(rb * lum)
+          }
+        }
+
+        ctx.putImageData(imageData, 0, 0)
+      }
+      img.onerror = () => {
+        // Fallback: draw the original building without color replacement
+        if (source !== fallback) applyColorReplacement(fallback)
+      }
+      img.src = source
+    }
+
+    applyColorReplacement(src)
+  }, [src, fallback, color, width, height])
+
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{ display: 'block', width, height }}
+    />
+  )
+}
+
 // ── Isometric building PNG components ─────────────────────────────────────────
 
-function IsoBaseBuilding() {
+function IsoBaseBuilding({ color }: { color: string }) {
   return (
-    <img
-      src="/buildings/repository_kommando.png"
-      width="120"
-      height="120"
-      style={{ display: 'block', imageRendering: 'pixelated' }}
-      draggable={false}
+    <ColorizedBuilding
+      src="/buildings/kommando_chromakey.png"
+      fallback="/buildings/repository_kommando.png"
+      width={120}
+      height={120}
+      color={color}
     />
   )
 }
@@ -172,9 +255,9 @@ export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, on
           )}
         </div>
 
-        {/* Building graphic — isometric PNG */}
+        {/* Building graphic — isometric PNG with repo-color overlay */}
         <div className="base-building">
-          <IsoBaseBuilding />
+          <IsoBaseBuilding color={repo.color || '#00ff88'} />
         </div>
 
         {/* Floating HUD toolbar — appears on hover */}
@@ -348,7 +431,8 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
         <div className="bdp-section">
           <div className="bdp-section-title claude">&#x2605; CLAUDE ISSUES</div>
           {data.claudeIssues.slice(0, 4).map((issue: GHIssue) => {
-            const claudeBranch = (data.claudeIssueBranches ?? {})[issue.number]
+            const isActive = activeClaudeSet.has(issue.number)
+            const prLink = !isActive ? (data.claudeIssuePRLinks ?? {})[issue.number] : undefined
             return (
               <BdpItemRow
                 key={issue.number}
@@ -359,8 +443,9 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
                 onModalOpen={onModalOpen}
                 labels={issue.labels}
                 assignees={issue.assignees}
-                isClaudeActive={activeClaudeSet.has(issue.number)}
-                onPR={() => onModalOpen({ mode: 'create-pr', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, head: claudeBranch || undefined })}
+                isClaudeActive={isActive}
+                prLink={prLink}
+                onPR={prLink ? () => onModalOpen({ mode: 'create-pr', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, head: prLink.head, base: prLink.base, title: prLink.title, prBody: prLink.body, issueNumber: issue.number }) : undefined}
               />
             )
           })}
@@ -422,21 +507,26 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
           <button className="bdp-toggle" onClick={() => setShowAllIssues((v) => !v)}>
             <span>{showAllIssues ? '▾' : '▸'}</span> All Issues ({remainingIssues.length}) <span className="untouched-count-badge" title="Issues with no @claude interaction">● {remainingIssues.length} untouched</span>
           </button>
-          {showAllIssues && remainingIssues.slice(0, 5).map((issue: GHIssue) => (
-            <BdpItemRow
-              key={issue.number}
-              number={issue.number}
-              title={issue.title}
-              type="issue"
-              repo={repo}
-              onModalOpen={onModalOpen}
-              labels={issue.labels}
-              assignees={issue.assignees}
-              isClaudeActive={activeClaudeSet.has(issue.number)}
-              isUntouched
-              onPR={() => onModalOpen({ mode: 'create-pr', fullName: repo.fullName, owner: repo.owner, repoName: repo.name })}
-            />
-          ))}
+          {showAllIssues && remainingIssues.slice(0, 5).map((issue: GHIssue) => {
+            const isActive = activeClaudeSet.has(issue.number)
+            const prLink = !isActive ? (data.claudeIssuePRLinks ?? {})[issue.number] : undefined
+            return (
+              <BdpItemRow
+                key={issue.number}
+                number={issue.number}
+                title={issue.title}
+                type="issue"
+                repo={repo}
+                onModalOpen={onModalOpen}
+                labels={issue.labels}
+                assignees={issue.assignees}
+                isClaudeActive={isActive}
+                isUntouched
+                prLink={prLink}
+                onPR={prLink ? () => onModalOpen({ mode: 'create-pr', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, head: prLink.head, base: prLink.base, title: prLink.title, prBody: prLink.body, issueNumber: issue.number }) : undefined}
+              />
+            )
+          })}
         </div>
       )}
 
@@ -483,9 +573,178 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
         )}
       </div>
 
+      <div className="bdp-section bdp-meta-section">
+        <RepoMetaPanel owner={repo.owner} name={repo.name} repoColor={repo.color} />
+      </div>
+
       {data.error && (
         <div className="bdp-error">&#x26A0; {data.error}</div>
       )}
+    </div>
+  )
+}
+
+// ── Repo Meta Panel ───────────────────────────────────────────────────────────
+
+function CommitSparkline({ weeks }: { weeks: number[] }) {
+  if (!weeks.length) return null
+  const max = Math.max(...weeks, 1)
+  return (
+    <div className="meta-sparkline" title="Commit activity (last 26 weeks)">
+      {weeks.map((count, i) => (
+        <div
+          key={i}
+          className="meta-spark-bar"
+          style={{ height: `${Math.round((count / max) * 100)}%`, opacity: count === 0 ? 0.15 : 0.85 }}
+        />
+      ))}
+    </div>
+  )
+}
+
+function RepoMetaPanel({ owner, name, repoColor }: { owner: string; name: string; repoColor: string }) {
+  const [meta, setMeta] = useState<RepoMeta | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [expanded, setExpanded] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    api.getRepoMeta(owner, name)
+      .then((data) => { if (!cancelled) setMeta(data) })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [owner, name])
+
+  if (loading) {
+    return (
+      <div className="repo-meta-strip">
+        <span className="meta-loading">⌛ loading intel…</span>
+      </div>
+    )
+  }
+
+  if (!meta) return null
+
+  const topLang = meta.primaryLanguage
+  const topTopics = meta.topics.slice(0, 4)
+  const topContributors = meta.contributors.slice(0, 4)
+
+  return (
+    <div className="repo-meta-strip" onClick={(e) => e.stopPropagation()}>
+      {/* Always-visible summary row */}
+      <div className="meta-summary-row">
+        {meta.stars > 0 && (
+          <span className="meta-badge meta-stars" title="Stars">⭐ {meta.stars.toLocaleString()}</span>
+        )}
+        {topLang && (
+          <span className="meta-badge meta-lang" title={`Primary language: ${topLang.name}`}>
+            <span className="meta-lang-dot" style={{ background: topLang.color || repoColor }} />
+            {topLang.name}
+          </span>
+        )}
+        {meta.forks > 0 && (
+          <span className="meta-badge meta-forks" title="Forks">⑂ {meta.forks}</span>
+        )}
+        <button
+          className="meta-expand-btn"
+          onClick={(e) => { e.stopPropagation(); setExpanded(v => !v) }}
+          title={expanded ? 'Collapse intel' : 'Expand intel'}
+        >
+          {expanded ? '▾ LESS' : '▸ MORE'}
+        </button>
+      </div>
+
+      {/* Expanded detail */}
+      {expanded && (() => {
+        const hasCommits = meta.commitWeeks.length > 0
+        const hasLanguages = meta.languages.length > 0
+        const hasTopics = topTopics.length > 0
+        const hasCrew = topContributors.length > 0
+        const hasAny = hasCommits || hasLanguages || hasTopics || hasCrew
+        return (
+          <div className="meta-expanded">
+            {!hasAny && (
+              <span className="meta-no-intel">— no additional intel —</span>
+            )}
+
+            {/* Commit sparkline */}
+            {hasCommits && (
+              <div className="meta-row">
+                <span className="meta-row-label">COMMITS</span>
+                <CommitSparkline weeks={meta.commitWeeks} />
+              </div>
+            )}
+
+            {/* Language breakdown */}
+            {hasLanguages && (
+              <div className="meta-row">
+                <span className="meta-row-label">STACK</span>
+                <div className="meta-lang-bar">
+                  {meta.languages.slice(0, 6).map((lang) => (
+                    <div
+                      key={lang.name}
+                      className="meta-lang-seg"
+                      style={{ width: `${lang.percentage}%`, background: lang.color || '#555' }}
+                      title={`${lang.name}: ${lang.percentage}%`}
+                    />
+                  ))}
+                </div>
+                <div className="meta-lang-legend">
+                  {meta.languages.slice(0, 4).map((lang) => (
+                    <span key={lang.name} className="meta-legend-item">
+                      <span className="meta-lang-dot" style={{ background: lang.color || '#555' }} />
+                      {lang.name} {lang.percentage}%
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Topics / tech stack */}
+            {hasTopics && (
+              <div className="meta-row">
+                <span className="meta-row-label">TOPICS</span>
+                <div className="meta-topics">
+                  {topTopics.map((topic) => (
+                    <span key={topic} className="meta-topic-tag">{topic}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Contributors */}
+            {hasCrew && (
+              <div className="meta-row">
+                <span className="meta-row-label">CREW</span>
+                <div className="meta-contributors">
+                  {topContributors.map((c) => (
+                    <a
+                      key={c.login}
+                      href={`https://github.com/${c.login}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="meta-contributor"
+                      title={`${c.login} (${c.contributions} commits)`}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <img
+                        src={c.avatarUrl}
+                        alt={c.login}
+                        className="meta-avatar"
+                        width={20}
+                        height={20}
+                      />
+                      <span className="meta-contrib-login">{c.login}</span>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )
+      })()}
     </div>
   )
 }
@@ -550,7 +809,7 @@ function PRBuilding({ pr, position, repo, onModalOpen }: {
   )
 }
 
-function BdpItemRow({ number, title, type, repo, onModalOpen, previewUrl, labels, assignees, isClaudeActive, isUntouched, createdAt, onPR }: {
+function BdpItemRow({ number, title, type, repo, onModalOpen, previewUrl, labels, assignees, isClaudeActive, isUntouched, createdAt, onPR, prLink }: {
   number: number
   title: string
   type: 'pr' | 'issue'
@@ -563,6 +822,7 @@ function BdpItemRow({ number, title, type, repo, onModalOpen, previewUrl, labels
   isUntouched?: boolean
   createdAt?: string
   onPR?: () => void
+  prLink?: { head: string; base: string; title: string; body: string }
 }) {
   return (
     <div className={`bdp-item${isUntouched ? ' untouched-issue' : ''}`}>
@@ -580,7 +840,7 @@ function BdpItemRow({ number, title, type, repo, onModalOpen, previewUrl, labels
           className="bdp-text-btn"
           onClick={() => onModalOpen(
             type === 'issue'
-              ? { mode: 'issue-detail', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, number }
+              ? { mode: 'issue-detail', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, number, prLink }
               : { mode: 'pr-detail', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, number }
           )}
           title="View details"
