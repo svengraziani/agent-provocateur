@@ -143,3 +143,7 @@ vibe-and-conquer/
 - **claude.yml** — Interactive Claude assistant (responds to `@claude` mentions in issues and PRs)
 - **claude-code-review.yml** — Automated PR code review on open/sync
 - **claude-conflict-resolver.yml** — Automatic merge conflict detection and resolution
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=svengraziani/vibe-and-conquer&type=date&legend=top-left)](https://www.star-history.com/#svengraziani/vibe-and-conquer&type=date&legend=top-left)
