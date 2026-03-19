@@ -67,6 +67,15 @@ export interface WorkflowRun {
   status: 'in_progress' | 'queued' | 'waiting'
   headBranch: string
   workflowName: string
+  displayTitle?: string
+  claudeIssueNumber?: number
+}
+
+export interface ClaudeIssuePRInfo {
+  head: string
+  base: string
+  title: string
+  body: string
 }
 
 export interface ClaudeIssuePRInfo {

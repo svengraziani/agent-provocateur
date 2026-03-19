@@ -109,9 +109,6 @@ export const api = {
       body: JSON.stringify(params),
     }),
 
-  getCollaborators: (owner: string, name: string) =>
-    request<string[]>(`/github/collaborators/${owner}/${name}`),
-
   createPR: (params: {
     fullName: string
     head: string
