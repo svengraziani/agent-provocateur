@@ -764,6 +764,7 @@ export function MapEditor() {
   const brushSizeRef = useRef(brushSize)
   const activeTileColorRef = useRef('')
   const hasPendingPaintRef = useRef(false)
+  const isPaintingRef = useRef(false)
 
   // Load all maps on mount
   useEffect(() => {
@@ -927,6 +928,7 @@ export function MapEditor() {
 
     const { x, y } = getCanvasPos(e)
     const { col, row } = toTileCoords(x, y, offsetRef.current.x, offsetRef.current.y, zoomRef.current)
+    isPaintingRef.current = true
     setIsPainting(true)
     applyTool(col, row)
   }, [currentMap, applyTool])
@@ -944,10 +946,10 @@ export function MapEditor() {
     const { col, row } = toTileCoords(x, y, offsetRef.current.x, offsetRef.current.y, zoomRef.current)
     setHoveredTile({ col, row })
 
-    if (isPainting && currentMap) {
+    if (isPaintingRef.current && mapRef.current) {
       applyTool(col, row)
     }
-  }, [isPainting, isPanningMap, panStart, currentMap, applyTool])
+  }, [isPanningMap, panStart, applyTool])
 
   // Flush accumulated paint changes to React state (called on mouseUp / mouseLeave)
   const flushPendingPaint = useCallback(() => {
@@ -959,12 +961,14 @@ export function MapEditor() {
 
   const handleMouseUp = useCallback(() => {
     flushPendingPaint()
+    isPaintingRef.current = false
     setIsPainting(false)
     setIsPanningMap(false)
   }, [flushPendingPaint])
 
   const handleMouseLeave = useCallback(() => {
     flushPendingPaint()
+    isPaintingRef.current = false
     setIsPainting(false)
     setIsPanningMap(false)
     setHoveredTile(null)
