@@ -728,7 +728,7 @@ a:hover { text-decoration: underline; }
 .browse-repo-name {
   font-size: 13px;
   font-weight: 600;
-  color: var(--text-1);
+  color: var(--chrome-silver);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -737,7 +737,7 @@ a:hover { text-decoration: underline; }
 .browse-repo-badge {
   font-size: 10px;
   background: var(--bg-3);
-  color: var(--text-3);
+  color: var(--chrome-silver);
   border: 1px solid var(--border);
   border-radius: 3px;
   padding: 1px 5px;
@@ -746,7 +746,7 @@ a:hover { text-decoration: underline; }
 
 .browse-repo-desc {
   font-size: 11px;
-  color: var(--text-3);
+  color: var(--text-2);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
