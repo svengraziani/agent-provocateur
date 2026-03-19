@@ -760,14 +760,36 @@ interface MinimapProps {
 function Minimap({ entries, positions, offset, zoom, onJump }: MinimapProps) {
   const MINIMAP_W = 160
   const MINIMAP_H = 100
-  const SCALE = 0.12
+  const LABEL_H = 12
+  const PADDING = 10
+
+  // Compute bounding box of all base positions so the minimap auto-fits
+  const posArray = entries.map(e => positions[e.repo.id]).filter((p): p is Position => !!p)
+  const minX = posArray.length > 0 ? Math.min(...posArray.map(p => p.x)) : 0
+  const maxX = posArray.length > 0 ? Math.max(...posArray.map(p => p.x)) : 800
+  const minY = posArray.length > 0 ? Math.min(...posArray.map(p => p.y)) : 0
+  const maxY = posArray.length > 0 ? Math.max(...posArray.map(p => p.y)) : 600
+
+  const worldW = Math.max(maxX - minX, 1)
+  const worldH = Math.max(maxY - minY, 1)
+  const contentW = MINIMAP_W - PADDING * 2
+  const contentH = MINIMAP_H - LABEL_H - PADDING * 2
+  const scale = Math.min(contentW / worldW, contentH / worldH)
+
+  // Origin: translate world coords → minimap pixel coords (below label, centered)
+  const ox = PADDING + (contentW - worldW * scale) / 2 - minX * scale
+  const oy = LABEL_H + PADDING + (contentH - worldH * scale) / 2 - minY * scale
+
+  const toMiniX = (wx: number) => wx * scale + ox
+  const toMiniY = (wy: number) => wy * scale + oy
 
   const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
     e.stopPropagation()
     const rect = e.currentTarget.getBoundingClientRect()
-    const mx = (e.clientX - rect.left) / SCALE
-    const my = (e.clientY - rect.top) / SCALE
-    onJump({ x: -mx * zoom + window.innerWidth / 2, y: -my * zoom + window.innerHeight / 2 })
+    // Convert minimap pixel position back to world coordinates
+    const wx = (e.clientX - rect.left - ox) / scale
+    const wy = (e.clientY - rect.top - oy) / scale
+    onJump({ x: -wx * zoom + window.innerWidth / 2, y: -wy * zoom + window.innerHeight / 2 })
   }
 
   return (
@@ -781,16 +803,14 @@ function Minimap({ entries, positions, offset, zoom, onJump }: MinimapProps) {
       {entries.map((entry) => {
         const pos = positions[entry.repo.id]
         if (!pos) return null
-        const mx = pos.x * SCALE
-        const my = pos.y * SCALE
         const hasConflicts = entry.data.stats.conflicts > 0
         return (
           <div
             key={entry.repo.id}
             className={`minimap-base${hasConflicts ? ' alert' : ''}`}
             style={{
-              left: mx,
-              top: my + 12,
+              left: toMiniX(pos.x),
+              top: toMiniY(pos.y),
               background: entry.repo.color,
             }}
             title={entry.repo.name}
@@ -801,10 +821,10 @@ function Minimap({ entries, positions, offset, zoom, onJump }: MinimapProps) {
       <div
         className="minimap-viewport"
         style={{
-          left: -offset.x / zoom * SCALE,
-          top: -offset.y / zoom * SCALE + 12,
-          width: window.innerWidth / zoom * SCALE,
-          height: window.innerHeight / zoom * SCALE,
+          left: toMiniX(-offset.x / zoom),
+          top: toMiniY(-offset.y / zoom),
+          width: window.innerWidth / zoom * scale,
+          height: window.innerHeight / zoom * scale,
         }}
       />
     </div>
