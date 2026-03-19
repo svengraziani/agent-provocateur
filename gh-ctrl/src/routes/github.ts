@@ -737,4 +737,57 @@ app.post('/create-pr', async (c) => {
   return c.json({ ok: true, url })
 })
 
+// GET /api/github/user-repos?page=1&per_page=30&search=
+app.get('/user-repos', async (c) => {
+  const page = Math.max(1, parseInt(c.req.query('page') || '1', 10))
+  const perPage = Math.min(100, Math.max(1, parseInt(c.req.query('per_page') || '30', 10)))
+  const search = c.req.query('search')?.trim() || ''
+
+  let result: GHResult
+
+  if (search) {
+    // Fetch a larger batch and filter client-side; includes owned + collaborator repos
+    result = await gh([
+      'api', '/user/repos?affiliation=owner,collaborator,organization_member&per_page=100&sort=pushed',
+    ])
+  } else {
+    // Paginated listing via REST API — includes repos where user is collaborator
+    result = await gh([
+      'api', `/user/repos?affiliation=owner,collaborator,organization_member&per_page=${perPage}&page=${page}&sort=pushed`,
+    ])
+  }
+
+  if (result.error) {
+    // gh CLI not available or not authenticated
+    return c.json({ error: result.error, ghAvailable: false }, 503)
+  }
+
+  let repoList: any[] = result.data || []
+
+  // Normalize field names from GitHub REST API format
+  repoList = repoList.map((r: any) => ({
+    name: r.name,
+    fullName: r.full_name,
+    description: r.description || null,
+    url: r.html_url,
+    isPrivate: r.private ?? false,
+  }))
+
+  // For search, filter by name/description client-side
+  if (search) {
+    const q = search.toLowerCase()
+    repoList = repoList.filter((r) =>
+      r.fullName.toLowerCase().includes(q) ||
+      (r.description && r.description.toLowerCase().includes(q))
+    )
+  }
+
+  const total = search ? repoList.length : null
+  // When searching, we fetch at most 100 repos from the API and filter client-side.
+  // If we got exactly 100 back, the results may be incomplete.
+  const truncated = search ? (result.data || []).length >= 100 : false
+
+  return c.json({ repos: repoList, page, perPage, total, truncated, ghAvailable: true })
+})
+
 export default app
