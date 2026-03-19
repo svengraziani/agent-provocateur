@@ -376,16 +376,6 @@ app.get('/labels/:owner/:name', async (c) => {
   return c.json(result.data || [])
 })
 
-// GET /api/github/collaborators/:owner/:name — list collaborator logins for assignee picker
-app.get('/collaborators/:owner/:name', async (c) => {
-  const owner = c.req.param('owner')
-  const name = c.req.param('name')
-  const result = await gh(['api', `repos/${owner}/${name}/collaborators`])
-  if (result.error) return c.json({ error: result.error }, 500)
-  const logins = (result.data || []).map((u: any) => u.login as string)
-  return c.json(logins)
-})
-
 // GET /api/github/branches/:owner/:name — list branches for a repo, sorted by commit date desc
 app.get('/branches/:owner/:name', async (c) => {
   const owner = c.req.param('owner')
@@ -788,8 +778,11 @@ app.get('/user-repos', async (c) => {
   }
 
   const total = search ? repoList.length : null
+  // When searching, we fetch at most 100 repos from the API and filter client-side.
+  // If we got exactly 100 back, the results may be incomplete.
+  const truncated = search ? (result.data || []).length >= 100 : false
 
-  return c.json({ repos: repoList, page, perPage, total, ghAvailable: true })
+  return c.json({ repos: repoList, page, perPage, total, truncated, ghAvailable: true })
 })
 
 export default app

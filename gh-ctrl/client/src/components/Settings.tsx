@@ -36,6 +36,7 @@ export function Settings() {
   const [browsePage, setBrowsePage] = useState(1)
   const [browseHasMore, setBrowseHasMore] = useState(true)
   const [ghAvailable, setGhAvailable] = useState(true)
+  const [browseTruncated, setBrowseTruncated] = useState(false)
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const PER_PAGE = 30
 
@@ -56,6 +57,7 @@ export function Settings() {
         setBrowseRepos((prev) => [...prev, ...result.repos])
       }
       setBrowseHasMore(result.repos.length === PER_PAGE)
+      setBrowseTruncated(result.truncated ?? false)
     } catch (err: any) {
       setBrowseError(err.message || 'Failed to load repos')
       setGhAvailable(false)
@@ -71,6 +73,12 @@ export function Settings() {
       fetchBrowseRepos(1, browseSearch)
     }
   }, [activeTab])
+
+  useEffect(() => {
+    return () => {
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
+    }
+  }, [])
 
   const handleBrowseSearchChange = (value: string) => {
     setBrowseSearch(value)
@@ -90,9 +98,7 @@ export function Settings() {
 
   const handleSelectBrowseRepo = async (repoFullName: string) => {
     setFullName(repoFullName)
-    setActiveTab('manual')
     setFormError('')
-    // Auto-submit
     setAdding(true)
     try {
       await api.addRepo(repoFullName, selectedColor)
@@ -102,6 +108,7 @@ export function Settings() {
     } catch (err: any) {
       setFormError(err.message)
       addToast(`Failed to add: ${err.message}`, 'error')
+      setActiveTab('manual')
     } finally {
       setAdding(false)
     }
@@ -237,6 +244,9 @@ export function Settings() {
                   />
                 </div>
                 {browseError && !browseLoading && <div className="form-error">{browseError}</div>}
+                {!browseLoading && browseSearch && browseTruncated && (
+                  <div className="browse-truncated-note">Showing top 100 matches — refine your search for more specific results.</div>
+                )}
                 <div className="browse-repo-list">
                   {browseRepos.map((repo) => (
                     <button
