@@ -21,6 +21,20 @@ export function Settings() {
   const loadRepos = useAppStore((s) => s.loadRepos)
   const loadDashboard = useAppStore((s) => s.loadDashboard)
   const handleRefreshIntervalChange = useAppStore((s) => s.handleRefreshIntervalChange)
+  const updateRepoColor = useAppStore((s) => s.updateRepoColor)
+  const [openColorPicker, setOpenColorPicker] = useState<number | null>(null)
+  const popoverRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (openColorPicker === null) return
+    const handleClick = (e: MouseEvent) => {
+      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
+        setOpenColorPicker(null)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [openColorPicker])
 
   const [fullName, setFullName] = useState('')
   const [selectedColor, setSelectedColor] = useState(COLORS[0])
@@ -308,10 +322,54 @@ export function Settings() {
             {repos.map((repo) => (
               <div key={repo.id} className="repo-list-item">
                 <div className="repo-list-item-info">
-                  <div
-                    className="color-swatch"
-                    style={{ background: repo.color }}
-                  />
+                  <div style={{ position: 'relative' }}>
+                    <div
+                      className="color-swatch"
+                      style={{ background: repo.color, cursor: 'pointer' }}
+                      title="Change color"
+                      onClick={() => setOpenColorPicker(openColorPicker === repo.id ? null : repo.id)}
+                    />
+                    {openColorPicker === repo.id && (
+                      <div ref={popoverRef} className="color-picker-popover" style={{
+                        position: 'absolute',
+                        top: '20px',
+                        left: 0,
+                        zIndex: 100,
+                        background: 'var(--surface)',
+                        border: '1px solid var(--border)',
+                        borderRadius: '6px',
+                        padding: '8px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '8px',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                      }}>
+                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                          {COLORS.map((c) => (
+                            <div
+                              key={c}
+                              className={`color-swatch${repo.color === c ? ' active' : ''}`}
+                              style={{ background: c, cursor: 'pointer' }}
+                              onClick={() => {
+                                updateRepoColor(repo.id, c)
+                                setOpenColorPicker(null)
+                              }}
+                            />
+                          ))}
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span className="color-picker-label">Custom:</span>
+                          <input
+                            type="color"
+                            className="color-picker-input"
+                            defaultValue={repo.color}
+                            style={{ width: '48px', height: '24px', cursor: 'pointer' }}
+                            onChange={(e) => updateRepoColor(repo.id, e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
                   <span>{repo.fullName}</span>
                 </div>
                 <button

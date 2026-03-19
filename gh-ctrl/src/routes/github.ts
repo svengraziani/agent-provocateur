@@ -99,7 +99,7 @@ function parseGitHubComparePRLink(urlStr: string): ClaudeIssuePRInfo | null {
 const PR_LINKS_CACHE_TTL_MS = 30_000
 const prLinksCache = new Map<string, { data: Record<number, ClaudeIssuePRInfo>; expiresAt: number }>()
 
-function fetchClaudeIssuePRLinks(fullName: string, issueNumbers: number[], existingPrHeads: Set<string>): Record<number, ClaudeIssuePRInfo> {
+async function fetchClaudeIssuePRLinks(fullName: string, issueNumbers: number[], existingPrHeads: Set<string>): Promise<Record<number, ClaudeIssuePRInfo>> {
   if (issueNumbers.length === 0) return {}
 
   const cached = prLinksCache.get(fullName)
@@ -107,7 +107,7 @@ function fetchClaudeIssuePRLinks(fullName: string, issueNumbers: number[], exist
 
   const result: Record<number, ClaudeIssuePRInfo> = {}
   for (const issueNumber of issueNumbers) {
-    const res = gh(['issue', 'view', String(issueNumber), '--repo', fullName, '--json', 'comments'])
+    const res = await gh(['issue', 'view', String(issueNumber), '--repo', fullName, '--json', 'comments'])
     if (res.error || !Array.isArray(res.data?.comments)) continue
     const comments: { body: string }[] = res.data.comments
     for (const comment of [...comments].reverse()) {
@@ -128,6 +128,8 @@ interface WorkflowRun {
   status: 'in_progress' | 'queued' | 'waiting'
   headBranch: string
   workflowName: string
+  displayTitle?: string
+  claudeIssueNumber?: number
 }
 
 interface RunningWorkflowsResult {
@@ -138,7 +140,7 @@ interface RunningWorkflowsResult {
 async function fetchRunningWorkflows(fullName: string): Promise<RunningWorkflowsResult> {
   const result = await gh([
     'run', 'list', '--repo', fullName,
-    '--json', 'status,headBranch,databaseId,name,workflowName',
+    '--json', 'status,headBranch,databaseId,name,workflowName,displayTitle',
     '--limit', '30',
   ])
   if (result.error || !result.data) return { activeClaudeIssues: [], runningWorkflows: [] }
@@ -149,15 +151,18 @@ async function fetchRunningWorkflows(fullName: string): Promise<RunningWorkflows
   for (const run of result.data) {
     const status = run.status as string
     if (status === 'in_progress' || status === 'queued' || status === 'waiting') {
+      const match = run.headBranch?.match(CLAUDE_BRANCH_RE)
+      const claudeIssueNumber = match ? Number(match[1]) : undefined
+      if (claudeIssueNumber !== undefined) activeIssues.add(claudeIssueNumber)
       runningWorkflows.push({
         databaseId: run.databaseId,
         name: run.name || '',
         status: status as WorkflowRun['status'],
         headBranch: run.headBranch || '',
         workflowName: run.workflowName || run.name || '',
+        ...(run.displayTitle ? { displayTitle: run.displayTitle } : {}),
+        ...(claudeIssueNumber !== undefined ? { claudeIssueNumber } : {}),
       })
-      const match = run.headBranch?.match(CLAUDE_BRANCH_RE)
-      if (match) activeIssues.add(Number(match[1]))
     }
   }
 
@@ -223,7 +228,7 @@ async function fetchRepoData(fullName: string) {
   )
 
   const existingPrHeads = new Set<string>(prs.map((pr: any) => pr.headRefName as string))
-  const claudeIssuePRLinks = fetchClaudeIssuePRLinks(fullName, issues.map((i: any) => i.number), existingPrHeads)
+  const claudeIssuePRLinks = await fetchClaudeIssuePRLinks(fullName, claudeIssues.map((i: any) => i.number), existingPrHeads)
 
 
   return {
