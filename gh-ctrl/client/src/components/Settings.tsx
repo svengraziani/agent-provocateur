@@ -137,8 +137,8 @@ export function Settings() {
     e.preventDefault()
     setFormError('')
 
-    if (!fullName.includes('/')) {
-      setFormError('Format must be owner/repo')
+    if (!fullName.trim()) {
+      setFormError('Enter owner/repo or a GitHub URL')
       return
     }
 
@@ -214,7 +214,7 @@ export function Settings() {
               <input
                 className="input"
                 type="text"
-                placeholder="owner/repo"
+                placeholder="owner/repo or GitHub URL"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
               />
