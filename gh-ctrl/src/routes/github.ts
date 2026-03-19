@@ -751,20 +751,14 @@ app.get('/user-repos', async (c) => {
   let result: GHResult
 
   if (search) {
-    // Use gh search repos with user scope
+    // Fetch a larger batch and filter client-side; includes owned + collaborator repos
     result = await gh([
-      'search', 'repos', search,
-      '--owner', '@me',
-      '--json', 'name,fullName,description,url,isPrivate',
-      '--limit', String(perPage),
+      'api', '/user/repos?affiliation=owner,collaborator,organization_member&per_page=100&sort=pushed',
     ])
   } else {
-    // Use gh repo list for paginated browsing
-    const limit = perPage * page
+    // Paginated listing via REST API — includes repos where user is collaborator
     result = await gh([
-      'repo', 'list',
-      '--json', 'name,nameWithOwner,description,url,isPrivate',
-      '--limit', String(limit),
+      'api', `/user/repos?affiliation=owner,collaborator,organization_member&per_page=${perPage}&page=${page}&sort=pushed`,
     ])
   }
 
@@ -775,21 +769,25 @@ app.get('/user-repos', async (c) => {
 
   let repoList: any[] = result.data || []
 
-  // Normalize field names (gh repo list uses nameWithOwner, gh search repos uses fullName)
+  // Normalize field names from GitHub REST API format
   repoList = repoList.map((r: any) => ({
     name: r.name,
-    fullName: r.fullName || r.nameWithOwner,
+    fullName: r.full_name,
     description: r.description || null,
-    url: r.url,
-    isPrivate: r.isPrivate ?? false,
+    url: r.html_url,
+    isPrivate: r.private ?? false,
   }))
 
-  // For non-search, slice to the current page
-  const total = search ? repoList.length : null
-  if (!search) {
-    const start = (page - 1) * perPage
-    repoList = repoList.slice(start, start + perPage)
+  // For search, filter by name/description client-side
+  if (search) {
+    const q = search.toLowerCase()
+    repoList = repoList.filter((r) =>
+      r.fullName.toLowerCase().includes(q) ||
+      (r.description && r.description.toLowerCase().includes(q))
+    )
   }
+
+  const total = search ? repoList.length : null
 
   return c.json({ repos: repoList, page, perPage, total, ghAvailable: true })
 })

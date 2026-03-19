@@ -28,7 +28,7 @@ export function Settings() {
   const [formError, setFormError] = useState('')
 
   // Browse tab state
-  const [activeTab, setActiveTab] = useState<'manual' | 'browse'>('manual')
+  const [activeTab, setActiveTab] = useState<'manual' | 'browse'>('browse')
   const [browseRepos, setBrowseRepos] = useState<{ name: string; fullName: string; description: string | null; isPrivate: boolean }[]>([])
   const [browseLoading, setBrowseLoading] = useState(false)
   const [browseError, setBrowseError] = useState('')
@@ -172,18 +172,18 @@ export function Settings() {
         <h2>Add Repository</h2>
         <div className="tab-bar">
           <button
-            className={`tab-btn${activeTab === 'manual' ? ' active' : ''}`}
-            onClick={() => setActiveTab('manual')}
-            type="button"
-          >
-            Manual
-          </button>
-          <button
             className={`tab-btn${activeTab === 'browse' ? ' active' : ''}`}
             onClick={() => setActiveTab('browse')}
             type="button"
           >
             Browse my repos
+          </button>
+          <button
+            className={`tab-btn${activeTab === 'manual' ? ' active' : ''}`}
+            onClick={() => setActiveTab('manual')}
+            type="button"
+          >
+            Manual
           </button>
         </div>
 
