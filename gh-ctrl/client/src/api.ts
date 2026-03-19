@@ -1,4 +1,4 @@
-import type { Repo, DashboardEntry, RepoData, GHLabel, BranchesData, IssueDetail, PRDetail, GameMap, RepoMeta } from './types'
+import type { Repo, DashboardEntry, RepoData, GHLabel, BranchesData, IssueDetail, PRDetail, GameMap, RepoMeta, FeedData } from './types'
 
 const BASE = '/api'
 
@@ -217,4 +217,6 @@ export const api = {
 
   deleteMap: (id: number) =>
     request<{ ok: boolean }>(`/maps/${id}`, { method: 'DELETE' }),
+
+  getFeed: () => request<FeedData>('/github/feed'),
 }
