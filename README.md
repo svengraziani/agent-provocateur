@@ -2,6 +2,8 @@
 
 # Vibe and Conquer
 
+![Demo](docs/demo_presentation.gif)
+
 A GitHub Command Center for teams who want full visibility into their repositories — PRs, issues, conflicts, and AI-assisted workflows — all in one place.
 
 ## What is this?
