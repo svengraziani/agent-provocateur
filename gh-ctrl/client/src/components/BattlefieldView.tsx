@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import type { DashboardEntry, GameMap, MapTile } from '../types'
 import { api } from '../api'
+import { getBranchState } from './BranchBuilding'
 import { BaseNode } from './BaseNode'
 import { ActionModal } from './ActionModal'
 import type { ModalState } from './ActionModal'
@@ -543,6 +544,16 @@ export function BattlefieldView() {
   const loadedFullNames = new Set(entries.map((e) => e.repo.fullName))
   const pendingRepos = loading ? repos.filter((r) => !loadedFullNames.has(r.fullName)) : []
 
+  // Stale branch counts across all repos
+  const staleBranchStats = entries.reduce((acc, e) => {
+    const defaultBranch = e.data.defaultBranch ?? 'main'
+    const nonDefault = (e.data.branches ?? []).filter(b => b.name !== defaultBranch)
+    const stale = nonDefault.filter(b => getBranchState(b.committedDate) === 'stale' || getBranchState(b.committedDate) === 'very-stale')
+    if (stale.length > 0) acc.repos++
+    acc.total += stale.length
+    return acc
+  }, { total: 0, repos: 0 })
+
 
   return (
     <div
@@ -567,6 +578,11 @@ export function BattlefieldView() {
           )}
           {totalRunningActions > 0 && (
             <span className="hud-stat hud-actions spinning-process" title="Running GitHub Actions across all bases">&#x2699; PROCESSES: <strong>{totalRunningActions}</strong></span>
+          )}
+          {staleBranchStats.total > 0 && (
+            <span className="hud-stat hud-stale-branches" title={`${staleBranchStats.total} stale branch(es) across ${staleBranchStats.repos} repo(s)`}>
+              &#x2387; STALE: <strong>{staleBranchStats.total}</strong>
+            </span>
           )}
           <button
             className="hud-btn"
@@ -810,10 +826,14 @@ function Minimap({ entries, positions, offset, zoom, onJump }: MinimapProps) {
         const pos = positions[entry.repo.id]
         if (!pos) return null
         const hasConflicts = entry.data.stats.conflicts > 0
+        const defaultBranch = entry.data.defaultBranch ?? 'main'
+        const hasStale = (entry.data.branches ?? []).some(
+          b => b.name !== defaultBranch && (getBranchState(b.committedDate) === 'stale' || getBranchState(b.committedDate) === 'very-stale')
+        )
         return (
           <div
             key={entry.repo.id}
-            className={`minimap-base${hasConflicts ? ' alert' : ''}`}
+            className={`minimap-base${hasConflicts ? ' alert' : hasStale ? ' stale' : ''}`}
             style={{
               left: toMiniX(pos.x),
               top: toMiniY(pos.y),
