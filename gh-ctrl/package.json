@@ -6,7 +6,8 @@
     "dev:server": "bun --watch src/index.ts",
     "dev:client": "cd client && bun run dev",
     "build": "cd client && bun run build",
-    "start": "bun src/index.ts"
+    "start": "bun src/index.ts",
+    "test:unit": "bun test"
   },
   "dependencies": {
     "concurrently": "^8.2.0",
