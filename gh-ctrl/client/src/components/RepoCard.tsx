@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { DashboardEntry, GHPR, GHIssue, Branch, ClaudeIssuePRInfo } from '../types'
+import type { DashboardEntry, GHPR, GHIssue, Branch, WorkflowRun, ClaudeIssuePRInfo } from '../types'
 import { api } from '../api'
 import { ActionModal } from './ActionModal'
 import type { ModalState } from './ActionModal'
@@ -136,6 +136,49 @@ export function RepoCard({ entry }: Props) {
               <span className="stat-label">Reviews</span>
             </div>
           </div>
+
+          {data.runningWorkflows.length > 0 && (
+            <div className="card-section">
+              <div className="card-section-title running-actions">
+                Running Actions ({data.runningWorkflows.length})
+              </div>
+              {data.runningWorkflows.map((run: WorkflowRun) => (
+                <div key={run.databaseId} className="list-item">
+                  <div className="list-item-left">
+                    <span className="claude-active-indicator spinning" title={run.status}>
+                      <RefreshIcon size={12} />
+                    </span>
+                    <span className="list-item-title">{run.workflowName}</span>
+                    <span className="badge badge-running">{run.status.replace('_', ' ')}</span>
+                    {run.claudeIssueNumber !== undefined ? (
+                      <button
+                        className="btn btn-ghost btn-xs item-claude-btn"
+                        onClick={() => openIssueDetail(run.claudeIssueNumber)}
+                        title={`View Issue #${run.claudeIssueNumber}`}
+                      >
+                        Issue #{run.claudeIssueNumber}
+                      </button>
+                    ) : run.displayTitle ? (
+                      <span className="branch-ref" title={run.displayTitle}>{run.displayTitle}</span>
+                    ) : (
+                      <span className="branch-ref" title={run.headBranch}>{run.headBranch}</span>
+                    )}
+                  </div>
+                  <div className="list-item-right">
+                    <a
+                      href={`https://github.com/${repo.fullName}/actions/runs/${run.databaseId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn btn-ghost btn-xs item-claude-btn"
+                      title="View action run on GitHub"
+                    >
+                      <LinkIcon size={11} /> View run
+                    </a>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
 
           {data.conflicts.length > 0 && (
             <div className="card-section">

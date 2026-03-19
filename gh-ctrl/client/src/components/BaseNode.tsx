@@ -461,7 +461,7 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
               <div className="bdp-item-left">
                 <span className={`action-status-dot ${run.status === 'in_progress' ? 'spinning-process' : ''}`} title={run.status}>⚙</span>
                 <span className="bdp-text-btn" style={{ cursor: 'default' }}>{run.workflowName}</span>
-                <span className="bdp-branch-date">{run.headBranch}</span>
+                <span className="bdp-branch-date">{run.displayTitle || run.headBranch}</span>
               </div>
               <div className="bdp-item-right">
                 <a
