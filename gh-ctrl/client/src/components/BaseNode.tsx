@@ -4,6 +4,7 @@ import { getPROrigin } from '../types'
 import type { ModalState } from './ActionModal'
 import { CloseIcon, LinkIcon, LabelIcon, CommentIcon, RefreshIcon, ExternalLinkIcon, AssigneeIcon } from './Icons'
 import { api } from '../api'
+import { BranchBuilding, getBranchState } from './BranchBuilding'
 
 // ── Canvas color utilities ────────────────────────────────────────────────────
 
@@ -137,6 +138,11 @@ const PR_BUILDING_COL_WIDTH = 80
 const PR_BUILDING_ROW_HEIGHT = 100
 const MAX_PR_BUILDINGS = 8
 
+const BRANCH_BUILDING_OFFSET_X = -10
+const BRANCH_BUILDING_OFFSET_Y = 130
+const BRANCH_BUILDING_COL_WIDTH = 46
+const MAX_BRANCH_BUILDINGS = 10
+
 export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, onConstruct, onStartRelocate, onRefreshRepo, onToast, onModalOpen }: Props) {
   const { repo, data } = entry
   const { stats } = data
@@ -185,6 +191,15 @@ export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, on
   }, [isRelocateMode])
 
   const visiblePRs = data.prs.slice(0, MAX_PR_BUILDINGS)
+
+  // Branch buildings: exclude default branch, sort stale first, cap at MAX_BRANCH_BUILDINGS
+  const nonDefaultBranches = (data.branches ?? []).filter(b => b.name !== (data.defaultBranch ?? 'main'))
+  const sortedBranches = [...nonDefaultBranches].sort((a, b) => {
+    const stateOrder = { 'very-stale': 0, 'stale': 1, 'active': 2 }
+    return stateOrder[getBranchState(a.committedDate)] - stateOrder[getBranchState(b.committedDate)]
+  })
+  const visibleBranches = sortedBranches.slice(0, MAX_BRANCH_BUILDINGS)
+  const extraBranches = sortedBranches.length - visibleBranches.length
 
   return (
     <>
@@ -292,6 +307,30 @@ export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, on
           )}
         </div>
       </div>
+
+      {/* Branch buildings — rendered below base node in a row */}
+      {visibleBranches.map((branch, i) => (
+        <BranchBuilding
+          key={branch.name}
+          branch={branch}
+          position={{
+            x: position.x + BRANCH_BUILDING_OFFSET_X + i * BRANCH_BUILDING_COL_WIDTH,
+            y: position.y + BRANCH_BUILDING_OFFSET_Y,
+          }}
+          repoFullName={repo.fullName}
+        />
+      ))}
+      {extraBranches > 0 && (
+        <div
+          className="branch-overflow-label"
+          style={{
+            left: position.x + BRANCH_BUILDING_OFFSET_X + visibleBranches.length * BRANCH_BUILDING_COL_WIDTH,
+            top: position.y + BRANCH_BUILDING_OFFSET_Y + 10,
+          }}
+        >
+          +{extraBranches}
+        </div>
+      )}
 
       {/* Floating detail panel */}
       {showDetail && !isRelocateMode && (

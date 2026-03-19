@@ -169,6 +169,43 @@ async function fetchRunningWorkflows(fullName: string): Promise<RunningWorkflows
   return { activeClaudeIssues: Array.from(activeIssues), runningWorkflows }
 }
 
+async function fetchRepoBranches(fullName: string): Promise<{ branches: { name: string; committedDate: string }[]; defaultBranch: string }> {
+  const [owner, name] = fullName.split('/')
+  const graphqlQuery = `{
+    repository(owner: "${owner}", name: "${name}") {
+      defaultBranchRef { name }
+      refs(refPrefix: "refs/heads/", first: 100) {
+        nodes {
+          name
+          target {
+            ... on Commit {
+              committedDate
+            }
+          }
+        }
+      }
+    }
+  }`
+  const result = await gh(['api', 'graphql', '-f', `query=${graphqlQuery}`])
+  if (result.error || !result.data?.data?.repository) {
+    return { branches: [], defaultBranch: 'main' }
+  }
+  const repo = result.data.data.repository
+  const defaultBranch: string = repo.defaultBranchRef?.name || 'main'
+  const branches = (repo.refs?.nodes || [])
+    .map((node: any) => ({
+      name: node.name,
+      committedDate: node.target?.committedDate || '',
+    }))
+    .sort((a: any, b: any) => {
+      if (!a.committedDate && !b.committedDate) return 0
+      if (!a.committedDate) return 1
+      if (!b.committedDate) return -1
+      return new Date(b.committedDate).getTime() - new Date(a.committedDate).getTime()
+    })
+  return { branches, defaultBranch }
+}
+
 async function fetchRepoData(fullName: string) {
   // PRs and issues are independent — fetch in parallel
   const [prResult, issueResult] = await Promise.all([
@@ -196,6 +233,8 @@ async function fetchRepoData(fullName: string) {
       activeClaudeIssues: [],
       claudeIssuePRLinks: {},
       runningWorkflows: [],
+      branches: [],
+      defaultBranch: 'main',
       error: prResult.error || issueResult.error,
     }
   }
@@ -204,10 +243,11 @@ async function fetchRepoData(fullName: string) {
   const issues = issueResult.data || []
 
   // Netlify URLs depend on prs, but workflows and branches are independent
-  const [previewUrls, { activeClaudeIssues, runningWorkflows }, claudeIssueBranches] = await Promise.all([
+  const [previewUrls, { activeClaudeIssues, runningWorkflows }, claudeIssueBranches, { branches, defaultBranch }] = await Promise.all([
     fetchNetlifyUrls(fullName, prs),
     fetchRunningWorkflows(fullName),
     fetchClaudeIssueBranches(fullName),
+    fetchRepoBranches(fullName),
   ])
 
   const enrichedPrs = prs.map((pr: any) => ({
@@ -251,6 +291,8 @@ async function fetchRepoData(fullName: string) {
     activeClaudeIssues,
     claudeIssuePRLinks,
     runningWorkflows,
+    branches,
+    defaultBranch,
     error: null,
   }
 }

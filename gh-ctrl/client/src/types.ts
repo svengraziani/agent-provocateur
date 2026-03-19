@@ -105,6 +105,8 @@ export interface RepoData {
   activeClaudeIssues: number[]
   claudeIssuePRLinks: Record<number, ClaudeIssuePRInfo>
   runningWorkflows: WorkflowRun[]
+  branches: Branch[]
+  defaultBranch: string
   error: string | null
 }
 
