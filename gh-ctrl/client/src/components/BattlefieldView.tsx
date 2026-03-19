@@ -566,7 +566,7 @@ export function BattlefieldView() {
             <span className="hud-stat hud-alert blink">&#x26a0; CONFLICTS: <strong>{totalConflicts}</strong></span>
           )}
           {totalRunningActions > 0 && (
-            <span className="hud-stat hud-actions spinning-process" title="Running GitHub Actions across all bases">&#x2699; PROCESSES: <strong>{totalRunningActions}</strong></span>
+            <span className="hud-stat hud-actions" title="Running GitHub Actions across all bases"><span className="spinning-process">&#x2699;</span> PROCESSES: <strong>{totalRunningActions}</strong></span>
           )}
           <button
             className="hud-btn"
