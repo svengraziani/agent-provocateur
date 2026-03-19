@@ -8,6 +8,14 @@ export interface Repo {
   createdAt: string | number | null
 }
 
+export type AuthorAssociation = 'OWNER' | 'MEMBER' | 'COLLABORATOR' | 'CONTRIBUTOR' | 'FIRST_TIME_CONTRIBUTOR' | 'FIRST_TIMER' | 'NONE'
+export type PROrigin = 'internal' | 'external'
+
+export function getPROrigin(pr: { authorAssociation?: AuthorAssociation }): PROrigin {
+  const internal: AuthorAssociation[] = ['OWNER', 'MEMBER', 'COLLABORATOR']
+  return pr.authorAssociation && internal.includes(pr.authorAssociation) ? 'internal' : 'external'
+}
+
 export interface GHPR {
   number: number
   title: string
@@ -21,6 +29,7 @@ export interface GHPR {
   labels: { name: string; color: string }[]
   isDraft: boolean
   assignees: { login: string }[]
+  authorAssociation?: AuthorAssociation
   previewUrl?: string | null
 }
 
@@ -119,6 +128,7 @@ export interface PRDetail {
   headRefName: string
   baseRefName: string
   isDraft: boolean
+  authorAssociation?: AuthorAssociation
   comments: { author: { login: string }; body: string; createdAt: string }[]
 }
 
