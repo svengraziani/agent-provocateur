@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react'
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { Pencil, Eraser, PaintBucket, Plus, FolderOpen, Save, Trash2, ZoomIn, ZoomOut, Stamp } from 'lucide-react'
 import type { GameMap, MapTile } from '../types'
 import { api } from '../api'
@@ -44,6 +44,17 @@ function darkenColor(hex: string, factor: number): string {
 function lightenColor(hex: string, factor: number): string {
   const [r, g, b] = hexToRgb(hex)
   return `rgb(${Math.round(r + (255 - r) * factor)},${Math.round(g + (255 - g) * factor)},${Math.round(b + (255 - b) * factor)})`
+}
+
+// Precomputed face color cache — avoids recalculating darkenColor per tile per frame.
+// Since tile colors are finite, results are memoized indefinitely.
+const tileColorCache = new Map<string, { left: string; right: string }>()
+
+function getTileSideColors(color: string): { left: string; right: string } {
+  if (tileColorCache.has(color)) return tileColorCache.get(color)!
+  const result = { left: darkenColor(color, 0.35), right: darkenColor(color, 0.55) }
+  tileColorCache.set(color, result)
+  return result
 }
 
 function colorDistance(r1: number, g1: number, b1: number, r2: number, g2: number, b2: number): number {
@@ -117,6 +128,8 @@ function drawIsoTile(
   ctx.lineWidth = 0.5
   ctx.stroke()
 
+  const { left: leftColor, right: rightColor } = getTileSideColors(color)
+
   // Left face
   ctx.beginPath()
   ctx.moveTo(sx - w2, sy + h2)
@@ -124,7 +137,7 @@ function drawIsoTile(
   ctx.lineTo(sx,      sy + TILE_H + TILE_DEPTH)
   ctx.lineTo(sx - w2, sy + h2 + TILE_DEPTH)
   ctx.closePath()
-  ctx.fillStyle = darkenColor(color, 0.35)
+  ctx.fillStyle = leftColor
   ctx.fill()
   ctx.strokeStyle = 'rgba(0,0,0,0.25)'
   ctx.stroke()
@@ -136,7 +149,7 @@ function drawIsoTile(
   ctx.lineTo(sx + w2, sy + h2 + TILE_DEPTH)
   ctx.lineTo(sx,      sy + TILE_H + TILE_DEPTH)
   ctx.closePath()
-  ctx.fillStyle = darkenColor(color, 0.55)
+  ctx.fillStyle = rightColor
   ctx.fill()
   ctx.strokeStyle = 'rgba(0,0,0,0.25)'
   ctx.stroke()
@@ -227,7 +240,8 @@ function MapPreviewCanvas({ map, width = 120, height = 80 }: { map: GameMap; wid
         ctx.lineTo(sx,        sy + th + depth)
         ctx.lineTo(sx - tw/2, sy + th/2 + depth)
         ctx.closePath()
-        ctx.fillStyle = darkenColor(color, 0.35)
+        const { left: previewLeft, right: previewRight } = getTileSideColors(color)
+        ctx.fillStyle = previewLeft
         ctx.fill()
 
         ctx.beginPath()
@@ -236,11 +250,11 @@ function MapPreviewCanvas({ map, width = 120, height = 80 }: { map: GameMap; wid
         ctx.lineTo(sx + tw/2, sy + th/2 + depth)
         ctx.lineTo(sx,        sy + th + depth)
         ctx.closePath()
-        ctx.fillStyle = darkenColor(color, 0.55)
+        ctx.fillStyle = previewRight
         ctx.fill()
       }
     }
-  }, [map, width, height])
+  }, [map.tiles, map.width, map.height, width, height])
 
   return <canvas ref={ref} style={{ display: 'block', borderRadius: 4 }} />
 }
@@ -266,8 +280,9 @@ function floodFill(
   const queue: [number, number][] = [[startCol, startRow]]
   const visited = new Set<string>([startKey])
 
-  while (queue.length > 0) {
-    const [col, row] = queue.shift()!
+  let head = 0
+  while (head < queue.length) {
+    const [col, row] = queue[head++]
     const key = `${col},${row}`
     if (newTile.type === 'empty') {
       delete result[key]
@@ -550,21 +565,39 @@ function StampImageDialog({ mapWidth, mapHeight, customColor, onClose, onStamp, 
       const data = imageData.data
 
       const stampedTiles: Record<string, MapTile> = {}
-      for (let row = 0; row < stampHeight; row++) {
-        for (let col = 0; col < stampWidth; col++) {
-          const idx = (row * stampWidth + col) * 4
-          const a = data[idx + 3]
-          if (a < 128) continue // skip transparent pixels
-          const r = data[idx]
-          const g = data[idx + 1]
-          const b = data[idx + 2]
-          const { type, color } = findNearestTileType(r, g, b, customColor)
-          stampedTiles[`${col},${row}`] = { type, color }
+      // Process image in chunks of rows to avoid blocking the UI thread on large stamps
+      const CHUNK_ROWS = 10
+      let currentRow = 0
+
+      const processChunk = () => {
+        try {
+          const endRow = Math.min(currentRow + CHUNK_ROWS, stampHeight)
+          for (let row = currentRow; row < endRow; row++) {
+            for (let col = 0; col < stampWidth; col++) {
+              const idx = (row * stampWidth + col) * 4
+              const a = data[idx + 3]
+              if (a < 128) continue // skip transparent pixels
+              const r = data[idx]
+              const g = data[idx + 1]
+              const b = data[idx + 2]
+              const { type, color } = findNearestTileType(r, g, b, customColor)
+              stampedTiles[`${col},${row}`] = { type, color }
+            }
+          }
+          currentRow = endRow
+          if (currentRow < stampHeight) {
+            setTimeout(processChunk, 0)
+          } else {
+            onStamp(stampedTiles, offsetCol, offsetRow)
+            onClose()
+          }
+        } catch (err: any) {
+          onToast(`Stamp failed: ${err.message}`, 'error')
+          setIsProcessing(false)
         }
       }
 
-      onStamp(stampedTiles, offsetCol, offsetRow)
-      onClose()
+      processChunk()
     } catch (err: any) {
       onToast(`Stamp failed: ${err.message}`, 'error')
       setIsProcessing(false)
@@ -722,20 +755,15 @@ export function MapEditor() {
   const [editingName, setEditingName] = useState(false)
   const [nameInput, setNameInput] = useState('')
 
-  // Refs for rendering
+  // Refs for rendering — assigned directly during render for immediate sync (no useEffect overhead)
   const tilesRef = useRef(tiles)
   const hoveredRef = useRef(hoveredTile)
   const zoomRef = useRef(zoom)
   const offsetRef = useRef(offset)
   const mapRef = useRef(currentMap)
   const brushSizeRef = useRef(brushSize)
-
-  useEffect(() => { tilesRef.current = tiles }, [tiles])
-  useEffect(() => { hoveredRef.current = hoveredTile }, [hoveredTile])
-  useEffect(() => { zoomRef.current = zoom }, [zoom])
-  useEffect(() => { offsetRef.current = offset }, [offset])
-  useEffect(() => { mapRef.current = currentMap }, [currentMap])
-  useEffect(() => { brushSizeRef.current = brushSize }, [brushSize])
+  const activeTileColorRef = useRef('')
+  const hasPendingPaintRef = useRef(false)
 
   // Load all maps on mount
   useEffect(() => {
@@ -799,8 +827,18 @@ export function MapEditor() {
     ctx.restore()
   }, [])
 
-  // Trigger render on state changes
-  useEffect(() => { render() }, [tiles, hoveredTile, zoom, offset, currentMap, render])
+  // rAF-batched render scheduler — coalesces multiple state changes into a single canvas redraw per frame
+  const rafRef = useRef<number | null>(null)
+  const scheduleRender = useCallback(() => {
+    if (rafRef.current !== null) return
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = null
+      render()
+    })
+  }, [render])
+
+  // Trigger render on state changes (batched via rAF)
+  useEffect(() => { scheduleRender() }, [tiles, hoveredTile, zoom, offset, currentMap, scheduleRender])
 
   // Resize canvas to container
   useEffect(() => {
@@ -825,7 +863,7 @@ export function MapEditor() {
 
   // ── Active tile color ───────────────────────────────────────────────────────
 
-  const getActiveTileColor = useCallback(() => {
+  const activeTileColor = useMemo(() => {
     if (selectedType === 'custom') return customColor
     return TILE_TYPES[selectedType]?.color ?? '#4a6b2a'
   }, [selectedType, customColor])
@@ -838,7 +876,7 @@ export function MapEditor() {
 
     if (tool === 'fill') {
       if (col < 0 || col >= map.width || row < 0 || row >= map.height) return
-      const color = getActiveTileColor()
+      const color = activeTileColorRef.current
       setTiles(prev => {
         const result = floodFill(prev, col, row, { type: selectedType, color }, map.width, map.height)
         return result
@@ -847,27 +885,29 @@ export function MapEditor() {
       return
     }
 
+    // paint / erase: mutate tilesRef directly and schedule a canvas redraw.
+    // React state is flushed once on mouseUp to avoid O(n) re-renders during drag.
     const radius = brushSizeRef.current - 1
-    const color = getActiveTileColor()
-    setTiles(prev => {
-      const next = { ...prev }
-      for (let dr = -radius; dr <= radius; dr++) {
-        for (let dc = -radius; dc <= radius; dc++) {
-          const c = col + dc
-          const r = row + dr
-          if (c < 0 || c >= map.width || r < 0 || r >= map.height) continue
-          const key = `${c},${r}`
-          if (tool === 'erase') {
-            delete next[key]
-          } else {
-            next[key] = { type: selectedType, color }
-          }
+    const color = activeTileColorRef.current
+    const next = { ...tilesRef.current }
+    for (let dr = -radius; dr <= radius; dr++) {
+      for (let dc = -radius; dc <= radius; dc++) {
+        const c = col + dc
+        const r = row + dr
+        if (c < 0 || c >= map.width || r < 0 || r >= map.height) continue
+        const key = `${c},${r}`
+        if (tool === 'erase') {
+          delete next[key]
+        } else {
+          next[key] = { type: selectedType, color }
         }
       }
-      return next
-    })
+    }
+    tilesRef.current = next
+    hasPendingPaintRef.current = true
+    scheduleRender()
     setIsDirty(true)
-  }, [tool, selectedType, getActiveTileColor])
+  }, [tool, selectedType, scheduleRender])
 
   // ── Mouse handlers ──────────────────────────────────────────────────────────
 
@@ -909,16 +949,26 @@ export function MapEditor() {
     }
   }, [isPainting, isPanningMap, panStart, currentMap, applyTool])
 
-  const handleMouseUp = useCallback(() => {
-    setIsPainting(false)
-    setIsPanningMap(false)
+  // Flush accumulated paint changes to React state (called on mouseUp / mouseLeave)
+  const flushPendingPaint = useCallback(() => {
+    if (hasPendingPaintRef.current) {
+      setTiles({ ...tilesRef.current })
+      hasPendingPaintRef.current = false
+    }
   }, [])
 
+  const handleMouseUp = useCallback(() => {
+    flushPendingPaint()
+    setIsPainting(false)
+    setIsPanningMap(false)
+  }, [flushPendingPaint])
+
   const handleMouseLeave = useCallback(() => {
+    flushPendingPaint()
     setIsPainting(false)
     setIsPanningMap(false)
     setHoveredTile(null)
-  }, [])
+  }, [flushPendingPaint])
 
   const handleWheel = useCallback((e: React.WheelEvent<HTMLCanvasElement>) => {
     e.preventDefault()
@@ -1052,7 +1102,14 @@ export function MapEditor() {
 
   // ─── Render ─────────────────────────────────────────────────────────────────
 
-  const activeTileColor = getActiveTileColor()
+  // Sync refs during render so rAF callbacks and event handlers always see current values
+  tilesRef.current = tiles
+  hoveredRef.current = hoveredTile
+  zoomRef.current = zoom
+  offsetRef.current = offset
+  mapRef.current = currentMap
+  brushSizeRef.current = brushSize
+  activeTileColorRef.current = activeTileColor
 
   return (
     <div className="map-editor-layout">
