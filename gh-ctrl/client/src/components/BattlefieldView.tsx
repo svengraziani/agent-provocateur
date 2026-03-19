@@ -102,7 +102,14 @@ function BattlefieldMapCanvas({ map }: { map: GameMap }) {
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    const dpr = window.devicePixelRatio || 1
+    canvas.width = canvasW * dpr
+    canvas.height = canvasH * dpr
+    canvas.style.width = `${canvasW}px`
+    canvas.style.height = `${canvasH}px`
+    ctx.scale(dpr, dpr)
+
+    ctx.clearRect(0, 0, canvasW, canvasH)
 
     let tiles: Record<string, MapTile> = {}
     try { tiles = JSON.parse(map.tiles) } catch { /* empty */ }
@@ -163,8 +170,6 @@ function BattlefieldMapCanvas({ map }: { map: GameMap }) {
   return (
     <canvas
       ref={canvasRef}
-      width={canvasW}
-      height={canvasH}
       style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none' }}
     />
   )
@@ -182,6 +187,13 @@ function MapMiniPreview({ map }: { map: GameMap }) {
     if (!canvas) return
     const ctx = canvas.getContext('2d')
     if (!ctx) return
+
+    const dpr = window.devicePixelRatio || 1
+    canvas.width = W * dpr
+    canvas.height = H * dpr
+    canvas.style.width = `${W}px`
+    canvas.style.height = `${H}px`
+    ctx.scale(dpr, dpr)
 
     ctx.fillStyle = '#0a1510'
     ctx.fillRect(0, 0, W, H)
@@ -235,7 +247,7 @@ function MapMiniPreview({ map }: { map: GameMap }) {
     }
   }, [map])
 
-  return <canvas ref={ref} width={W} height={H} style={{ display: 'block', borderRadius: 4 }} />
+  return <canvas ref={ref} style={{ display: 'block', borderRadius: 4 }} />
 }
 
 interface LoadBattlefieldMapDialogProps {
