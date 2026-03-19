@@ -172,6 +172,24 @@ export interface RepoMeta {
   pushedAt: string
 }
 
+export interface FeedItem {
+  type: 'issue' | 'pr'
+  feedCategory: 'mention' | 'issue' | 'pr'
+  number: number
+  title: string
+  url: string
+  repo: string
+  author: string
+  updatedAt: string
+  labels: { name: string; color: string }[]
+  isDraft?: boolean
+  state?: string
+}
+
+export interface FeedData {
+  mentions: FeedItem[]
+}
+
 export interface MapTile {
   type: string
   color: string

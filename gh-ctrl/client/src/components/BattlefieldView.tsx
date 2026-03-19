@@ -8,6 +8,7 @@ import type { ModalState } from './ActionModal'
 import { ConstructDialog } from './ConstructDialog'
 import { CreateBaseDialog } from './CreateBaseDialog'
 import { CloseIcon, RelocateIcon, RefreshIcon } from './Icons'
+import { FeedPanel } from './FeedPanel'
 import { useSound } from '../hooks/useSound'
 import { useAppStore } from '../store'
 
@@ -355,6 +356,7 @@ export function BattlefieldView() {
   const [activeMap, setActiveMap] = useState<GameMap | null>(null)
   const [allMaps, setAllMaps] = useState<GameMap[]>([])
   const [showMapSelector, setShowMapSelector] = useState(false)
+  const [showFeedPanel, setShowFeedPanel] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const zoomRef = useRef(zoom)
   const offsetRef = useRef(offset)
@@ -663,6 +665,14 @@ export function BattlefieldView() {
             </button>
           )}
           <span className="hud-zoom-sep" />
+          <button
+            className={`hud-btn${showFeedPanel ? ' active' : ''}`}
+            onClick={() => { play('peep'); setShowFeedPanel(v => !v) }}
+            title="Toggle Intel Feed panel"
+          >
+            ◈ FEED
+          </button>
+          <span className="hud-zoom-sep" />
           <button className="hud-btn hud-zoom-btn" onClick={handleZoomOut} disabled={zoom <= ZOOM_MIN} title="Zoom out">−</button>
           <span className="hud-zoom-level" title="Click to reset zoom" onClick={handleZoomReset}>{Math.round(zoom * 100)}%</span>
           <button className="hud-btn hud-zoom-btn" onClick={handleZoomIn} disabled={zoom >= ZOOM_MAX} title="Zoom in">+</button>
@@ -809,6 +819,13 @@ export function BattlefieldView() {
           onClose={() => setShowMapSelector(false)}
         />
       )}
+
+      {/* Intel Feed Panel */}
+      <FeedPanel
+        entries={entries}
+        isOpen={showFeedPanel}
+        onClose={() => setShowFeedPanel(false)}
+      />
     </div>
   )
 }
