@@ -419,11 +419,11 @@ export function BattlefieldView() {
     setPositions(prev => {
       const stored = loadPositions()
       const defaults = getDefaultPositions(entries)
-      // Priority: in-memory (prev) > stored (localStorage) > defaults
-      const merged = { ...defaults, ...stored, ...prev }
-      const valid: Record<number, Position> = {}
-      entries.forEach(e => { valid[e.repo.id] = merged[e.repo.id] ?? defaults[e.repo.id] })
-      return valid
+      // Preserve ALL known positions so ghost nodes for pending repos stay at their
+      // saved spots during streaming. Filtering to only current entries was causing
+      // ghost nodes to jump to default fallback positions when the user had panned away.
+      // Priority: in-memory (prev) > stored (localStorage) > computed defaults
+      return { ...defaults, ...stored, ...prev }
     })
   }, [entries])
 
