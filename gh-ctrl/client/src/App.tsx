@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Routes, Route, NavLink } from 'react-router-dom'
 import { useAppStore } from './store'
 import { Dashboard } from './components/Dashboard'
@@ -6,6 +6,7 @@ import { Settings } from './components/Settings'
 import { BattlefieldView } from './components/BattlefieldView'
 import { MapEditor } from './components/MapEditor'
 import { ToastArea } from './components/Toast'
+import { api } from './api'
 
 export default function App() {
   const repos = useAppStore((s) => s.repos)
@@ -15,10 +16,12 @@ export default function App() {
   const toasts = useAppStore((s) => s.toasts)
   const loadRepos = useAppStore((s) => s.loadRepos)
   const loadDashboard = useAppStore((s) => s.loadDashboard)
+  const [appVersion, setAppVersion] = useState<string | null>(null)
 
   useEffect(() => {
     loadRepos()
     loadDashboard()
+    api.getVersion().then((r) => setAppVersion(r.version)).catch(() => {})
   }, [loadRepos, loadDashboard])
 
   useEffect(() => {
@@ -99,6 +102,10 @@ export default function App() {
             ? `Updated ${lastRefresh.toLocaleTimeString()}`
             : 'Not refreshed yet'}
         </div>
+
+        {appVersion && (
+          <div className="sidebar-version">v{appVersion}</div>
+        )}
       </aside>
 
       <main className="main-content">

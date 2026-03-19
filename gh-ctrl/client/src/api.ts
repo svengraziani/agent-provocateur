@@ -202,6 +202,8 @@ export const api = {
     return request<{ repos: { name: string; fullName: string; description: string | null; url: string; isPrivate: boolean }[]; page: number; perPage: number; total: number | null; truncated: boolean; ghAvailable: boolean }>(`/github/user-repos?${qs}`)
   },
 
+  getVersion: () => request<{ version: string }>('/version'),
+
   listMaps: () => request<GameMap[]>('/maps'),
 
   createMap: (params: { name: string; width: number; height: number }) =>
