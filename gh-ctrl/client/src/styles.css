@@ -774,6 +774,12 @@ a:hover { text-decoration: underline; }
   gap: 8px;
 }
 
+.browse-load-more {
+  display: flex;
+  justify-content: center;
+  padding: 8px 0;
+}
+
 /* Toast */
 .toast-area {
   position: fixed;

@@ -221,7 +221,7 @@ export function Settings() {
             {!ghAvailable ? (
               <div className="browse-fallback">
                 <p className="form-error">GitHub CLI (gh) not available. Use manual input instead.</p>
-                <button className="btn btn-secondary" onClick={() => setActiveTab('manual')} type="button">
+                <button className="btn btn-ghost" onClick={() => setActiveTab('manual')} type="button">
                   Switch to manual input
                 </button>
               </div>
@@ -264,9 +264,11 @@ export function Settings() {
                   )}
                 </div>
                 {!browseLoading && browseHasMore && browseRepos.length > 0 && !browseSearch && (
-                  <button className="btn btn-secondary" onClick={handleLoadMore} type="button">
-                    Load more
-                  </button>
+                  <div className="browse-load-more">
+                    <button className="btn btn-ghost" onClick={handleLoadMore} type="button">
+                      Load more
+                    </button>
+                  </div>
                 )}
                 <div className="color-picker-row" style={{ marginTop: '0.75rem' }}>
                   <span className="color-picker-label">Color:</span>
