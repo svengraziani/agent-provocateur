@@ -833,4 +833,30 @@ app.get('/user-repos', async (c) => {
   return c.json({ repos: repoList, page, perPage, total, truncated, ghAvailable: true })
 })
 
+// GET /api/github/feed — global feed: @mentions via GitHub search API
+app.get('/feed', async (c) => {
+  const result = await gh(['api', 'search/issues?q=mentions%3A%40me+state%3Aopen&per_page=50'])
+
+  if (result.error) {
+    return c.json({ mentions: [], error: result.error })
+  }
+
+  const items: any[] = result.data?.items ?? []
+  const mentions = items.map((item: any) => ({
+    type: item.pull_request ? 'pr' : 'issue',
+    feedCategory: 'mention',
+    number: item.number,
+    title: item.title,
+    url: item.html_url,
+    repo: (item.repository_url ?? '').replace('https://api.github.com/repos/', ''),
+    author: item.user?.login ?? 'unknown',
+    updatedAt: item.updated_at ?? '',
+    labels: (item.labels ?? []).map((l: any) => ({ name: l.name, color: l.color })),
+    isDraft: item.draft ?? false,
+    state: item.state ?? 'open',
+  }))
+
+  return c.json({ mentions })
+})
+
 export default app
