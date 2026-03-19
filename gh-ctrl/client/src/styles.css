@@ -354,6 +354,7 @@ a:hover { text-decoration: underline; }
 .card-section-title.conflicts { color: var(--red); }
 .card-section-title.review { color: var(--amber); }
 .card-section-title.claude { color: var(--purple); }
+.card-section-title.running-actions { color: var(--blue); }
 
 .list-item {
   display: flex;
@@ -1093,6 +1094,21 @@ select.input {
 .badge-approved {
   background: rgba(57, 255, 20, 0.15);
   color: var(--green);
+}
+
+.badge-running {
+  background: rgba(88, 166, 255, 0.15);
+  color: var(--blue);
+}
+
+.branch-ref {
+  font-size: 10px;
+  color: var(--text-2);
+  font-family: monospace;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .badge-default {

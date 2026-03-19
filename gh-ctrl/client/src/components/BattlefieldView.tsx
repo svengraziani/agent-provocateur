@@ -315,6 +315,7 @@ function savePositions(positions: Record<number, Position>) {
 export function BattlefieldView() {
   const repos = useAppStore((s) => s.repos)
   const entries = useAppStore((s) => s.entries)
+  const repos = useAppStore((s) => s.repos)
   const loading = useAppStore((s) => s.loading)
   const onRefresh = useAppStore((s) => s.loadDashboard)
   const onRefreshRepo = useAppStore((s) => s.loadSingleRepo)
