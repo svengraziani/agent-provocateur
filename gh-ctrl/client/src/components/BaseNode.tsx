@@ -138,10 +138,12 @@ const PR_BUILDING_COL_WIDTH = 80
 const PR_BUILDING_ROW_HEIGHT = 100
 const MAX_PR_BUILDINGS = 8
 
-const BRANCH_BUILDING_OFFSET_X = -10
-const BRANCH_BUILDING_OFFSET_Y = 130
-const BRANCH_BUILDING_COL_WIDTH = 46
-const MAX_BRANCH_BUILDINGS = 10
+const BRANCH_BUILDING_OFFSET_X = -224
+const BRANCH_BUILDING_OFFSET_Y = 0
+const BRANCH_BUILDING_COL_WIDTH = 54
+const BRANCH_BUILDING_ROW_HEIGHT = 68
+const BRANCH_BUILDING_COLS = 4
+const MAX_BRANCH_BUILDINGS = 12
 
 export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, onConstruct, onStartRelocate, onRefreshRepo, onToast, onModalOpen }: Props) {
   const { repo, data } = entry
@@ -308,24 +310,28 @@ export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, on
         </div>
       </div>
 
-      {/* Branch buildings — rendered below base node in a row */}
-      {visibleBranches.map((branch, i) => (
-        <BranchBuilding
-          key={branch.name}
-          branch={branch}
-          position={{
-            x: position.x + BRANCH_BUILDING_OFFSET_X + i * BRANCH_BUILDING_COL_WIDTH,
-            y: position.y + BRANCH_BUILDING_OFFSET_Y,
-          }}
-          repoFullName={repo.fullName}
-        />
-      ))}
+      {/* Branch buildings — 4-column grid to the left of the base, right-aligned (fills toward the base) */}
+      {visibleBranches.map((branch, i) => {
+        const col = BRANCH_BUILDING_COLS - 1 - (i % BRANCH_BUILDING_COLS)
+        const row = Math.floor(i / BRANCH_BUILDING_COLS)
+        return (
+          <BranchBuilding
+            key={branch.name}
+            branch={branch}
+            position={{
+              x: position.x + BRANCH_BUILDING_OFFSET_X + col * BRANCH_BUILDING_COL_WIDTH,
+              y: position.y + BRANCH_BUILDING_OFFSET_Y + row * BRANCH_BUILDING_ROW_HEIGHT,
+            }}
+            repoFullName={repo.fullName}
+          />
+        )
+      })}
       {extraBranches > 0 && (
         <div
           className="branch-overflow-label"
           style={{
-            left: position.x + BRANCH_BUILDING_OFFSET_X + visibleBranches.length * BRANCH_BUILDING_COL_WIDTH,
-            top: position.y + BRANCH_BUILDING_OFFSET_Y + 10,
+            left: position.x + BRANCH_BUILDING_OFFSET_X - 20,
+            top: position.y + BRANCH_BUILDING_OFFSET_Y + Math.floor((visibleBranches.length - 1) / BRANCH_BUILDING_COLS) * BRANCH_BUILDING_ROW_HEIGHT + 10,
           }}
         >
           +{extraBranches}
