@@ -321,7 +321,10 @@ export function BattlefieldView() {
   const addToast = useAppStore((s) => s.addToast)
   const loadRepos = useAppStore((s) => s.loadRepos)
   const onReposChange = () => { loadRepos(); onRefresh() }
-  const [offset, setOffset] = useState<Position>({ x: 0, y: 0 })
+  const [offset, setOffset] = useState<Position>(() => ({
+    x: window.innerWidth / 2 - ISO_MAP_CENTER_X,
+    y: window.innerHeight / 2 - ISO_MAP_OFFSET_Y,
+  }))
   const [zoom, setZoom] = useState(1)
   const [isDraggingMap, setIsDraggingMap] = useState(false)
   const [dragStart, setDragStart] = useState<Position>({ x: 0, y: 0 })
@@ -510,7 +513,10 @@ export function BattlefieldView() {
 
   const handleZoomReset = useCallback(() => {
     setZoom(1)
-    setOffset({ x: 0, y: 0 })
+    setOffset({
+      x: window.innerWidth / 2 - ISO_MAP_CENTER_X,
+      y: window.innerHeight / 2 - ISO_MAP_OFFSET_Y,
+    })
   }, [])
 
   const handleMapMouseUp = useCallback(() => {
