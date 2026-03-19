@@ -174,7 +174,7 @@ async function fetchRepoData(fullName: string) {
   const [prResult, issueResult] = await Promise.all([
     gh([
       'pr', 'list', '--repo', fullName, '--json',
-      'number,title,state,reviewDecision,mergeable,headRefName,author,createdAt,updatedAt,labels,isDraft,assignees',
+      'number,title,state,reviewDecision,mergeable,headRefName,author,createdAt,updatedAt,labels,isDraft,assignees,authorAssociation',
       '--limit', '30',
     ]),
     gh([
@@ -605,7 +605,7 @@ app.get('/pr/:owner/:name/:number', async (c) => {
 
   const result = await gh([
     'pr', 'view', number, '--repo', fullName,
-    '--json', 'number,title,body,state,labels,assignees,author,url,createdAt,comments,reviewDecision,mergeable,headRefName,baseRefName,isDraft',
+    '--json', 'number,title,body,state,labels,assignees,author,url,createdAt,comments,reviewDecision,mergeable,headRefName,baseRefName,isDraft,authorAssociation',
   ])
 
   if (result.error) return c.json({ error: result.error }, 500)

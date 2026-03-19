@@ -414,6 +414,20 @@ a:hover { text-decoration: underline; }
   color: var(--amber);
 }
 
+.badge-external {
+  background: rgba(88, 166, 255, 0.15);
+  color: var(--blue);
+  border: 1px solid rgba(88, 166, 255, 0.3);
+}
+
+.pr-external {
+  border-left: 3px solid var(--blue);
+}
+
+.pr-internal {
+  border-left: 3px solid var(--green-neon);
+}
+
 .item-claude-btn {
   opacity: 0;
   transition: opacity 0.15s;
