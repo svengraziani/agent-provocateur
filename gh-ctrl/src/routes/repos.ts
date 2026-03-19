@@ -68,6 +68,7 @@ app.patch('/:id', async (c) => {
 
   if (body.color) updates.color = body.color
   if (body.description !== undefined) updates.description = body.description
+  if (body.baseDesign !== undefined) updates.baseDesign = body.baseDesign
 
   if (Object.keys(updates).length === 0) {
     return c.json({ error: 'No valid fields to update' }, 400)

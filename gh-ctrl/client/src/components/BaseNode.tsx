@@ -1,9 +1,10 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
-import type { DashboardEntry, GHPR, GHIssue, Branch, WorkflowRun, RepoMeta } from '../types'
+import type { DashboardEntry, GHPR, GHIssue, Branch, WorkflowRun, RepoMeta, BaseDesign } from '../types'
 import { getPROrigin } from '../types'
 import type { ModalState } from './ActionModal'
 import { CloseIcon, LinkIcon, LabelIcon, CommentIcon, RefreshIcon, ExternalLinkIcon, AssigneeIcon } from './Icons'
 import { api } from '../api'
+import { useAppStore } from '../store'
 import { BranchBuilding, getBranchState } from './BranchBuilding'
 
 // ── Canvas color utilities ────────────────────────────────────────────────────
@@ -89,16 +90,36 @@ function ColorizedBuilding({ src, fallback = src, width, height, color }: Colori
   )
 }
 
+// ── Base design configuration ─────────────────────────────────────────────────
+
+export const BASE_DESIGNS: { id: BaseDesign; label: string; src: string; colorized: boolean }[] = [
+  { id: 'default',      label: 'Standard Kommando', src: '/buildings/kommando_chromakey.png', colorized: true  },
+  { id: 'landing_base', label: 'Landing Base',       src: '/buildings/landing_base.png',       colorized: false },
+  { id: 'api_base',     label: 'API Base',            src: '/buildings/api_base.png',           colorized: false },
+]
+
 // ── Isometric building PNG components ─────────────────────────────────────────
 
-function IsoBaseBuilding({ color }: { color: string }) {
+function IsoBaseBuilding({ color, design }: { color: string; design: BaseDesign }) {
+  const cfg = BASE_DESIGNS.find(d => d.id === design) ?? BASE_DESIGNS[0]
+  if (cfg.colorized) {
+    return (
+      <ColorizedBuilding
+        src={cfg.src}
+        fallback="/buildings/repository_kommando.png"
+        width={120}
+        height={120}
+        color={color}
+      />
+    )
+  }
   return (
-    <ColorizedBuilding
-      src="/buildings/kommando_chromakey.png"
-      fallback="/buildings/repository_kommando.png"
-      width={120}
-      height={120}
-      color={color}
+    <img
+      src={cfg.src}
+      width="120"
+      height="120"
+      style={{ display: 'block', imageRendering: 'pixelated', objectFit: 'contain' }}
+      draggable={false}
     />
   )
 }
@@ -148,6 +169,9 @@ export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, on
   const { stats } = data
   const [showDetail, setShowDetail] = useState(false)
   const [scanning, setScanning] = useState(false)
+  const [showDesignPicker, setShowDesignPicker] = useState(false)
+  const updateRepoDesign = useAppStore((s) => s.updateRepoDesign)
+  const activeDesign: BaseDesign = (repo.baseDesign as BaseDesign) ?? 'default'
 
   const handleScanBase = useCallback(async (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -273,7 +297,7 @@ export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, on
 
         {/* Building graphic — isometric PNG with repo-color overlay */}
         <div className="base-building">
-          <IsoBaseBuilding color={repo.color || '#00ff88'} />
+          <IsoBaseBuilding color={repo.color || '#00ff88'} design={activeDesign} />
         </div>
 
         {/* Floating HUD toolbar — appears on hover */}
@@ -303,7 +327,36 @@ export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, on
               >
                 {scanning ? <><RefreshIcon size={10} /> SCANNING...</> : <><RefreshIcon size={10} /> SCAN BASE</>}
               </button>
+              <button
+                className="base-design-btn"
+                onClick={(e) => { e.stopPropagation(); setShowDesignPicker(v => !v) }}
+                title="Change base design"
+              >
+                ◈ DESIGN
+              </button>
             </>
+          )}
+
+          {/* Design picker popup */}
+          {showDesignPicker && !isRelocateMode && (
+            <div className="base-design-picker" onClick={(e) => e.stopPropagation()}>
+              <div className="bdp-title">SELECT BASE DESIGN</div>
+              {BASE_DESIGNS.map((d) => (
+                <button
+                  key={d.id}
+                  className={`bdp-option${activeDesign === d.id ? ' bdp-active' : ''}`}
+                  onClick={async (e) => {
+                    e.stopPropagation()
+                    setShowDesignPicker(false)
+                    await updateRepoDesign(repo.id, d.id)
+                  }}
+                >
+                  <img src={d.src} className="bdp-preview" alt={d.label} />
+                  <span className="bdp-label">{d.label}</span>
+                  {activeDesign === d.id && <span className="bdp-check">✓</span>}
+                </button>
+              ))}
+            </div>
           )}
         </div>
       </div>

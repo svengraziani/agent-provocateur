@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Repo, DashboardEntry, RepoData } from './types'
+import type { Repo, DashboardEntry, RepoData, BaseDesign } from './types'
 import { api } from './api'
 
 type ToastType = 'success' | 'error' | 'info'
@@ -39,6 +39,7 @@ interface AppStore {
   loadSingleRepo: (owner: string, name: string) => Promise<void>
   handleRefreshIntervalChange: (ms: number) => void
   updateRepoColor: (id: number, color: string) => Promise<void>
+  updateRepoDesign: (id: number, baseDesign: BaseDesign) => Promise<void>
 }
 
 export const useAppStore = create<AppStore>((set, get) => ({
@@ -119,6 +120,18 @@ export const useAppStore = create<AppStore>((set, get) => ({
       }))
     } catch (err: any) {
       get().addToast(`Failed to update color: ${err.message}`, 'error')
+    }
+  },
+
+  updateRepoDesign: async (id: number, baseDesign: BaseDesign) => {
+    try {
+      const updated = await api.updateRepo(id, { baseDesign })
+      set((state) => ({
+        repos: state.repos.map((r) => r.id === id ? { ...r, baseDesign: updated.baseDesign } : r),
+        entries: state.entries.map((e) => e.repo.id === id ? { ...e, repo: { ...e.repo, baseDesign: updated.baseDesign } } : e),
+      }))
+    } catch (err: any) {
+      get().addToast(`Failed to update base design: ${err.message}`, 'error')
     }
   },
 }))

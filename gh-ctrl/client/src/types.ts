@@ -1,3 +1,5 @@
+export type BaseDesign = 'default' | 'landing_base' | 'api_base'
+
 export interface Repo {
   id: number
   owner: string
@@ -5,6 +7,7 @@ export interface Repo {
   fullName: string
   description: string | null
   color: string
+  baseDesign: BaseDesign | null
   createdAt: string | number | null
 }
 

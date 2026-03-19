@@ -23,7 +23,7 @@ export const api = {
       body: JSON.stringify({ fullName, color }),
     }),
 
-  updateRepo: (id: number, updates: { color?: string; description?: string }) =>
+  updateRepo: (id: number, updates: { color?: string; description?: string; baseDesign?: string }) =>
     request<Repo>(`/repos/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(updates),
