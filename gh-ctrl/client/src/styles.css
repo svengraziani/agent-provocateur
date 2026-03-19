@@ -557,6 +557,29 @@ a:hover { text-decoration: underline; }
   gap: 10px;
 }
 
+.repo-list-load-more {
+  background: none;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 10px 16px;
+  width: 100%;
+  text-align: center;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.repo-list-load-more:hover {
+  color: var(--text-2);
+  border-color: var(--text-3);
+  background: var(--bg-2);
+}
+
 .color-swatch {
   width: 14px;
   height: 14px;

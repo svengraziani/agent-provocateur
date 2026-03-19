@@ -14,6 +14,8 @@ const REFRESH_OPTIONS = [
   { label: '30 minutes', value: 30 * 60 * 1000 },
 ]
 
+const REPOS_PER_PAGE = 5
+
 export function Settings() {
   const repos = useAppStore((s) => s.repos)
   const refreshInterval = useAppStore((s) => s.refreshInterval)
@@ -26,11 +28,15 @@ export function Settings() {
   const [selectedColor, setSelectedColor] = useState(COLORS[0])
   const [adding, setAdding] = useState(false)
   const [formError, setFormError] = useState('')
+  const [visibleCount, setVisibleCount] = useState(REPOS_PER_PAGE)
 
   const handleReposChange = () => {
     loadRepos()
     loadDashboard()
   }
+
+  const visibleRepos = repos.slice(0, visibleCount)
+  const hasMore = visibleCount < repos.length
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -126,7 +132,7 @@ export function Settings() {
           </div>
         ) : (
           <div className="repo-list-settings">
-            {repos.map((repo) => (
+            {visibleRepos.map((repo) => (
               <div key={repo.id} className="repo-list-item">
                 <div className="repo-list-item-info">
                   <div
@@ -143,6 +149,14 @@ export function Settings() {
                 </button>
               </div>
             ))}
+            {hasMore && (
+              <button
+                className="repo-list-load-more"
+                onClick={() => setVisibleCount((n) => n + REPOS_PER_PAGE)}
+              >
+                ▾ Load more ({repos.length - visibleCount} remaining)
+              </button>
+            )}
           </div>
         )}
       </div>
