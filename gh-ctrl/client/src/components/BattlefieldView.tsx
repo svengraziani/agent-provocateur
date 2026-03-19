@@ -6,6 +6,7 @@ import { BaseNode } from './BaseNode'
 import { ActionModal } from './ActionModal'
 import type { ModalState } from './ActionModal'
 import { ConstructDialog } from './ConstructDialog'
+import { KaserneDialog } from './KaserneDialog'
 import { CreateBaseDialog } from './CreateBaseDialog'
 import { CloseIcon, RelocateIcon, RefreshIcon } from './Icons'
 import { useSound } from '../hooks/useSound'
@@ -325,6 +326,76 @@ function savePositions(positions: Record<number, Position>) {
   localStorage.setItem('battlefield-positions', JSON.stringify(positions))
 }
 
+// ── Kaserne building position persistence ────────────────────────────────────
+
+const DEFAULT_KASERNE_POS: Position = { x: 200, y: 500 }
+
+function loadKasernePos(): Position {
+  try {
+    const stored = localStorage.getItem('battlefield-kaserne-pos')
+    return stored ? JSON.parse(stored) : DEFAULT_KASERNE_POS
+  } catch {
+    return DEFAULT_KASERNE_POS
+  }
+}
+
+function saveKasernePos(pos: Position) {
+  localStorage.setItem('battlefield-kaserne-pos', JSON.stringify(pos))
+}
+
+// ── KaserneNode component ─────────────────────────────────────────────────────
+
+interface KaserneNodeProps {
+  position: Position
+  isRelocateMode: boolean
+  onOpen: () => void
+  onStartRelocate: (mouseX: number, mouseY: number) => void
+}
+
+function KaserneNode({ position, isRelocateMode, onOpen, onStartRelocate }: KaserneNodeProps) {
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!isRelocateMode) return
+    e.stopPropagation()
+    onStartRelocate(e.clientX, e.clientY)
+  }
+
+  const handleClick = (e: React.MouseEvent) => {
+    if (isRelocateMode) return
+    e.stopPropagation()
+    onOpen()
+  }
+
+  return (
+    <div
+      className={`kaserne-node${isRelocateMode ? ' relocating' : ''}`}
+      style={{ left: position.x, top: position.y }}
+      onClick={handleClick}
+      onMouseDown={handleMouseDown}
+    >
+      <div className="kaserne-building">
+        <img
+          src="/buildings/kaserne.png"
+          width={120}
+          height={120}
+          style={{ display: 'block', imageRendering: 'pixelated' }}
+          draggable={false}
+          alt="Kaserne"
+        />
+      </div>
+      <div className="kaserne-hud">
+        <div className="kaserne-hud-name">▣ KASERNE</div>
+        <div className="kaserne-hud-sub">AGENT DEPLOYMENT CENTER</div>
+        <button
+          className="kaserne-hud-btn"
+          onClick={(e) => { e.stopPropagation(); onOpen() }}
+        >
+          ▶ DEPLOY AGENTS
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export function BattlefieldView() {
   const repos = useAppStore((s) => s.repos)
   const entries = useAppStore((s) => s.entries)
@@ -351,6 +422,10 @@ export function BattlefieldView() {
   const [constructTarget, setConstructTarget] = useState<DashboardEntry | null>(null)
   const [isRelocateMode, setIsRelocateMode] = useState(false)
   const [showCreateBase, setShowCreateBase] = useState(false)
+  const [showKaserne, setShowKaserne] = useState(false)
+  const [kasernePos, setKasernePos] = useState<Position>(() => loadKasernePos())
+  const [relocatingKaserne, setRelocatingKaserne] = useState(false)
+  const [relocatingKaserneStart, setRelocatingKaserneStart] = useState<{ mouseX: number; mouseY: number; nodeX: number; nodeY: number } | null>(null)
   const [modalState, setModalState] = useState<ModalState>(null)
   const [activeMap, setActiveMap] = useState<GameMap | null>(null)
   const [allMaps, setAllMaps] = useState<GameMap[]>([])
@@ -470,6 +545,7 @@ export function BattlefieldView() {
 
   const handleMapMouseDown = useCallback((e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('.base-node')) return
+    if ((e.target as HTMLElement).closest('.kaserne-node')) return
     if (isRelocateMode) return
     setIsDraggingMap(true)
     setDragStart({ x: e.clientX - offset.x, y: e.clientY - offset.y })
@@ -488,8 +564,15 @@ export function BattlefieldView() {
           y: relocatingStart.nodeY + dy,
         },
       }))
+    } else if (relocatingKaserne && relocatingKaserneStart !== null) {
+      const dx = (e.clientX - relocatingKaserneStart.mouseX) / zoomRef.current
+      const dy = (e.clientY - relocatingKaserneStart.mouseY) / zoomRef.current
+      setKasernePos({
+        x: relocatingKaserneStart.nodeX + dx,
+        y: relocatingKaserneStart.nodeY + dy,
+      })
     }
-  }, [isDraggingMap, dragStart, relocatingId, relocatingStart])
+  }, [isDraggingMap, dragStart, relocatingId, relocatingStart, relocatingKaserne, relocatingKaserneStart])
 
   const handleWheel = useCallback((e: WheelEvent) => {
     e.preventDefault()
@@ -572,7 +655,15 @@ export function BattlefieldView() {
       setRelocatingId(null)
       setRelocatingStart(null)
     }
-  }, [relocatingId])
+    if (relocatingKaserne) {
+      setKasernePos(prev => {
+        saveKasernePos(prev)
+        return prev
+      })
+      setRelocatingKaserne(false)
+      setRelocatingKaserneStart(null)
+    }
+  }, [relocatingId, relocatingKaserne])
 
   const handleStartRelocate = useCallback((id: number, mouseX: number, mouseY: number) => {
     const pos = positions[id]
@@ -644,6 +735,12 @@ export function BattlefieldView() {
             onClick={() => { play('peep'); setShowCreateBase(true) }}
           >
             &#x2b; NEW BASE
+          </button>
+          <button
+            className="hud-btn hud-btn-kaserne"
+            onClick={() => { play('hydraulic'); setShowKaserne(true) }}
+          >
+            &#x25a3; KASERNE
           </button>
           <span className="hud-zoom-sep" />
           <button
@@ -739,6 +836,17 @@ export function BattlefieldView() {
             </div>
           )
         })}
+
+        {/* Kaserne building — standalone agent deployment center */}
+        <KaserneNode
+          position={kasernePos}
+          isRelocateMode={isRelocateMode}
+          onOpen={() => { play('hydraulic'); setShowKaserne(true) }}
+          onStartRelocate={(mouseX, mouseY) => {
+            setRelocatingKaserne(true)
+            setRelocatingKaserneStart({ mouseX, mouseY, nodeX: kasernePos.x, nodeY: kasernePos.y })
+          }}
+        />
       </div>
 
       {/* Minimap */}
@@ -783,6 +891,16 @@ export function BattlefieldView() {
           entry={constructTarget}
           onClose={() => setConstructTarget(null)}
           onSuccess={(msg) => { addToast(msg, 'success'); setConstructTarget(null) }}
+          onError={(msg) => addToast(msg, 'error')}
+        />
+      )}
+
+      {/* Kaserne dialog — multi-agent deployment */}
+      {showKaserne && (
+        <KaserneDialog
+          entries={entries}
+          onClose={() => setShowKaserne(false)}
+          onSuccess={(msg) => { addToast(msg, 'success') }}
           onError={(msg) => addToast(msg, 'error')}
         />
       )}

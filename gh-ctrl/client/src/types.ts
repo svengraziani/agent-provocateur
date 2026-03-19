@@ -172,6 +172,17 @@ export interface RepoMeta {
   pushedAt: string
 }
 
+export interface AgentSlot {
+  id: string
+  repoFullName: string
+  title: string
+  body: string
+  labels: string[]
+  status: 'ready' | 'deploying' | 'launched' | 'failed'
+  issueUrl?: string
+  error?: string
+}
+
 export interface MapTile {
   type: string
   color: string

@@ -2666,6 +2666,18 @@ select.input {
   color: var(--blue);
 }
 
+/* HUD kaserne button */
+.hud-btn-kaserne {
+  border-color: rgba(255, 176, 0, 0.5);
+  color: var(--crt-amber);
+}
+
+.hud-btn-kaserne:hover {
+  border-color: var(--crt-amber);
+  background: rgba(255, 176, 0, 0.08);
+  color: var(--crt-amber);
+}
+
 /* Create base visibility selector */
 .create-base-visibility {
   display: flex;
@@ -3713,4 +3725,488 @@ select.input {
   text-overflow: ellipsis;
   white-space: nowrap;
   max-width: 90px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* ── KASERNE NODE (battlefield building) ──────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+.kaserne-node {
+  position: absolute;
+  width: 120px;
+  cursor: pointer;
+  user-select: none;
+  z-index: 10;
+}
+
+.kaserne-node.relocating {
+  cursor: move;
+  opacity: 0.85;
+}
+
+.kaserne-building {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  filter: drop-shadow(0 0 8px rgba(255, 176, 0, 0.35));
+  transition: filter 0.2s;
+}
+
+.kaserne-node:hover .kaserne-building {
+  filter: drop-shadow(0 0 16px rgba(255, 176, 0, 0.65));
+}
+
+.kaserne-hud {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(5, 8, 9, 0.95);
+  border: 1px solid rgba(255, 176, 0, 0.5);
+  box-shadow: 0 0 20px rgba(255, 176, 0, 0.2);
+  padding: 8px 12px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  font-family: var(--font-mono);
+  min-width: 160px;
+}
+
+.kaserne-node:hover .kaserne-hud {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.kaserne-hud-name {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--crt-amber);
+  text-shadow: 0 0 8px var(--crt-amber);
+  margin-bottom: 2px;
+}
+
+.kaserne-hud-sub {
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: rgba(255, 176, 0, 0.5);
+  margin-bottom: 8px;
+}
+
+.kaserne-hud-btn {
+  width: 100%;
+  background: rgba(255, 176, 0, 0.1);
+  border: 1px solid rgba(255, 176, 0, 0.5);
+  color: var(--crt-amber);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  padding: 5px 8px;
+  cursor: pointer;
+  font-weight: 700;
+  transition: all 0.15s;
+}
+
+.kaserne-hud-btn:hover {
+  background: rgba(255, 176, 0, 0.2);
+  border-color: var(--crt-amber);
+  box-shadow: 0 0 10px rgba(255, 176, 0, 0.3);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* ── KASERNE DIALOG ─────────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+.kaserne-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-left: var(--sidebar-width);
+  backdrop-filter: blur(3px);
+}
+
+.kaserne-dialog {
+  width: 640px;
+  max-width: calc(100vw - 40px);
+  max-height: calc(100vh - 60px);
+  overflow-y: auto;
+  background: rgba(5, 8, 9, 0.98);
+  border: 1px solid rgba(255, 176, 0, 0.5);
+  box-shadow: 0 0 40px rgba(255, 176, 0, 0.15), 0 20px 60px rgba(0, 0, 0, 0.8);
+  font-family: var(--font-mono);
+  animation: toast-in 0.2s ease-out;
+}
+
+.kaserne-header {
+  border-bottom: 1px solid rgba(255, 176, 0, 0.2);
+  padding: 12px 16px;
+  background: rgba(255, 176, 0, 0.04);
+}
+
+.kaserne-title-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.kaserne-icon {
+  color: var(--crt-amber);
+  font-size: 14px;
+  letter-spacing: -2px;
+  text-shadow: 0 0 8px var(--crt-amber);
+}
+
+.kaserne-title {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: var(--crt-amber);
+  text-shadow: 0 0 8px var(--crt-amber);
+}
+
+.kaserne-subtitle {
+  font-size: 10px;
+  color: var(--text-3);
+  letter-spacing: 0.5px;
+  flex: 1;
+}
+
+.kaserne-close {
+  background: none;
+  border: none;
+  color: var(--text-3);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 2px 6px;
+  transition: color 0.15s;
+}
+
+.kaserne-close:hover {
+  color: var(--text);
+}
+
+.kaserne-boot {
+  font-size: 11px;
+  color: rgba(255, 176, 0, 0.7);
+  line-height: 1.6;
+  margin: 0;
+  min-height: 52px;
+  white-space: pre;
+  font-family: var(--font-mono);
+}
+
+.kaserne-cursor {
+  animation: blink 0.8s step-end infinite;
+  color: var(--crt-amber);
+}
+
+.kaserne-status-line {
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: rgba(255, 176, 0, 0.6);
+  margin-top: 6px;
+}
+
+.kaserne-slots {
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 55vh;
+  overflow-y: auto;
+}
+
+.kaserne-slot {
+  border: 1px solid rgba(255, 176, 0, 0.25);
+  background: rgba(255, 176, 0, 0.02);
+  transition: border-color 0.15s;
+}
+
+.kaserne-slot-ready { border-color: rgba(255, 176, 0, 0.25); }
+.kaserne-slot-deploying {
+  border-color: rgba(255, 176, 0, 0.6);
+  background: rgba(255, 176, 0, 0.05);
+}
+.kaserne-slot-launched {
+  border-color: rgba(57, 255, 20, 0.4);
+  background: rgba(57, 255, 20, 0.03);
+}
+.kaserne-slot-failed {
+  border-color: rgba(248, 81, 73, 0.4);
+  background: rgba(248, 81, 73, 0.03);
+}
+
+.kaserne-slot-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(255, 176, 0, 0.12);
+  background: rgba(255, 176, 0, 0.04);
+}
+
+.kaserne-slot-num {
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  color: var(--crt-amber);
+  font-weight: 700;
+}
+
+.kaserne-slot-status {
+  font-size: 10px;
+  letter-spacing: 1px;
+  font-weight: 700;
+}
+
+.kaserne-slot-status-ready    { color: rgba(255, 176, 0, 0.7); }
+.kaserne-slot-status-deploying { color: var(--crt-amber); }
+.kaserne-slot-status-launched  { color: var(--crt-green); }
+.kaserne-slot-status-failed    { color: var(--crt-red); }
+
+.kaserne-spin {
+  display: inline-block;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.kaserne-slot-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.kaserne-slot-link {
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: var(--crt-green);
+  text-decoration: none;
+  border: 1px solid rgba(57, 255, 20, 0.3);
+  padding: 2px 6px;
+  transition: all 0.15s;
+}
+
+.kaserne-slot-link:hover {
+  background: rgba(57, 255, 20, 0.1);
+  border-color: var(--crt-green);
+}
+
+.kaserne-slot-remove {
+  background: none;
+  border: 1px solid rgba(248, 81, 73, 0.3);
+  color: var(--crt-red);
+  font-size: 14px;
+  width: 22px;
+  height: 22px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: all 0.15s;
+  font-family: var(--font-mono);
+}
+
+.kaserne-slot-remove:hover {
+  background: rgba(248, 81, 73, 0.12);
+  border-color: var(--crt-red);
+}
+
+.kaserne-slot-body {
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.kaserne-slot-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.kaserne-slot-label {
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  color: rgba(255, 176, 0, 0.6);
+  text-transform: uppercase;
+  white-space: nowrap;
+  width: 52px;
+  flex-shrink: 0;
+}
+
+.kaserne-select,
+.kaserne-input {
+  flex: 1;
+  background: rgba(13, 17, 23, 0.9);
+  border: 1px solid rgba(255, 176, 0, 0.3);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 6px 10px;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.kaserne-select:focus,
+.kaserne-input:focus {
+  border-color: rgba(255, 176, 0, 0.7);
+  box-shadow: 0 0 8px rgba(255, 176, 0, 0.12);
+}
+
+.kaserne-select:disabled,
+.kaserne-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.kaserne-textarea {
+  resize: vertical;
+  min-height: 64px;
+}
+
+.kaserne-expand-btn {
+  background: none;
+  border: none;
+  color: rgba(255, 176, 0, 0.55);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.15s;
+}
+
+.kaserne-expand-btn:hover {
+  color: var(--crt-amber);
+}
+
+.kaserne-slot-labels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.kaserne-label-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  color: var(--text-2);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.kaserne-label-chip:hover {
+  border-color: var(--border-2);
+  color: var(--text);
+}
+
+.kaserne-label-chip.selected {
+  border-color: var(--label-color, var(--crt-amber));
+  background: color-mix(in srgb, var(--label-color, var(--crt-amber)) 12%, transparent);
+  color: var(--text);
+}
+
+.kaserne-label-chip:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.kaserne-label-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.kaserne-slot-error {
+  font-size: 10px;
+  color: var(--crt-red);
+  letter-spacing: 0.5px;
+}
+
+.kaserne-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-top: 1px solid rgba(255, 176, 0, 0.15);
+}
+
+.kaserne-btn {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 1px;
+  padding: 7px 16px;
+  border: 1px solid;
+  cursor: pointer;
+  font-weight: 700;
+  transition: all 0.15s;
+  text-transform: uppercase;
+}
+
+.kaserne-btn.add {
+  background: transparent;
+  border-color: rgba(255, 176, 0, 0.35);
+  color: rgba(255, 176, 0, 0.7);
+}
+
+.kaserne-btn.add:hover:not(:disabled) {
+  background: rgba(255, 176, 0, 0.08);
+  border-color: var(--crt-amber);
+  color: var(--crt-amber);
+}
+
+.kaserne-btn.abort {
+  background: transparent;
+  border-color: rgba(248, 81, 73, 0.4);
+  color: var(--crt-red);
+}
+
+.kaserne-btn.abort:hover:not(:disabled) {
+  background: rgba(248, 81, 73, 0.12);
+  border-color: var(--crt-red);
+}
+
+.kaserne-btn.deploy {
+  background: rgba(255, 176, 0, 0.1);
+  border-color: rgba(255, 176, 0, 0.6);
+  color: var(--crt-amber);
+}
+
+.kaserne-btn.deploy:hover:not(:disabled) {
+  background: rgba(255, 176, 0, 0.2);
+  border-color: var(--crt-amber);
+  box-shadow: 0 0 12px rgba(255, 176, 0, 0.3);
+}
+
+.kaserne-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.kaserne-footer {
+  padding: 8px 16px;
+  border-top: 1px solid rgba(255, 176, 0, 0.12);
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  color: rgba(255, 176, 0, 0.3);
+  text-align: center;
+  background: rgba(255, 176, 0, 0.02);
 }
