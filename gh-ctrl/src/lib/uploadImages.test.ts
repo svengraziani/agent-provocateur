@@ -1,168 +1,130 @@
 import { describe, it, expect } from 'bun:test'
-import { uploadImages, type GhRunner } from './uploadImages'
+import { uploadImages, type GhRunner, type Fetcher } from './uploadImages'
 
-function createMockFile(name: string, content = 'fake-image-data'): File {
-  return new File([content], name, { type: 'image/png' })
+function createMockFile(name: string, content = 'fake-image-data', type = 'image/png'): File {
+  return new File([content], name, { type })
+}
+
+function makeGh(token = 'gh-token-abc'): GhRunner {
+  return (args) => {
+    if (args[0] === 'auth' && args[1] === 'token') {
+      return { exitCode: 0, stdout: token + '\n', stderr: '' }
+    }
+    return { exitCode: 1, stdout: '', stderr: `unexpected: ${args.join(' ')}` }
+  }
+}
+
+function makeFetcher(responseUrl: string): { fetcher: Fetcher; calls: { url: string; init: RequestInit }[] } {
+  const calls: { url: string; init: RequestInit }[] = []
+  const fetcher: Fetcher = async (url, init) => {
+    calls.push({ url, init })
+    return new Response(JSON.stringify({ url: responseUrl }), {
+      status: 201,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }
+  return { fetcher, calls }
 }
 
 describe('uploadImages', () => {
-  it('creates release if it does not exist, uploads file, returns download URL', async () => {
-    const calls: string[][] = []
-    const runner: GhRunner = (args) => {
-      calls.push(args)
-      const key = args.join(' ')
-      if (key.includes('release view')) {
-        return { exitCode: 1, stdout: '', stderr: 'release not found' }
-      }
-      if (key.includes('release create')) {
-        return { exitCode: 0, stdout: 'https://github.com/owner/repo/releases/tag/image-assets', stderr: '' }
-      }
-      if (key.includes('release upload')) {
-        return { exitCode: 0, stdout: '', stderr: '' }
-      }
-      return { exitCode: 1, stdout: '', stderr: `unexpected: ${key}` }
+  it('gets auth token and uploads to issues/assets endpoint', async () => {
+    const expectedUrl = 'https://github.com/owner/repo/assets/12345/screenshot.png'
+    const { fetcher, calls } = makeFetcher(expectedUrl)
+    const ghCalls: string[][] = []
+    const gh: GhRunner = (args) => {
+      ghCalls.push(args)
+      return makeGh()(args)
     }
 
     const files = [createMockFile('screenshot.png')]
-    const urls = await uploadImages(files, 'owner/repo', runner)
+    const urls = await uploadImages(files, 'owner/repo', gh, fetcher)
 
-    expect(urls).toHaveLength(1)
-    expect(urls[0]).toMatch(/^https:\/\/github\.com\/owner\/repo\/releases\/download\/image-assets\//)
-    expect(urls[0]).toMatch(/\.png$/)
-
-    const viewCall = calls.find(c => c.includes('release') && c.includes('view'))
-    expect(viewCall).toBeDefined()
-    expect(viewCall).toContain('--repo')
-    expect(viewCall).toContain('owner/repo')
-
-    const createCall = calls.find(c => c.includes('release') && c.includes('create'))
-    expect(createCall).toBeDefined()
-
-    const uploadCall = calls.find(c => c.includes('release') && c.includes('upload'))
-    expect(uploadCall).toBeDefined()
-    expect(uploadCall).toContain('image-assets')
-    expect(uploadCall).toContain('--repo')
-    expect(uploadCall).toContain('owner/repo')
+    expect(urls).toEqual([expectedUrl])
+    expect(ghCalls[0]).toEqual(['auth', 'token'])
+    expect(calls).toHaveLength(1)
+    expect(calls[0].url).toBe('https://uploads.github.com/repos/owner/repo/issues/assets')
+    expect((calls[0].init.headers as Record<string, string>)['Authorization']).toBe('Bearer gh-token-abc')
+    expect((calls[0].init.headers as Record<string, string>)['Content-Type']).toBe('image/png')
   })
 
-  it('skips release creation if release already exists', async () => {
-    const calls: string[][] = []
-    const runner: GhRunner = (args) => {
-      calls.push(args)
-      const key = args.join(' ')
-      if (key.includes('release view')) {
-        return { exitCode: 0, stdout: 'image-assets', stderr: '' }
-      }
-      if (key.includes('release upload')) {
-        return { exitCode: 0, stdout: '', stderr: '' }
-      }
-      return { exitCode: 1, stdout: '', stderr: `unexpected: ${key}` }
+  it('uploads multiple files and returns all URLs in order', async () => {
+    let callIndex = 0
+    const responseUrls = [
+      'https://github.com/owner/repo/assets/1/a.png',
+      'https://github.com/owner/repo/assets/2/b.jpg',
+      'https://github.com/owner/repo/assets/3/c.gif',
+    ]
+    const fetcher: Fetcher = async () => {
+      return new Response(JSON.stringify({ url: responseUrls[callIndex++] }), {
+        status: 201,
+        headers: { 'Content-Type': 'application/json' },
+      })
     }
 
-    const files = [createMockFile('photo.jpg')]
-    const urls = await uploadImages(files, 'owner/repo', runner)
+    const files = [
+      createMockFile('a.png', 'data', 'image/png'),
+      createMockFile('b.jpg', 'data', 'image/jpeg'),
+      createMockFile('c.gif', 'data', 'image/gif'),
+    ]
+    const urls = await uploadImages(files, 'owner/repo', makeGh(), fetcher)
 
-    expect(urls).toHaveLength(1)
-    const createCall = calls.find(c => c.includes('release') && c.includes('create'))
-    expect(createCall).toBeUndefined()
+    expect(urls).toEqual(responseUrls)
   })
 
-  it('throws if release creation fails', async () => {
-    const runner: GhRunner = (args) => {
-      const key = args.join(' ')
-      if (key.includes('release view')) {
-        return { exitCode: 1, stdout: '', stderr: 'not found' }
-      }
-      if (key.includes('release create')) {
-        return { exitCode: 1, stdout: '', stderr: 'permission denied' }
-      }
-      return { exitCode: 1, stdout: '', stderr: '' }
-    }
+  it('throws if getting auth token fails', async () => {
+    const gh: GhRunner = () => ({ exitCode: 1, stdout: '', stderr: 'not logged in' })
+    const fetcher: Fetcher = async () => new Response('', { status: 201 })
 
-    const files = [createMockFile('img.png')]
-    await expect(uploadImages(files, 'owner/repo', runner)).rejects.toThrow('Failed to create image-assets release')
+    await expect(uploadImages([createMockFile('img.png')], 'owner/repo', gh, fetcher)).rejects.toThrow(
+      'Failed to get GitHub token',
+    )
   })
 
-  it('throws if file upload fails', async () => {
-    const runner: GhRunner = (args) => {
-      const key = args.join(' ')
-      if (key.includes('release view')) {
-        return { exitCode: 0, stdout: '', stderr: '' }
-      }
-      if (key.includes('release upload')) {
-        return { exitCode: 1, stdout: '', stderr: 'upload error' }
-      }
-      return { exitCode: 1, stdout: '', stderr: '' }
-    }
+  it('throws if upload returns non-ok status', async () => {
+    const fetcher: Fetcher = async () =>
+      new Response('Forbidden', { status: 403 })
 
-    const files = [createMockFile('fail.png')]
-    await expect(uploadImages(files, 'owner/repo', runner)).rejects.toThrow('Upload failed')
+    await expect(uploadImages([createMockFile('img.png')], 'owner/repo', makeGh(), fetcher)).rejects.toThrow(
+      'Upload failed for img.png: 403',
+    )
   })
 
-  it('uploads multiple files and returns all URLs', async () => {
-    const runner: GhRunner = (args) => {
-      const key = args.join(' ')
-      if (key.includes('release view')) {
-        return { exitCode: 0, stdout: '', stderr: '' }
-      }
-      if (key.includes('release upload')) {
-        return { exitCode: 0, stdout: '', stderr: '' }
-      }
-      return { exitCode: 1, stdout: '', stderr: '' }
+  it('sends correct Content-Type for each file', async () => {
+    const calls: string[] = []
+    const fetcher: Fetcher = async (_, init) => {
+      calls.push((init.headers as Record<string, string>)['Content-Type'])
+      return new Response(JSON.stringify({ url: 'https://github.com/x' }), {
+        status: 201,
+        headers: { 'Content-Type': 'application/json' },
+      })
     }
 
-    const files = [createMockFile('a.png'), createMockFile('b.jpg'), createMockFile('c.gif')]
-    const urls = await uploadImages(files, 'owner/repo', runner)
+    await uploadImages(
+      [
+        createMockFile('a.png', 'x', 'image/png'),
+        createMockFile('b.jpg', 'x', 'image/jpeg'),
+      ],
+      'owner/repo',
+      makeGh(),
+      fetcher,
+    )
 
-    expect(urls).toHaveLength(3)
-    for (const url of urls) {
-      expect(url).toStartWith('https://github.com/owner/repo/releases/download/image-assets/')
-    }
+    expect(calls).toEqual(['image/png', 'image/jpeg'])
   })
 
-  it('generates unique filenames to avoid collisions', async () => {
-    const uploadedNames: string[] = []
-    const runner: GhRunner = (args) => {
-      const key = args.join(' ')
-      if (key.includes('release view')) {
-        return { exitCode: 0, stdout: '', stderr: '' }
-      }
-      if (key.includes('release upload')) {
-        const fileArg = args.find(a => a.includes('/'))
-        if (fileArg) uploadedNames.push(fileArg.split('/').pop()!)
-        return { exitCode: 0, stdout: '', stderr: '' }
-      }
-      return { exitCode: 1, stdout: '', stderr: '' }
+  it('trims trailing newline from gh auth token output', async () => {
+    const captured: string[] = []
+    const fetcher: Fetcher = async (_, init) => {
+      captured.push((init.headers as Record<string, string>)['Authorization'])
+      return new Response(JSON.stringify({ url: 'https://github.com/x' }), {
+        status: 201,
+        headers: { 'Content-Type': 'application/json' },
+      })
     }
 
-    const files = [createMockFile('same.png'), createMockFile('same.png')]
-    await uploadImages(files, 'owner/repo', runner)
+    const gh: GhRunner = () => ({ exitCode: 0, stdout: 'my-secret-token\n', stderr: '' })
+    await uploadImages([createMockFile('img.png')], 'owner/repo', gh, fetcher)
 
-    expect(uploadedNames).toHaveLength(2)
-    expect(uploadedNames[0]).not.toBe(uploadedNames[1])
-  })
-
-  it('cleans up temp files after upload', async () => {
-    const { existsSync } = await import('fs')
-    const uploadedPaths: string[] = []
-    const runner: GhRunner = (args) => {
-      const key = args.join(' ')
-      if (key.includes('release view')) {
-        return { exitCode: 0, stdout: '', stderr: '' }
-      }
-      if (key.includes('release upload')) {
-        const fileArg = args.find(a => a.startsWith('/'))
-        if (fileArg) uploadedPaths.push(fileArg)
-        return { exitCode: 0, stdout: '', stderr: '' }
-      }
-      return { exitCode: 1, stdout: '', stderr: '' }
-    }
-
-    const files = [createMockFile('cleanup.png')]
-    await uploadImages(files, 'owner/repo', runner)
-
-    expect(uploadedPaths).toHaveLength(1)
-    await new Promise(r => setTimeout(r, 50))
-    expect(existsSync(uploadedPaths[0])).toBe(false)
+    expect(captured[0]).toBe('Bearer my-secret-token')
   })
 })
