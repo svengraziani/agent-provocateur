@@ -32,7 +32,7 @@ export function ActionModal({ state, onClose, onSuccess, onError, onIssueCreated
   if (!state) return null
 
   return (
-    <div className="modal-overlay" onClick={onClose} onWheel={(e) => e.stopPropagation()}>
+    <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <button className="modal-close" onClick={onClose}><CloseIcon size={12} /></button>
         {state.mode === 'comment' && (

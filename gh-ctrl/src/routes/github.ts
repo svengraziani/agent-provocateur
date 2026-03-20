@@ -16,6 +16,7 @@ async function gh(args: string[]): Promise<GHResult> {
     const stderr = await new Response(proc.stderr).text()
     return { data: null, error: stderr }
   }
+  if (stdout.trim() === '') return { data: null, error: null }
   try {
     return { data: JSON.parse(stdout), error: null }
   } catch {
@@ -468,19 +469,27 @@ app.get('/branches/:owner/:name', async (c) => {
 })
 
 // GET /api/github/branch-compare/:owner/:name/:branch — ahead/behind vs default branch
+const branchCompareCache = new Map<string, { data: { ahead: number; behind: number }; expiresAt: number }>()
+const BRANCH_COMPARE_TTL_MS = 5 * 60 * 1000 // 5 minutes
+
 app.get('/branch-compare/:owner/:name/:branch', async (c) => {
   const owner = c.req.param('owner')
   const name = c.req.param('name')
   const branch = decodeURIComponent(c.req.param('branch'))
   const base = c.req.query('base') || 'main'
+  const cacheKey = `${owner}/${name}/${branch}@${base}`
+
+  const cached = branchCompareCache.get(cacheKey)
+  if (cached && cached.expiresAt > Date.now()) {
+    return c.json(cached.data)
+  }
 
   const result = await gh(['api', `repos/${owner}/${name}/compare/${base}...${branch}`])
   if (result.error) return c.json({ error: result.error }, 500)
 
-  return c.json({
-    ahead: result.data?.ahead_by ?? 0,
-    behind: result.data?.behind_by ?? 0,
-  })
+  const data = { ahead: result.data?.ahead_by ?? 0, behind: result.data?.behind_by ?? 0 }
+  branchCompareCache.set(cacheKey, { data, expiresAt: Date.now() + BRANCH_COMPARE_TTL_MS })
+  return c.json(data)
 })
 
 // DELETE /api/github/branch/:owner/:name/:branch — delete a branch

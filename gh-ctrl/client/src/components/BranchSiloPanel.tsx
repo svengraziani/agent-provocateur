@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import type { DashboardEntry, Branch, GHPR } from '../types'
 import { getBranchState } from './BranchBuilding'
 import { api } from '../api'
@@ -40,6 +40,7 @@ function BranchRow({
   const [compareLoading, setCompareLoading] = useState(true)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const rowRef = useRef<HTMLDivElement>(null)
 
   const state = getBranchState(branch.committedDate)
   const daysSince = branch.committedDate
@@ -50,10 +51,18 @@ function BranchRow({
   const stateColor = state === 'very-stale' ? 'var(--crt-red)' : state === 'stale' ? 'var(--crt-amber)' : '#00d4ff'
 
   useEffect(() => {
-    api.getBranchCompare(repoOwner, repoName, branch.name, defaultBranch)
-      .then(setCompare)
-      .catch(() => {})
-      .finally(() => setCompareLoading(false))
+    const el = rowRef.current
+    if (!el) return
+    const observer = new IntersectionObserver(([entry]) => {
+      if (!entry.isIntersecting) return
+      observer.disconnect()
+      api.getBranchCompare(repoOwner, repoName, branch.name, defaultBranch)
+        .then(setCompare)
+        .catch(() => {})
+        .finally(() => setCompareLoading(false))
+    }, { threshold: 0.1 })
+    observer.observe(el)
+    return () => observer.disconnect()
   }, [repoOwner, repoName, branch.name, defaultBranch])
 
   const handleDelete = async () => {
@@ -67,7 +76,7 @@ function BranchRow({
   }
 
   return (
-    <div className={`silo-panel-branch silo-panel-branch-${state}`}>
+    <div ref={rowRef} className={`silo-panel-branch silo-panel-branch-${state}`}>
       <div className="silo-panel-branch-header">
         <span className="silo-panel-branch-dot" style={{ background: stateColor }} />
         <span className="silo-panel-branch-name" title={branch.name}>
@@ -162,6 +171,15 @@ function BranchRow({
 
 export function BranchSiloPanel({ entry, onClose, addToast, onModalOpen }: BranchSiloPanelProps) {
   const [deletedBranches, setDeletedBranches] = useState<Set<string>>(new Set())
+  const panelRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const el = panelRef.current
+    if (!el) return
+    const stop = (e: WheelEvent) => e.stopPropagation()
+    el.addEventListener('wheel', stop, { passive: true })
+    return () => el.removeEventListener('wheel', stop)
+  }, [])
 
   useEffect(() => {
     setDeletedBranches(new Set())
@@ -202,6 +220,7 @@ export function BranchSiloPanel({ entry, onClose, addToast, onModalOpen }: Branc
 
   return (
     <div
+      ref={panelRef}
       className="silo-panel"
       onClick={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}

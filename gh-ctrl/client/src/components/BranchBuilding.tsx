@@ -86,9 +86,10 @@ interface BranchSiloProps {
   defaultBranch: string
   position: { x: number; y: number }
   onClick: () => void
+  isSelected?: boolean
 }
 
-export function BranchSilo({ branches, defaultBranch, position, onClick }: BranchSiloProps) {
+export function BranchSilo({ branches, defaultBranch, position, onClick, isSelected }: BranchSiloProps) {
   const nonDefault = branches.filter(b => b.name !== defaultBranch)
   if (nonDefault.length === 0) return null
 
@@ -101,7 +102,7 @@ export function BranchSilo({ branches, defaultBranch, position, onClick }: Branc
 
   return (
     <div
-      className={`branch-silo branch-silo-${worstState}`}
+      className={`branch-silo branch-silo-${worstState}${isSelected ? ' branch-silo-selected' : ''}`}
       style={{ left: position.x, top: position.y }}
       onClick={(e) => { e.stopPropagation(); onClick() }}
       title={`${nonDefault.length} branch(es) — click to manage`}
