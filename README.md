@@ -1,5 +1,7 @@
 ![Vibe and Conquer](gh-ctrl/vibe_and_conquer_banner.jpeg)
 
+<a href="https://discord.gg/qjxF5ZDS"><img src="https://img.shields.io/discord/1456350064065904867?label=Discord&logo=discord&logoColor=white&color=5865F2&style=for-the-badge"></a>
+
 # Vibe and Conquer
 
 ![Demo](docs/demo_presentation.gif)
