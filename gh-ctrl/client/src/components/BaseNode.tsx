@@ -131,6 +131,7 @@ interface Props {
   onRefreshRepo: (owner: string, name: string) => Promise<void>
   onToast: (message: string, type: 'success' | 'error' | 'info') => void
   onModalOpen: (state: ModalState) => void
+  onZoomToBase: () => void
 }
 
 const PR_BUILDING_OFFSET_X = 148
@@ -146,7 +147,7 @@ const BRANCH_BUILDING_ROW_HEIGHT = 68
 const BRANCH_BUILDING_COLS = 4
 const MAX_BRANCH_BUILDINGS = 12
 
-export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, onConstruct, onStartRelocate, onRefreshRepo, onToast, onModalOpen }: Props) {
+export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, onConstruct, onStartRelocate, onRefreshRepo, onToast, onModalOpen, onZoomToBase }: Props) {
   const { repo, data } = entry
   const { stats } = data
   const [showDetail, setShowDetail] = useState(false)
@@ -193,6 +194,12 @@ export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, on
     setShowDetail(v => !v)
   }, [isRelocateMode])
 
+  const handleDoubleClick = useCallback((e: React.MouseEvent) => {
+    if (isRelocateMode) return
+    e.stopPropagation()
+    onZoomToBase()
+  }, [isRelocateMode, onZoomToBase])
+
   const visiblePRs = data.prs.slice(0, MAX_PR_BUILDINGS)
 
   // Branch buildings: exclude default branch, sort stale first, cap at MAX_BRANCH_BUILDINGS
@@ -234,6 +241,7 @@ export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, on
         } as React.CSSProperties}
         onMouseDown={handleMouseDown}
         onClick={handleClick}
+        onDoubleClick={handleDoubleClick}
       >
         {/* Status beacons */}
         <div className="base-beacons">
