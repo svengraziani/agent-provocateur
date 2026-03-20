@@ -868,6 +868,26 @@ function PRBuilding({ pr, position, repo, onModalOpen }: {
         <div className="pr-bld-title">{shortTitle}</div>
         {openedDate && <div className="pr-bld-date">{openedDate}</div>}
       </div>
+      {pr.previewUrl && (
+        <a
+          className="pr-bld-netlify"
+          href={pr.previewUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          title={`Open Netlify preview for #${pr.number}`}
+        >
+          <div className="pr-bld-netlify-body">
+            <div className="pr-bld-netlify-antenna" />
+            <div className="pr-bld-netlify-roof" />
+            <div className="pr-bld-netlify-wall">
+              <div className="pr-bld-netlify-window" />
+              <div className="pr-bld-netlify-door" />
+            </div>
+          </div>
+          <div className="pr-bld-netlify-label">▲ LIVE</div>
+        </a>
+      )}
     </div>
   )
 }
