@@ -24,7 +24,7 @@ const COLS = 4
 const ISO_MAP_CENTER_X = 600  // x anchor for the top of the diamond
 const ISO_MAP_OFFSET_Y = 120  // y anchor for the top of the diamond
 const MAP_PADDING = 100
-const ZOOM_MIN = 0.25
+const ZOOM_MIN = 0.05
 const ZOOM_MAX = 2.5
 const ZOOM_FACTOR = 1.15
 
@@ -104,12 +104,10 @@ function BattlefieldMapCanvas({ map }: { map: GameMap }) {
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    const dpr = window.devicePixelRatio || 1
-    canvas.width = canvasW * dpr
-    canvas.height = canvasH * dpr
+    canvas.width = canvasW
+    canvas.height = canvasH
     canvas.style.width = `${canvasW}px`
     canvas.style.height = `${canvasH}px`
-    ctx.scale(dpr, dpr)
 
     ctx.clearRect(0, 0, canvasW, canvasH)
 

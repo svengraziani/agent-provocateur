@@ -19,8 +19,8 @@ app.post('/', async (c) => {
   if (!name?.trim()) {
     return c.json({ error: 'Map name is required' }, 400)
   }
-  if (width < 2 || width > 80 || height < 2 || height > 80) {
-    return c.json({ error: 'Map dimensions must be between 2 and 80' }, 400)
+  if (width < 2 || width > 256 || height < 2 || height > 256) {
+    return c.json({ error: 'Map dimensions must be between 2 and 256' }, 400)
   }
 
   const result = await db.insert(maps).values({

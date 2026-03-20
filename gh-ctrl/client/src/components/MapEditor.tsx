@@ -373,9 +373,13 @@ interface NewMapDialogProps {
 
 function NewMapDialog({ onClose, onCreate, onToast }: NewMapDialogProps) {
   const [name, setName] = useState('New Map')
-  const [width, setWidth] = useState(20)
-  const [height, setHeight] = useState(20)
+  const [widthRaw, setWidthRaw] = useState('20')
+  const [heightRaw, setHeightRaw] = useState('20')
   const [creating, setCreating] = useState(false)
+
+  const clamp = (v: number) => Math.min(256, Math.max(2, v))
+  const width = clamp(Number(widthRaw) || 2)
+  const height = clamp(Number(heightRaw) || 2)
 
   const handleCreate = async () => {
     if (!name.trim()) { onToast('Map name required', 'error'); return }
@@ -410,9 +414,10 @@ function NewMapDialog({ onClose, onCreate, onToast }: NewMapDialogProps) {
             <input
               className="map-dialog-input"
               type="number"
-              min={2} max={80}
-              value={width}
-              onChange={e => setWidth(Math.min(80, Math.max(2, Number(e.target.value))))}
+              min={2} max={256}
+              value={widthRaw}
+              onChange={e => setWidthRaw(e.target.value)}
+              onBlur={() => setWidthRaw(String(clamp(Number(widthRaw) || 2)))}
             />
           </div>
           <div className="map-dialog-field">
@@ -420,9 +425,10 @@ function NewMapDialog({ onClose, onCreate, onToast }: NewMapDialogProps) {
             <input
               className="map-dialog-input"
               type="number"
-              min={2} max={80}
-              value={height}
-              onChange={e => setHeight(Math.min(80, Math.max(2, Number(e.target.value))))}
+              min={2} max={256}
+              value={heightRaw}
+              onChange={e => setHeightRaw(e.target.value)}
+              onBlur={() => setHeightRaw(String(clamp(Number(heightRaw) || 2)))}
             />
           </div>
         </div>
@@ -580,8 +586,8 @@ function StampImageDialog({ mapWidth, mapHeight, customColor, onClose, onStamp, 
               const r = data[idx]
               const g = data[idx + 1]
               const b = data[idx + 2]
-              const { type, color } = findNearestTileType(r, g, b, customColor)
-              stampedTiles[`${col},${row}`] = { type, color }
+              const color = `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`
+              stampedTiles[`${col},${row}`] = { type: 'custom', color }
             }
           }
           currentRow = endRow
@@ -1107,7 +1113,9 @@ export function MapEditor() {
   // ─── Render ─────────────────────────────────────────────────────────────────
 
   // Sync refs during render so rAF callbacks and event handlers always see current values
-  tilesRef.current = tiles
+  // Skip tilesRef sync when a paint is in progress — applyTool mutates tilesRef directly
+  // and a re-render (triggered by setIsDirty) would otherwise reset it to the stale tiles state.
+  if (!hasPendingPaintRef.current) tilesRef.current = tiles
   hoveredRef.current = hoveredTile
   zoomRef.current = zoom
   offsetRef.current = offset
