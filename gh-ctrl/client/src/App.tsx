@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Routes, Route, NavLink } from 'react-router-dom'
 import { useAppStore } from './store'
 import { Dashboard } from './components/Dashboard'
@@ -6,7 +6,9 @@ import { Settings } from './components/Settings'
 import { BattlefieldView } from './components/BattlefieldView'
 import { MapEditor } from './components/MapEditor'
 import { ToastArea } from './components/Toast'
+import { SetupScreen } from './components/SetupScreen'
 import { api } from './api'
+import type { SetupStatus } from './types'
 
 export default function App() {
   const repos = useAppStore((s) => s.repos)
@@ -17,19 +19,30 @@ export default function App() {
   const loadRepos = useAppStore((s) => s.loadRepos)
   const loadDashboard = useAppStore((s) => s.loadDashboard)
   const [appVersion, setAppVersion] = useState<string | null>(null)
+  const [setupStatus, setSetupStatus] = useState<SetupStatus | null>(null)
+
+  const checkSetup = useCallback(() => {
+    return api.getSetupStatus().then(setSetupStatus).catch(() => {})
+  }, [])
 
   useEffect(() => {
+    checkSetup()
+  }, [checkSetup])
+
+  useEffect(() => {
+    if (!setupStatus?.ready) return
     loadRepos()
     loadDashboard()
     api.getVersion().then((r) => setAppVersion(r.version)).catch(() => {})
-  }, [loadRepos, loadDashboard])
+  }, [setupStatus?.ready, loadRepos, loadDashboard])
 
   useEffect(() => {
+    if (!setupStatus?.ready) return
     const interval = setInterval(() => {
       loadDashboard()
     }, refreshInterval)
     return () => clearInterval(interval)
-  }, [loadDashboard, refreshInterval])
+  }, [setupStatus?.ready, loadDashboard, refreshInterval])
 
   const totalStats = entries.reduce(
     (acc, e) => ({
@@ -39,6 +52,18 @@ export default function App() {
     }),
     { prs: 0, issues: 0, conflicts: 0 }
   )
+
+  if (!setupStatus) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-1)' }}>
+        <span style={{ color: 'var(--text-2)' }}>Loading…</span>
+      </div>
+    )
+  }
+
+  if (!setupStatus.ready) {
+    return <SetupScreen status={setupStatus} onRecheck={checkSetup} />
+  }
 
   return (
     <div className="app-layout">
