@@ -4,7 +4,8 @@ import { getPROrigin } from '../types'
 import { api } from '../api'
 import { MarkdownContent } from './MarkdownContent'
 import { VoiceButton } from './VoiceButton'
-import { CloseIcon, LabelIcon, CommentIcon } from './Icons'
+import { CloseIcon, LabelIcon, CommentIcon, CopyIcon } from './Icons'
+import { useAppStore } from '../store'
 
 export type ModalState =
   | { mode: 'comment'; fullName: string; number: number; type: 'pr' | 'issue' }
@@ -703,6 +704,15 @@ function PRDetailView({ state, onClose, onError, onTransition }: {
 }) {
   const [pr, setPR] = useState<PRDetail | null>(null)
   const [loading, setLoading] = useState(true)
+  const addToast = useAppStore((s) => s.addToast)
+
+  const copyBranchName = (name: string) => {
+    navigator.clipboard.writeText(name).then(() => {
+      addToast(`Copied: ${name}`, 'success')
+    }).catch(() => {
+      addToast('Failed to copy branch name', 'error')
+    })
+  }
 
   useEffect(() => {
     api.getPR(state.owner, state.repoName, state.number)
@@ -739,7 +749,17 @@ function PRDetailView({ state, onClose, onError, onTransition }: {
                 <span className="badge badge-external" title={`Author association: ${pr.authorAssociation ?? 'unknown'}`}>External Contributor</span>
               )}
               <span className="issue-meta-date">on {formatDate(pr.createdAt)}</span>
-              <span>{pr.headRefName} → {pr.baseRefName}</span>
+              <span className="branch-copy-row">
+                <span className="branch-name-text">{pr.headRefName}</span>
+                <button
+                  className="btn-copy-branch"
+                  onClick={() => copyBranchName(pr.headRefName)}
+                  title="Copy branch name"
+                >
+                  <CopyIcon size={11} />
+                </button>
+                <span>→ {pr.baseRefName}</span>
+              </span>
               {pr.isDraft && <span>· Draft</span>}
               {pr.reviewDecision === 'APPROVED' && <span>· Approved</span>}
               {pr.mergeable === 'CONFLICTING' && <span>· Conflict</span>}
