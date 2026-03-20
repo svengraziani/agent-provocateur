@@ -4,7 +4,7 @@ import { getPROrigin } from '../types'
 import type { ModalState } from './ActionModal'
 import { CloseIcon, LinkIcon, LabelIcon, CommentIcon, RefreshIcon, ExternalLinkIcon, AssigneeIcon, CopyIcon } from './Icons'
 import { api } from '../api'
-import { BranchBuilding, getBranchState } from './BranchBuilding'
+import { BranchSilo } from './BranchBuilding'
 import { useAppStore } from '../store'
 
 // ── Canvas color utilities ────────────────────────────────────────────────────
@@ -131,6 +131,7 @@ interface Props {
   onRefreshRepo: (owner: string, name: string) => Promise<void>
   onToast: (message: string, type: 'success' | 'error' | 'info') => void
   onModalOpen: (state: ModalState) => void
+  onBranchSiloClick: (entry: DashboardEntry) => void
   onZoomToBase: () => void
 }
 
@@ -140,14 +141,10 @@ const PR_BUILDING_COL_WIDTH = 80
 const PR_BUILDING_ROW_HEIGHT = 100
 const MAX_PR_BUILDINGS = 8
 
-const BRANCH_BUILDING_OFFSET_X = -224
-const BRANCH_BUILDING_OFFSET_Y = 0
-const BRANCH_BUILDING_COL_WIDTH = 54
-const BRANCH_BUILDING_ROW_HEIGHT = 68
-const BRANCH_BUILDING_COLS = 4
-const MAX_BRANCH_BUILDINGS = 12
+const BRANCH_SILO_OFFSET_X = -80
+const BRANCH_SILO_OFFSET_Y = 70
 
-export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, onConstruct, onStartRelocate, onRefreshRepo, onToast, onModalOpen, onZoomToBase }: Props) {
+export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, onConstruct, onStartRelocate, onRefreshRepo, onToast, onModalOpen, onBranchSiloClick, onZoomToBase }: Props) {
   const { repo, data } = entry
   const { stats } = data
   const [showDetail, setShowDetail] = useState(false)
@@ -202,14 +199,7 @@ export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, on
 
   const visiblePRs = data.prs.slice(0, MAX_PR_BUILDINGS)
 
-  // Branch buildings: exclude default branch, sort stale first, cap at MAX_BRANCH_BUILDINGS
-  const nonDefaultBranches = (data.branches ?? []).filter(b => b.name !== (data.defaultBranch ?? 'main'))
-  const sortedBranches = [...nonDefaultBranches].sort((a, b) => {
-    const stateOrder = { 'very-stale': 0, 'stale': 1, 'active': 2 }
-    return stateOrder[getBranchState(a.committedDate)] - stateOrder[getBranchState(b.committedDate)]
-  })
-  const visibleBranches = sortedBranches.slice(0, MAX_BRANCH_BUILDINGS)
-  const extraBranches = sortedBranches.length - visibleBranches.length
+  const hasBranches = (data.branches ?? []).some(b => b.name !== (data.defaultBranch ?? 'main'))
 
   return (
     <>
@@ -319,33 +309,17 @@ export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, on
         </div>
       </div>
 
-      {/* Branch buildings — 4-column grid to the left of the base, right-aligned (fills toward the base) */}
-      {visibleBranches.map((branch, i) => {
-        const col = BRANCH_BUILDING_COLS - 1 - (i % BRANCH_BUILDING_COLS)
-        const row = Math.floor(i / BRANCH_BUILDING_COLS)
-        return (
-          <BranchBuilding
-            key={branch.name}
-            branch={branch}
-            position={{
-              x: position.x + BRANCH_BUILDING_OFFSET_X + col * BRANCH_BUILDING_COL_WIDTH,
-              y: position.y + BRANCH_BUILDING_OFFSET_Y + row * BRANCH_BUILDING_ROW_HEIGHT,
-            }}
-            repoFullName={repo.fullName}
-            defaultBranch={data.defaultBranch ?? 'main'}
-          />
-        )
-      })}
-      {extraBranches > 0 && (
-        <div
-          className="branch-overflow-label"
-          style={{
-            left: position.x + BRANCH_BUILDING_OFFSET_X - 20,
-            top: position.y + BRANCH_BUILDING_OFFSET_Y + Math.floor((visibleBranches.length - 1) / BRANCH_BUILDING_COLS) * BRANCH_BUILDING_ROW_HEIGHT + 10,
+      {/* Branch Silo — single grouped silo, click opens right-side C&C panel */}
+      {hasBranches && !isRelocateMode && (
+        <BranchSilo
+          branches={data.branches ?? []}
+          defaultBranch={data.defaultBranch ?? 'main'}
+          position={{
+            x: position.x + BRANCH_SILO_OFFSET_X,
+            y: position.y + BRANCH_SILO_OFFSET_Y,
           }}
-        >
-          +{extraBranches}
-        </div>
+          onClick={() => onBranchSiloClick(entry)}
+        />
       )}
 
       {/* Floating detail panel */}

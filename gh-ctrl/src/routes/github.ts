@@ -483,6 +483,17 @@ app.get('/branch-compare/:owner/:name/:branch', async (c) => {
   })
 })
 
+// DELETE /api/github/branch/:owner/:name/:branch — delete a branch
+app.delete('/branch/:owner/:name/:branch', async (c) => {
+  const owner = c.req.param('owner')
+  const name = c.req.param('name')
+  const branch = decodeURIComponent(c.req.param('branch'))
+
+  const result = await gh(['api', `repos/${owner}/${name}/git/refs/heads/${encodeURIComponent(branch)}`, '--method', 'DELETE'])
+  if (result.error) return c.json({ error: result.error }, 500)
+  return c.json({ ok: true })
+})
+
 // POST /api/github/trigger-claude — post @claude comment
 app.post('/trigger-claude', async (c) => {
   const body = await c.req.json()
