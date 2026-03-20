@@ -23,4 +23,4 @@ app.get('/api/version', (c) => c.json({ version: pkg.version }))
 app.use('*', serveStatic({ root: './client/dist' }))
 app.get('*', serveStatic({ path: './client/dist/index.html' }))
 
-export default { port: 3001, fetch: app.fetch }
+export default { port: 3001, hostname: '0.0.0.0', fetch: app.fetch }

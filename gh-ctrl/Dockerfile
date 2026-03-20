@@ -49,9 +49,9 @@ CMD ["bun", "src/index.ts"]
 # ── Stage 3: dev ──────────────────────────────────────────────────────────────
 FROM oven/bun AS dev
 
-# Install gh CLI (same as runtime)
+# Install gh CLI + procps (ps, required by concurrently/tree-kill)
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends ca-certificates curl gnupg && \
+    apt-get install -y --no-install-recommends ca-certificates curl gnupg procps && \
     mkdir -p /etc/apt/keyrings && \
     curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
       | gpg --dearmor -o /etc/apt/keyrings/githubcli-archive-keyring.gpg && \
