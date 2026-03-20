@@ -1,0 +1,31 @@
+services:
+  app:
+    profiles: [prod]
+    build:
+      context: ./gh-ctrl
+      target: runtime
+    ports:
+      - "3001:3001"
+    environment:
+      - GH_TOKEN=${GH_TOKEN}
+    volumes:
+      - gh-ctrl-data:/app/data
+
+  app-dev:
+    profiles: [dev]
+    build:
+      context: ./gh-ctrl
+      target: dev
+    ports:
+      - "3001:3001"
+      - "5173:5173"
+    environment:
+      - GH_TOKEN=${GH_TOKEN}
+    volumes:
+      - ./gh-ctrl:/app
+      - /app/node_modules
+      - /app/client/node_modules
+      - gh-ctrl-data:/app/data
+
+volumes:
+  gh-ctrl-data:
