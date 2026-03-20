@@ -133,6 +133,9 @@ interface Props {
   onModalOpen: (state: ModalState) => void
   onBranchSiloClick: (entry: DashboardEntry) => void
   onZoomToBase: () => void
+  onBaseDetailOpen: (entry: DashboardEntry) => void
+  isSelected?: boolean
+  isSiloSelected?: boolean
 }
 
 const PR_BUILDING_OFFSET_X = 148
@@ -144,10 +147,9 @@ const MAX_PR_BUILDINGS = 8
 const BRANCH_SILO_OFFSET_X = -80
 const BRANCH_SILO_OFFSET_Y = 70
 
-export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, onConstruct, onStartRelocate, onRefreshRepo, onToast, onModalOpen, onBranchSiloClick, onZoomToBase }: Props) {
+export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, onConstruct, onStartRelocate, onRefreshRepo, onToast, onModalOpen, onBranchSiloClick, onZoomToBase, onBaseDetailOpen, isSelected, isSiloSelected }: Props) {
   const { repo, data } = entry
   const { stats } = data
-  const [showDetail, setShowDetail] = useState(false)
   const [scanning, setScanning] = useState(false)
 
   const handleScanBase = useCallback(async (e: React.MouseEvent) => {
@@ -188,8 +190,8 @@ export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, on
   const handleClick = useCallback((e: React.MouseEvent) => {
     if (isRelocateMode) return
     e.stopPropagation()
-    setShowDetail(v => !v)
-  }, [isRelocateMode])
+    onBaseDetailOpen(entry)
+  }, [isRelocateMode, onBaseDetailOpen, entry])
 
   const handleDoubleClick = useCallback((e: React.MouseEvent) => {
     if (isRelocateMode) return
@@ -222,7 +224,7 @@ export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, on
       })}
 
       <div
-        className={`base-node ${statusClass}${isBeingRelocated ? ' relocating' : ''}${isRelocateMode ? ' relocate-mode' : ''}`}
+        className={`base-node ${statusClass}${isBeingRelocated ? ' relocating' : ''}${isRelocateMode ? ' relocate-mode' : ''}${isSelected ? ' base-selected' : ''}`}
         style={{
           left: position.x,
           top: position.y,
@@ -319,25 +321,16 @@ export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, on
             y: position.y + BRANCH_SILO_OFFSET_Y,
           }}
           onClick={() => onBranchSiloClick(entry)}
+          isSelected={isSiloSelected}
         />
       )}
 
-      {/* Floating detail panel */}
-      {showDetail && !isRelocateMode && (
-        <BaseDetailPanel
-          entry={entry}
-          position={position}
-          onClose={() => setShowDetail(false)}
-          onModalOpen={onModalOpen}
-        />
-      )}
     </>
   )
 }
 
-function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
+export function BaseDetailPanel({ entry, onClose, onModalOpen }: {
   entry: DashboardEntry
-  position: Position
   onClose: () => void
   onModalOpen: (state: ModalState) => void
 }) {
@@ -348,8 +341,6 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
   const [branches, setBranches] = useState<Branch[]>([])
   const [defaultBranch, setDefaultBranch] = useState('main')
   const [branchesLoading, setBranchesLoading] = useState(false)
-  const panelX = position.x + 145
-  const panelY = position.y
 
   const toggleBranches = async () => {
     if (!showBranches && branches.length === 0) {
@@ -385,7 +376,6 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
   return (
     <div
       className="base-detail-panel"
-      style={{ left: panelX, top: panelY }}
       onClick={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
     >
@@ -405,7 +395,6 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
         >
           + Issue
         </button>
-        <button className="bdp-close" onClick={onClose}><CloseIcon size={12} /></button>
       </div>
 
       <div className="bdp-stats">

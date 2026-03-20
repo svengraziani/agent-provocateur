@@ -3,7 +3,7 @@ import type { DashboardEntry, GameMap, MapTile } from '../types'
 import { BranchSiloPanel } from './BranchSiloPanel'
 import { api } from '../api'
 import { getBranchState } from './BranchBuilding'
-import { BaseNode } from './BaseNode'
+import { BaseNode, BaseDetailPanel } from './BaseNode'
 import { ActionModal } from './ActionModal'
 import type { ModalState } from './ActionModal'
 import { ConstructDialog } from './ConstructDialog'
@@ -357,6 +357,16 @@ export function BattlefieldView() {
   const [showMapSelector, setShowMapSelector] = useState(false)
   const [showFeedPanel, setShowFeedPanel] = useState(false)
   const [branchSiloEntry, setBranchSiloEntry] = useState<DashboardEntry | null>(null)
+  const [detailEntry, setDetailEntry] = useState<DashboardEntry | null>(null)
+  const detailPanelRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const el = detailPanelRef.current
+    if (!el) return
+    const stop = (e: WheelEvent) => e.stopPropagation()
+    el.addEventListener('wheel', stop, { passive: true })
+    return () => el.removeEventListener('wheel', stop)
+  }, [detailEntry])
   const containerRef = useRef<HTMLDivElement>(null)
   const zoomRef = useRef(zoom)
   const offsetRef = useRef(offset)
@@ -494,6 +504,7 @@ export function BattlefieldView() {
   }, [isDraggingMap, dragStart, relocatingId, relocatingStart])
 
   const handleWheel = useCallback((e: WheelEvent) => {
+    if ((e.target as HTMLElement).closest('.modal-overlay, .map-dialog-overlay, .silo-panel, .feed-panel, [class*="dialog"]')) return
     e.preventDefault()
     // Use actual deltaY magnitude for smooth trackpad support; clamp to avoid huge jumps
     const clampedDelta = Math.max(-100, Math.min(100, e.deltaY))
@@ -741,8 +752,11 @@ export function BattlefieldView() {
               onRefreshRepo={onRefreshRepo}
               addToast={addToast}
               onModalOpen={(state) => { play('peep'); setModalState(state) }}
-              onBranchSiloClick={(e) => { play('peep'); setBranchSiloEntry(e) }}
+              onBranchSiloClick={(e) => { play('peep'); setBranchSiloEntry(e); setDetailEntry(null) }}
               onZoomToBase={() => handleZoomToBase(pos)}
+              onBaseDetailOpen={(e) => { play('peep'); setDetailEntry(prev => prev?.repo.id === e.repo.id ? null : e); setBranchSiloEntry(null) }}
+              isSelected={detailEntry?.repo.id === entry.repo.id}
+              isSiloSelected={branchSiloEntry?.repo.id === entry.repo.id}
             />
           )
         })}
@@ -846,6 +860,29 @@ export function BattlefieldView() {
         addToast={addToast}
         onModalOpen={(state) => { play('peep'); setModalState(state) }}
       />
+
+      {/* Base Detail Side Panel — C&C-style right-side info panel */}
+      {detailEntry && (
+        <div ref={detailPanelRef} className="base-detail-side-panel">
+          <div className="base-detail-side-panel-header">
+            <div className="base-detail-side-panel-title-row">
+              <span className="base-detail-side-panel-icon" style={{ color: detailEntry.repo.color }}>&#x25a0;</span>
+              <div>
+                <div className="base-detail-side-panel-title">BASE INTEL</div>
+                <div className="base-detail-side-panel-subtitle">{detailEntry.repo.name}</div>
+              </div>
+            </div>
+            <button className="silo-panel-close" onClick={() => setDetailEntry(null)} title="Close [Esc]">✕</button>
+          </div>
+          <div className="base-detail-side-panel-body">
+            <BaseDetailPanel
+              entry={detailEntry}
+              onClose={() => setDetailEntry(null)}
+              onModalOpen={(state) => { play('peep'); setModalState(state) }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }
