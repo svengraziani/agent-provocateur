@@ -122,3 +122,13 @@ export function AssigneeIcon({ size = 12, className, title }: IconProps) {
     </svg>
   )
 }
+
+export function CopyIcon({ size = 12, className, title }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" className={className} aria-hidden={!title} role={title ? 'img' : undefined}>
+      {title && <title>{title}</title>}
+      <rect x="5" y="5" width="8" height="9" rx="1" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M3 11H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h7a1 1 0 0 1 1 1v1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  )
+}
