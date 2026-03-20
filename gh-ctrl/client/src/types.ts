@@ -190,6 +190,20 @@ export interface FeedData {
   mentions: FeedItem[]
 }
 
+export interface SetupCheck {
+  id: string
+  label: string
+  ok: boolean
+  detail?: string | null
+  fix?: string | null
+}
+
+export interface SetupStatus {
+  ready: boolean
+  mode: 'docker' | 'local'
+  checks: SetupCheck[]
+}
+
 export interface MapTile {
   type: string
   color: string
