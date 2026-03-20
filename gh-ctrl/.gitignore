@@ -9,3 +9,4 @@ bun.lockb
 
 # macOS
 .DS_Store
+.env

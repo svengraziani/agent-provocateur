@@ -107,6 +107,48 @@ bun run build   # builds the React client
 bun run start   # serves everything on port 3001
 ```
 
+## Docker
+
+The easiest way to run Vibe and Conquer without installing Bun or the GitHub CLI locally.
+
+### Prerequisites
+
+- [Docker](https://docs.docker.com/get-docker/) with Compose v2
+- A GitHub [personal access token](https://github.com/settings/tokens) with `repo` and `read:org` scopes
+
+### Setup
+
+```bash
+cp .env.example .env
+# Edit .env and set your token:
+# GH_TOKEN=ghp_...
+```
+
+### Production
+
+Builds the frontend into the image and serves everything from a single port.
+
+```bash
+docker compose --profile prod up --build
+```
+
+App available at `http://localhost:3001`. The SQLite database is stored in a named Docker volume (`gh-ctrl-data`) and persists across restarts.
+
+### Development
+
+Mounts the source from your host for live reload — Vite HMR on port 5173, Bun `--watch` on port 3001.
+
+```bash
+docker compose --profile dev up --build
+```
+
+| URL | Purpose |
+|-----|---------|
+| `http://localhost:5173` | Frontend (Vite, with HMR) |
+| `http://localhost:3001` | Backend API |
+
+`--build` is only needed when the Dockerfile changes (e.g. after a dependency update). Normal dev sessions can omit it.
+
 ## Project Structure
 
 ```
