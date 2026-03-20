@@ -564,6 +564,15 @@ export function BattlefieldView() {
     }
   }, [positions])
 
+  const handleZoomToBase = useCallback((pos: Position) => {
+    const targetZoom = Math.max(1.5, ZOOM_MAX * 0.5)
+    setZoom(targetZoom)
+    setOffset({
+      x: window.innerWidth / 2 - pos.x * targetZoom,
+      y: window.innerHeight / 2 - pos.y * targetZoom,
+    })
+  }, [])
+
   const handleMapMouseUp = useCallback(() => {
     setIsDraggingMap(false)
     if (relocatingId !== null) {
@@ -733,6 +742,7 @@ export function BattlefieldView() {
               addToast={addToast}
               onModalOpen={(state) => { play('peep'); setModalState(state) }}
               onBranchSiloClick={(e) => { play('peep'); setBranchSiloEntry(e) }}
+              onZoomToBase={() => handleZoomToBase(pos)}
             />
           )
         })}

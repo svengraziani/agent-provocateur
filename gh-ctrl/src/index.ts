@@ -5,6 +5,7 @@ import { serveStatic } from 'hono/bun'
 import reposRouter from './routes/repos'
 import githubRouter from './routes/github'
 import mapsRouter from './routes/maps'
+import setupRouter from './routes/setup'
 import pkg from '../package.json'
 
 const app = new Hono()
@@ -15,6 +16,7 @@ app.use('*', logger())
 app.route('/api/repos', reposRouter)
 app.route('/api/github', githubRouter)
 app.route('/api/maps', mapsRouter)
+app.route('/api/setup', setupRouter)
 
 app.get('/api/health', (c) => c.json({ ok: true }))
 app.get('/api/version', (c) => c.json({ version: pkg.version }))

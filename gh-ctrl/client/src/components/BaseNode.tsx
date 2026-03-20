@@ -132,6 +132,7 @@ interface Props {
   onToast: (message: string, type: 'success' | 'error' | 'info') => void
   onModalOpen: (state: ModalState) => void
   onBranchSiloClick: (entry: DashboardEntry) => void
+  onZoomToBase: () => void
 }
 
 const PR_BUILDING_OFFSET_X = 148
@@ -143,7 +144,7 @@ const MAX_PR_BUILDINGS = 8
 const BRANCH_SILO_OFFSET_X = -80
 const BRANCH_SILO_OFFSET_Y = 70
 
-export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, onConstruct, onStartRelocate, onRefreshRepo, onToast, onModalOpen, onBranchSiloClick }: Props) {
+export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, onConstruct, onStartRelocate, onRefreshRepo, onToast, onModalOpen, onBranchSiloClick, onZoomToBase }: Props) {
   const { repo, data } = entry
   const { stats } = data
   const [showDetail, setShowDetail] = useState(false)
@@ -190,6 +191,12 @@ export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, on
     setShowDetail(v => !v)
   }, [isRelocateMode])
 
+  const handleDoubleClick = useCallback((e: React.MouseEvent) => {
+    if (isRelocateMode) return
+    e.stopPropagation()
+    onZoomToBase()
+  }, [isRelocateMode, onZoomToBase])
+
   const visiblePRs = data.prs.slice(0, MAX_PR_BUILDINGS)
 
   const hasBranches = (data.branches ?? []).some(b => b.name !== (data.defaultBranch ?? 'main'))
@@ -224,6 +231,7 @@ export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, on
         } as React.CSSProperties}
         onMouseDown={handleMouseDown}
         onClick={handleClick}
+        onDoubleClick={handleDoubleClick}
       >
         {/* Status beacons */}
         <div className="base-beacons">
@@ -834,6 +842,26 @@ function PRBuilding({ pr, position, repo, onModalOpen }: {
         <div className="pr-bld-title">{shortTitle}</div>
         {openedDate && <div className="pr-bld-date">{openedDate}</div>}
       </div>
+      {pr.previewUrl && (
+        <a
+          className="pr-bld-netlify"
+          href={pr.previewUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          title={`Open Netlify preview for #${pr.number}`}
+        >
+          <div className="pr-bld-netlify-body">
+            <div className="pr-bld-netlify-antenna" />
+            <div className="pr-bld-netlify-roof" />
+            <div className="pr-bld-netlify-wall">
+              <div className="pr-bld-netlify-window" />
+              <div className="pr-bld-netlify-door" />
+            </div>
+          </div>
+          <div className="pr-bld-netlify-label">▲ LIVE</div>
+        </a>
+      )}
     </div>
   )
 }
