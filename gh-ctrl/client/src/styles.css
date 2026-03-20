@@ -1214,6 +1214,30 @@ select.input {
   color: var(--text-3);
 }
 
+.branch-copy-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-copy-branch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 3px;
+  color: var(--text-3);
+  cursor: pointer;
+  padding: 1px 3px;
+  line-height: 1;
+}
+
+.btn-copy-branch:hover {
+  background: var(--bg-3);
+  color: var(--text);
+}
+
 .issue-detail-labels {
   display: flex;
   flex-wrap: wrap;
