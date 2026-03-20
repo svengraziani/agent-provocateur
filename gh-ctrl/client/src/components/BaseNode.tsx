@@ -2,9 +2,10 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import type { DashboardEntry, GHPR, GHIssue, Branch, WorkflowRun, RepoMeta } from '../types'
 import { getPROrigin } from '../types'
 import type { ModalState } from './ActionModal'
-import { CloseIcon, LinkIcon, LabelIcon, CommentIcon, RefreshIcon, ExternalLinkIcon, AssigneeIcon } from './Icons'
+import { CloseIcon, LinkIcon, LabelIcon, CommentIcon, RefreshIcon, ExternalLinkIcon, AssigneeIcon, CopyIcon } from './Icons'
 import { api } from '../api'
 import { BranchBuilding, getBranchState } from './BranchBuilding'
+import { useAppStore } from '../store'
 
 // ── Canvas color utilities ────────────────────────────────────────────────────
 
@@ -447,6 +448,7 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
               labels={pr.labels}
               assignees={pr.assignees}
               createdAt={pr.createdAt}
+              headRefName={pr.headRefName}
             />
           ))}
           {data.conflicts.length > 4 && <div className="bdp-more">+{data.conflicts.length - 4} more</div>}
@@ -468,6 +470,7 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
               labels={pr.labels}
               assignees={pr.assignees}
               createdAt={pr.createdAt}
+              headRefName={pr.headRefName}
             />
           ))}
           {data.needsReview.length > 4 && <div className="bdp-more">+{data.needsReview.length - 4} more</div>}
@@ -544,6 +547,7 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
               labels={pr.labels}
               assignees={pr.assignees}
               createdAt={pr.createdAt}
+              headRefName={pr.headRefName}
             />
           ))}
         </div>
@@ -860,7 +864,7 @@ function PRBuilding({ pr, position, repo, onModalOpen }: {
   )
 }
 
-function BdpItemRow({ number, title, type, repo, onModalOpen, previewUrl, labels, assignees, isClaudeActive, isUntouched, createdAt, onPR, prLink }: {
+function BdpItemRow({ number, title, type, repo, onModalOpen, previewUrl, labels, assignees, isClaudeActive, isUntouched, createdAt, onPR, prLink, headRefName }: {
   number: number
   title: string
   type: 'pr' | 'issue'
@@ -874,7 +878,18 @@ function BdpItemRow({ number, title, type, repo, onModalOpen, previewUrl, labels
   createdAt?: string
   onPR?: () => void
   prLink?: { head: string; base: string; title: string; body: string }
+  headRefName?: string
 }) {
+  const addToast = useAppStore((s) => s.addToast)
+
+  const copyBranchName = (name: string) => {
+    navigator.clipboard.writeText(name).then(() => {
+      addToast(`Copied: ${name}`, 'success')
+    }).catch(() => {
+      addToast('Failed to copy branch name', 'error')
+    })
+  }
+
   return (
     <div className={`bdp-item${isUntouched ? ' untouched-issue' : ''}`}>
       <div className="bdp-item-left">
@@ -900,6 +915,15 @@ function BdpItemRow({ number, title, type, repo, onModalOpen, previewUrl, labels
         </button>
       </div>
       <div className="bdp-item-right">
+        {headRefName && (
+          <button
+            className="bdp-icon-btn"
+            title={`Copy branch: ${headRefName}`}
+            onClick={() => copyBranchName(headRefName)}
+          >
+            <CopyIcon size={11} />
+          </button>
+        )}
         {createdAt && (
           <span className="bdp-branch-date" title={`Opened ${new Date(createdAt).toLocaleString()}`}>
             {new Date(createdAt).toLocaleDateString()}
