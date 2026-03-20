@@ -79,6 +79,42 @@ function ColorizedSilo({ state }: { state: BranchState }) {
   )
 }
 
+// ── BranchSilo: single grouped silo per repo showing worst-case branch state ──
+
+interface BranchSiloProps {
+  branches: Branch[]
+  defaultBranch: string
+  position: { x: number; y: number }
+  onClick: () => void
+}
+
+export function BranchSilo({ branches, defaultBranch, position, onClick }: BranchSiloProps) {
+  const nonDefault = branches.filter(b => b.name !== defaultBranch)
+  if (nonDefault.length === 0) return null
+
+  const worstState: BranchState = nonDefault.reduce<BranchState>((worst, b) => {
+    const s = getBranchState(b.committedDate)
+    if (s === 'very-stale') return 'very-stale'
+    if (s === 'stale' && worst !== 'very-stale') return 'stale'
+    return worst
+  }, 'active')
+
+  return (
+    <div
+      className={`branch-silo branch-silo-${worstState}`}
+      style={{ left: position.x, top: position.y }}
+      onClick={(e) => { e.stopPropagation(); onClick() }}
+      title={`${nonDefault.length} branch(es) — click to manage`}
+    >
+      <div className="branch-silo-tower">
+        <ColorizedSilo state={worstState} />
+        <div className="branch-silo-badge">{nonDefault.length}</div>
+      </div>
+      <div className="branch-silo-label">BRANCHES</div>
+    </div>
+  )
+}
+
 interface BranchBuildingProps {
   branch: Branch
   position: { x: number; y: number }

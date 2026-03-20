@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import type { DashboardEntry, GameMap, MapTile } from '../types'
+import { BranchSiloPanel } from './BranchSiloPanel'
 import { api } from '../api'
 import { getBranchState } from './BranchBuilding'
 import { BaseNode } from './BaseNode'
@@ -355,6 +356,7 @@ export function BattlefieldView() {
   const [allMaps, setAllMaps] = useState<GameMap[]>([])
   const [showMapSelector, setShowMapSelector] = useState(false)
   const [showFeedPanel, setShowFeedPanel] = useState(false)
+  const [branchSiloEntry, setBranchSiloEntry] = useState<DashboardEntry | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const zoomRef = useRef(zoom)
   const offsetRef = useRef(offset)
@@ -730,6 +732,7 @@ export function BattlefieldView() {
               onRefreshRepo={onRefreshRepo}
               addToast={addToast}
               onModalOpen={(state) => { play('peep'); setModalState(state) }}
+              onBranchSiloClick={(e) => { play('peep'); setBranchSiloEntry(e) }}
             />
           )
         })}
@@ -824,6 +827,14 @@ export function BattlefieldView() {
         entries={entries}
         isOpen={showFeedPanel}
         onClose={() => setShowFeedPanel(false)}
+      />
+
+      {/* Branch Silo Panel — C&C-style right-side command panel */}
+      <BranchSiloPanel
+        entry={branchSiloEntry}
+        onClose={() => setBranchSiloEntry(null)}
+        addToast={addToast}
+        onModalOpen={(state) => { play('peep'); setModalState(state) }}
       />
     </div>
   )

@@ -65,6 +65,9 @@ export const api = {
   getBranchCompare: (owner: string, repoName: string, branch: string, base: string) =>
     request<{ ahead: number; behind: number }>(`/github/branch-compare/${owner}/${repoName}/${encodeURIComponent(branch)}?base=${encodeURIComponent(base)}`),
 
+  deleteBranch: (owner: string, name: string, branch: string) =>
+    request<{ ok: boolean }>(`/github/branch/${owner}/${name}/${encodeURIComponent(branch)}`, { method: 'DELETE' }),
+
   getRepoMeta: (owner: string, name: string) =>
     request<RepoMeta>(`/github/meta/${owner}/${name}`),
 
