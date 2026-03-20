@@ -1997,6 +1997,85 @@ select.input {
   margin-top: 1px;
 }
 
+/* ---- Netlify deployment preview building ---- */
+.pr-bld-netlify {
+  position: absolute;
+  left: 94px;
+  top: 8px;
+  width: 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 0.12s;
+  z-index: 3;
+}
+
+.pr-bld-netlify:hover {
+  transform: translateY(-3px);
+}
+
+.pr-bld-netlify-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  filter: drop-shadow(0 2px 5px rgba(0, 199, 183, 0.55));
+}
+
+.pr-bld-netlify-antenna {
+  width: 2px;
+  height: 8px;
+  background: #00C7B7;
+  margin-bottom: -1px;
+}
+
+.pr-bld-netlify-roof {
+  width: 0;
+  height: 0;
+  border-left: 11px solid transparent;
+  border-right: 11px solid transparent;
+  border-bottom: 9px solid #00C7B7;
+}
+
+.pr-bld-netlify-wall {
+  width: 22px;
+  height: 26px;
+  background: #00C7B7;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 3px 0 0;
+}
+
+.pr-bld-netlify-window {
+  width: 8px;
+  height: 6px;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.pr-bld-netlify-door {
+  width: 7px;
+  height: 9px;
+  background: rgba(0, 0, 0, 0.4);
+  align-self: center;
+}
+
+.pr-bld-netlify-label {
+  font-size: 6px;
+  font-family: var(--font-mono);
+  color: #00C7B7;
+  letter-spacing: 0.4px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.pr-bld-netlify:hover .pr-bld-netlify-body {
+  filter: drop-shadow(0 3px 8px rgba(0, 199, 183, 0.9));
+}
+
 /* ---- Base Detail Panel ---- */
 .base-detail-panel {
   position: absolute;
