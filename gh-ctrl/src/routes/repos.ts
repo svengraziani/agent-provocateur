@@ -16,23 +16,37 @@ app.post('/', async (c) => {
   const body = await c.req.json()
   const { fullName, color, description } = body
 
-  if (!fullName || !fullName.includes('/')) {
-    return c.json({ error: 'fullName must be in "owner/repo" format' }, 400)
+  if (!fullName) {
+    return c.json({ error: 'fullName must be in "owner/repo" format or a GitHub URL' }, 400)
   }
 
-  const [owner, name] = fullName.split('/')
-
-  // Validate repo exists via gh CLI
-  const check = Bun.spawnSync(['gh', 'repo', 'view', fullName, '--json', 'name'])
+  // Validate repo exists via gh CLI and get canonical nameWithOwner
+  // This also normalizes URLs (e.g. https://github.com/owner/repo) to owner/repo format
+  const check = Bun.spawnSync(['gh', 'repo', 'view', fullName, '--json', 'nameWithOwner'])
   if (check.exitCode !== 0) {
+    const stderr = check.stderr.toString()
+    const isAuthError = /not logged in|auth login|authentication|401|403|credentials|token/i.test(stderr)
+    if (isAuthError) {
+      return c.json({ error: 'Not authenticated with GitHub CLI. Please run "gh auth login" to authenticate.' }, 401)
+    }
     return c.json({ error: 'Repository not found on GitHub' }, 404)
   }
+
+  let canonicalFullName: string
+  try {
+    const ghData = JSON.parse(check.stdout.toString())
+    canonicalFullName = ghData.nameWithOwner
+  } catch {
+    return c.json({ error: 'Failed to parse GitHub API response' }, 500)
+  }
+
+  const [owner, name] = canonicalFullName.split('/')
 
   try {
     const result = await db.insert(repos).values({
       owner,
       name,
-      fullName,
+      fullName: canonicalFullName,
       description: description || null,
       color: color || '#00ff88',
     }).returning()

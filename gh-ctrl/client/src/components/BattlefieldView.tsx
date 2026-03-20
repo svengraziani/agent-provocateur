@@ -1,12 +1,14 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import type { DashboardEntry, GameMap, MapTile } from '../types'
 import { api } from '../api'
+import { getBranchState } from './BranchBuilding'
 import { BaseNode } from './BaseNode'
 import { ActionModal } from './ActionModal'
 import type { ModalState } from './ActionModal'
 import { ConstructDialog } from './ConstructDialog'
 import { CreateBaseDialog } from './CreateBaseDialog'
 import { CloseIcon, RelocateIcon, RefreshIcon } from './Icons'
+import { FeedPanel } from './FeedPanel'
 import { useSound } from '../hooks/useSound'
 import { useAppStore } from '../store'
 
@@ -102,7 +104,14 @@ function BattlefieldMapCanvas({ map }: { map: GameMap }) {
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    const dpr = window.devicePixelRatio || 1
+    canvas.width = canvasW * dpr
+    canvas.height = canvasH * dpr
+    canvas.style.width = `${canvasW}px`
+    canvas.style.height = `${canvasH}px`
+    ctx.scale(dpr, dpr)
+
+    ctx.clearRect(0, 0, canvasW, canvasH)
 
     let tiles: Record<string, MapTile> = {}
     try { tiles = JSON.parse(map.tiles) } catch { /* empty */ }
@@ -163,8 +172,6 @@ function BattlefieldMapCanvas({ map }: { map: GameMap }) {
   return (
     <canvas
       ref={canvasRef}
-      width={canvasW}
-      height={canvasH}
       style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none' }}
     />
   )
@@ -182,6 +189,13 @@ function MapMiniPreview({ map }: { map: GameMap }) {
     if (!canvas) return
     const ctx = canvas.getContext('2d')
     if (!ctx) return
+
+    const dpr = window.devicePixelRatio || 1
+    canvas.width = W * dpr
+    canvas.height = H * dpr
+    canvas.style.width = `${W}px`
+    canvas.style.height = `${H}px`
+    ctx.scale(dpr, dpr)
 
     ctx.fillStyle = '#0a1510'
     ctx.fillRect(0, 0, W, H)
@@ -235,7 +249,7 @@ function MapMiniPreview({ map }: { map: GameMap }) {
     }
   }, [map])
 
-  return <canvas ref={ref} width={W} height={H} style={{ display: 'block', borderRadius: 4 }} />
+  return <canvas ref={ref} style={{ display: 'block', borderRadius: 4 }} />
 }
 
 interface LoadBattlefieldMapDialogProps {
@@ -321,7 +335,10 @@ export function BattlefieldView() {
   const addToast = useAppStore((s) => s.addToast)
   const loadRepos = useAppStore((s) => s.loadRepos)
   const onReposChange = () => { loadRepos(); onRefresh() }
-  const [offset, setOffset] = useState<Position>({ x: 0, y: 0 })
+  const [offset, setOffset] = useState<Position>(() => ({
+    x: window.innerWidth / 2 - ISO_MAP_CENTER_X,
+    y: window.innerHeight / 2 - ISO_MAP_OFFSET_Y,
+  }))
   const [zoom, setZoom] = useState(1)
   const [isDraggingMap, setIsDraggingMap] = useState(false)
   const [dragStart, setDragStart] = useState<Position>({ x: 0, y: 0 })
@@ -339,10 +356,12 @@ export function BattlefieldView() {
   const [activeMap, setActiveMap] = useState<GameMap | null>(null)
   const [allMaps, setAllMaps] = useState<GameMap[]>([])
   const [showMapSelector, setShowMapSelector] = useState(false)
+  const [showFeedPanel, setShowFeedPanel] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const zoomRef = useRef(zoom)
   const offsetRef = useRef(offset)
   const autoScanTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const hasAutoCenteredRef = useRef(false)
   useEffect(() => { zoomRef.current = zoom }, [zoom])
   useEffect(() => { offsetRef.current = offset }, [offset])
 
@@ -416,11 +435,11 @@ export function BattlefieldView() {
     setPositions(prev => {
       const stored = loadPositions()
       const defaults = getDefaultPositions(entries)
-      // Priority: in-memory (prev) > stored (localStorage) > defaults
-      const merged = { ...defaults, ...stored, ...prev }
-      const valid: Record<number, Position> = {}
-      entries.forEach(e => { valid[e.repo.id] = merged[e.repo.id] ?? defaults[e.repo.id] })
-      return valid
+      // Preserve ALL known positions so ghost nodes for pending repos stay at their
+      // saved spots during streaming. Filtering to only current entries was causing
+      // ghost nodes to jump to default fallback positions when the user had panned away.
+      // Priority: in-memory (prev) > stored (localStorage) > computed defaults
+      return { ...defaults, ...stored, ...prev }
     })
   }, [entries])
 
@@ -433,6 +452,24 @@ export function BattlefieldView() {
       })
     }
   }, [loading])
+
+  // Auto-center the camera on the bounding box of all loaded nodes after the
+  // initial data load completes. Only runs once per mount.
+  useEffect(() => {
+    if (loading || entries.length === 0 || hasAutoCenteredRef.current) return
+    hasAutoCenteredRef.current = true
+    const posArray = entries.map(e => positions[e.repo.id]).filter((p): p is Position => !!p)
+    if (posArray.length === 0) return
+    const minX = Math.min(...posArray.map(p => p.x))
+    const maxX = Math.max(...posArray.map(p => p.x))
+    const minY = Math.min(...posArray.map(p => p.y))
+    const maxY = Math.max(...posArray.map(p => p.y))
+    setOffset({
+      x: window.innerWidth / 2 - (minX + maxX) / 2,
+      y: window.innerHeight / 2 - (minY + maxY) / 2,
+    })
+  }, [loading, entries, positions])
+
 
   const handleMapMouseDown = useCallback((e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('.base-node')) return
@@ -510,8 +547,23 @@ export function BattlefieldView() {
 
   const handleZoomReset = useCallback(() => {
     setZoom(1)
-    setOffset({ x: 0, y: 0 })
-  }, [])
+    const posArray = Object.values(positions).filter((p): p is Position => !!p)
+    if (posArray.length > 0) {
+      const minX = Math.min(...posArray.map(p => p.x))
+      const maxX = Math.max(...posArray.map(p => p.x))
+      const minY = Math.min(...posArray.map(p => p.y))
+      const maxY = Math.max(...posArray.map(p => p.y))
+      setOffset({
+        x: window.innerWidth / 2 - (minX + maxX) / 2,
+        y: window.innerHeight / 2 - (minY + maxY) / 2,
+      })
+    } else {
+      setOffset({
+        x: window.innerWidth / 2 - ISO_MAP_CENTER_X,
+        y: window.innerHeight / 2 - ISO_MAP_OFFSET_Y,
+      })
+    }
+  }, [positions])
 
   const handleMapMouseUp = useCallback(() => {
     setIsDraggingMap(false)
@@ -537,6 +589,16 @@ export function BattlefieldView() {
   const loadedFullNames = new Set(entries.map((e) => e.repo.fullName))
   const pendingRepos = loading ? repos.filter((r) => !loadedFullNames.has(r.fullName)) : []
 
+  // Stale branch counts across all repos
+  const staleBranchStats = entries.reduce((acc, e) => {
+    const defaultBranch = e.data.defaultBranch ?? 'main'
+    const nonDefault = (e.data.branches ?? []).filter(b => b.name !== defaultBranch)
+    const stale = nonDefault.filter(b => getBranchState(b.committedDate) === 'stale' || getBranchState(b.committedDate) === 'very-stale')
+    if (stale.length > 0) acc.repos++
+    acc.total += stale.length
+    return acc
+  }, { total: 0, repos: 0 })
+
 
   return (
     <div
@@ -560,7 +622,12 @@ export function BattlefieldView() {
             <span className="hud-stat hud-alert blink">&#x26a0; CONFLICTS: <strong>{totalConflicts}</strong></span>
           )}
           {totalRunningActions > 0 && (
-            <span className="hud-stat hud-actions spinning-process" title="Running GitHub Actions across all bases">&#x2699; PROCESSES: <strong>{totalRunningActions}</strong></span>
+            <span className="hud-stat hud-actions" title="Running GitHub Actions across all bases"><span className="spinning-process">&#x2699;</span> PROCESSES: <strong>{totalRunningActions}</strong></span>
+          )}
+          {staleBranchStats.total > 0 && (
+            <span className="hud-stat hud-stale-branches" title={`${staleBranchStats.total} stale branch(es) across ${staleBranchStats.repos} repo(s)`}>
+              &#x2387; STALE: <strong>{staleBranchStats.total}</strong>
+            </span>
           )}
           <button
             className="hud-btn"
@@ -598,6 +665,14 @@ export function BattlefieldView() {
               &#x2715; MAP
             </button>
           )}
+          <span className="hud-zoom-sep" />
+          <button
+            className={`hud-btn${showFeedPanel ? ' active' : ''}`}
+            onClick={() => { play('peep'); setShowFeedPanel(v => !v) }}
+            title="Toggle Intel Feed panel"
+          >
+            ◈ FEED
+          </button>
           <span className="hud-zoom-sep" />
           <button className="hud-btn hud-zoom-btn" onClick={handleZoomOut} disabled={zoom <= ZOOM_MIN} title="Zoom out">−</button>
           <span className="hud-zoom-level" title="Click to reset zoom" onClick={handleZoomReset}>{Math.round(zoom * 100)}%</span>
@@ -745,6 +820,13 @@ export function BattlefieldView() {
           onClose={() => setShowMapSelector(false)}
         />
       )}
+
+      {/* Intel Feed Panel */}
+      <FeedPanel
+        entries={entries}
+        isOpen={showFeedPanel}
+        onClose={() => setShowFeedPanel(false)}
+      />
     </div>
   )
 }
@@ -760,14 +842,36 @@ interface MinimapProps {
 function Minimap({ entries, positions, offset, zoom, onJump }: MinimapProps) {
   const MINIMAP_W = 160
   const MINIMAP_H = 100
-  const SCALE = 0.12
+  const LABEL_H = 12
+  const PADDING = 10
+
+  // Compute bounding box of all base positions so the minimap auto-fits
+  const posArray = entries.map(e => positions[e.repo.id]).filter((p): p is Position => !!p)
+  const minX = posArray.length > 0 ? Math.min(...posArray.map(p => p.x)) : 0
+  const maxX = posArray.length > 0 ? Math.max(...posArray.map(p => p.x)) : 800
+  const minY = posArray.length > 0 ? Math.min(...posArray.map(p => p.y)) : 0
+  const maxY = posArray.length > 0 ? Math.max(...posArray.map(p => p.y)) : 600
+
+  const worldW = Math.max(maxX - minX, 1)
+  const worldH = Math.max(maxY - minY, 1)
+  const contentW = MINIMAP_W - PADDING * 2
+  const contentH = MINIMAP_H - LABEL_H - PADDING * 2
+  const scale = Math.min(contentW / worldW, contentH / worldH)
+
+  // Origin: translate world coords → minimap pixel coords (below label, centered)
+  const ox = PADDING + (contentW - worldW * scale) / 2 - minX * scale
+  const oy = LABEL_H + PADDING + (contentH - worldH * scale) / 2 - minY * scale
+
+  const toMiniX = (wx: number) => wx * scale + ox
+  const toMiniY = (wy: number) => wy * scale + oy
 
   const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
     e.stopPropagation()
     const rect = e.currentTarget.getBoundingClientRect()
-    const mx = (e.clientX - rect.left) / SCALE
-    const my = (e.clientY - rect.top) / SCALE
-    onJump({ x: -mx * zoom + window.innerWidth / 2, y: -my * zoom + window.innerHeight / 2 })
+    // Convert minimap pixel position back to world coordinates
+    const wx = (e.clientX - rect.left - ox) / scale
+    const wy = (e.clientY - rect.top - oy) / scale
+    onJump({ x: -wx * zoom + window.innerWidth / 2, y: -wy * zoom + window.innerHeight / 2 })
   }
 
   return (
@@ -781,16 +885,18 @@ function Minimap({ entries, positions, offset, zoom, onJump }: MinimapProps) {
       {entries.map((entry) => {
         const pos = positions[entry.repo.id]
         if (!pos) return null
-        const mx = pos.x * SCALE
-        const my = pos.y * SCALE
         const hasConflicts = entry.data.stats.conflicts > 0
+        const defaultBranch = entry.data.defaultBranch ?? 'main'
+        const hasStale = (entry.data.branches ?? []).some(
+          b => b.name !== defaultBranch && (getBranchState(b.committedDate) === 'stale' || getBranchState(b.committedDate) === 'very-stale')
+        )
         return (
           <div
             key={entry.repo.id}
-            className={`minimap-base${hasConflicts ? ' alert' : ''}`}
+            className={`minimap-base${hasConflicts ? ' alert' : hasStale ? ' stale' : ''}`}
             style={{
-              left: mx,
-              top: my + 12,
+              left: toMiniX(pos.x),
+              top: toMiniY(pos.y),
               background: entry.repo.color,
             }}
             title={entry.repo.name}
@@ -801,10 +907,10 @@ function Minimap({ entries, positions, offset, zoom, onJump }: MinimapProps) {
       <div
         className="minimap-viewport"
         style={{
-          left: -offset.x / zoom * SCALE,
-          top: -offset.y / zoom * SCALE + 12,
-          width: window.innerWidth / zoom * SCALE,
-          height: window.innerHeight / zoom * SCALE,
+          left: toMiniX(-offset.x / zoom),
+          top: toMiniY(-offset.y / zoom),
+          width: window.innerWidth / zoom * scale,
+          height: window.innerHeight / zoom * scale,
         }}
       />
     </div>

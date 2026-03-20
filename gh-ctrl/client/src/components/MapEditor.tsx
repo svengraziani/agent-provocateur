@@ -1,4 +1,5 @@
-import { useState, useRef, useCallback, useEffect } from 'react'
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
+import { Pencil, Eraser, PaintBucket, Plus, FolderOpen, Save, Trash2, ZoomIn, ZoomOut, Stamp } from 'lucide-react'
 import type { GameMap, MapTile } from '../types'
 import { api } from '../api'
 import { useAppStore } from '../store'
@@ -43,6 +44,39 @@ function darkenColor(hex: string, factor: number): string {
 function lightenColor(hex: string, factor: number): string {
   const [r, g, b] = hexToRgb(hex)
   return `rgb(${Math.round(r + (255 - r) * factor)},${Math.round(g + (255 - g) * factor)},${Math.round(b + (255 - b) * factor)})`
+}
+
+// Precomputed face color cache — avoids recalculating darkenColor per tile per frame.
+// Since tile colors are finite, results are memoized indefinitely.
+const tileColorCache = new Map<string, { left: string; right: string }>()
+
+function getTileSideColors(color: string): { left: string; right: string } {
+  if (tileColorCache.has(color)) return tileColorCache.get(color)!
+  const result = { left: darkenColor(color, 0.35), right: darkenColor(color, 0.55) }
+  tileColorCache.set(color, result)
+  return result
+}
+
+function colorDistance(r1: number, g1: number, b1: number, r2: number, g2: number, b2: number): number {
+  return Math.sqrt((r1 - r2) ** 2 + (g1 - g2) ** 2 + (b1 - b2) ** 2)
+}
+
+function findNearestTileType(r: number, g: number, b: number, customColor: string): { type: string; color: string } {
+  let bestType = 'ground'
+  let bestColor = TILE_TYPES['ground'].color
+  let bestDist = Infinity
+
+  for (const [key, def] of Object.entries(TILE_TYPES)) {
+    const color = key === 'custom' ? customColor : def.color
+    const [cr, cg, cb] = hexToRgb(color)
+    const dist = colorDistance(r, g, b, cr, cg, cb)
+    if (dist < bestDist) {
+      bestDist = dist
+      bestType = key
+      bestColor = color
+    }
+  }
+  return { type: bestType, color: bestColor }
 }
 
 // ─── Coordinate conversion ────────────────────────────────────────────────────
@@ -94,6 +128,8 @@ function drawIsoTile(
   ctx.lineWidth = 0.5
   ctx.stroke()
 
+  const { left: leftColor, right: rightColor } = getTileSideColors(color)
+
   // Left face
   ctx.beginPath()
   ctx.moveTo(sx - w2, sy + h2)
@@ -101,7 +137,7 @@ function drawIsoTile(
   ctx.lineTo(sx,      sy + TILE_H + TILE_DEPTH)
   ctx.lineTo(sx - w2, sy + h2 + TILE_DEPTH)
   ctx.closePath()
-  ctx.fillStyle = darkenColor(color, 0.35)
+  ctx.fillStyle = leftColor
   ctx.fill()
   ctx.strokeStyle = 'rgba(0,0,0,0.25)'
   ctx.stroke()
@@ -113,7 +149,7 @@ function drawIsoTile(
   ctx.lineTo(sx + w2, sy + h2 + TILE_DEPTH)
   ctx.lineTo(sx,      sy + TILE_H + TILE_DEPTH)
   ctx.closePath()
-  ctx.fillStyle = darkenColor(color, 0.55)
+  ctx.fillStyle = rightColor
   ctx.fill()
   ctx.strokeStyle = 'rgba(0,0,0,0.25)'
   ctx.stroke()
@@ -145,6 +181,13 @@ function MapPreviewCanvas({ map, width = 120, height = 80 }: { map: GameMap; wid
     if (!canvas) return
     const ctx = canvas.getContext('2d')
     if (!ctx) return
+
+    const dpr = window.devicePixelRatio || 1
+    canvas.width = width * dpr
+    canvas.height = height * dpr
+    canvas.style.width = `${width}px`
+    canvas.style.height = `${height}px`
+    ctx.scale(dpr, dpr)
 
     ctx.fillStyle = '#0a1510'
     ctx.fillRect(0, 0, width, height)
@@ -197,7 +240,8 @@ function MapPreviewCanvas({ map, width = 120, height = 80 }: { map: GameMap; wid
         ctx.lineTo(sx,        sy + th + depth)
         ctx.lineTo(sx - tw/2, sy + th/2 + depth)
         ctx.closePath()
-        ctx.fillStyle = darkenColor(color, 0.35)
+        const { left: previewLeft, right: previewRight } = getTileSideColors(color)
+        ctx.fillStyle = previewLeft
         ctx.fill()
 
         ctx.beginPath()
@@ -206,13 +250,13 @@ function MapPreviewCanvas({ map, width = 120, height = 80 }: { map: GameMap; wid
         ctx.lineTo(sx + tw/2, sy + th/2 + depth)
         ctx.lineTo(sx,        sy + th + depth)
         ctx.closePath()
-        ctx.fillStyle = darkenColor(color, 0.55)
+        ctx.fillStyle = previewRight
         ctx.fill()
       }
     }
-  }, [map, width, height])
+  }, [map.tiles, map.width, map.height, width, height])
 
-  return <canvas ref={ref} width={width} height={height} style={{ display: 'block', borderRadius: 4 }} />
+  return <canvas ref={ref} style={{ display: 'block', borderRadius: 4 }} />
 }
 
 // ─── Flood fill ────────────────────────────────────────────────────────────────
@@ -236,8 +280,9 @@ function floodFill(
   const queue: [number, number][] = [[startCol, startRow]]
   const visited = new Set<string>([startKey])
 
-  while (queue.length > 0) {
-    const [col, row] = queue.shift()!
+  let head = 0
+  while (head < queue.length) {
+    const [col, row] = queue[head++]
     const key = `${col},${row}`
     if (newTile.type === 'empty') {
       delete result[key]
@@ -263,6 +308,59 @@ function floodFill(
     }
   }
   return result
+}
+
+// ─── Rename Map Dialog ────────────────────────────────────────────────────────
+
+interface RenameMapDialogProps {
+  currentName: string
+  onClose: () => void
+  onRename: (name: string) => Promise<void>
+}
+
+function RenameMapDialog({ currentName, onClose, onRename }: RenameMapDialogProps) {
+  const [name, setName] = useState(currentName)
+  const [renaming, setRenaming] = useState(false)
+
+  const handleSubmit = async () => {
+    const trimmed = name.trim()
+    if (!trimmed || trimmed === currentName) { onClose(); return }
+    setRenaming(true)
+    try {
+      await onRename(trimmed)
+      onClose()
+    } finally {
+      setRenaming(false)
+    }
+  }
+
+  return (
+    <div className="map-dialog-overlay" onClick={onClose}>
+      <div className="map-dialog" onClick={e => e.stopPropagation()}>
+        <div className="map-dialog-title">&#x270e; RENAME MAP</div>
+        <div className="map-dialog-field">
+          <label>New Name</label>
+          <input
+            className="map-dialog-input"
+            value={name}
+            onChange={e => setName(e.target.value)}
+            autoFocus
+            onKeyDown={e => { if (e.key === 'Enter') handleSubmit(); if (e.key === 'Escape') onClose() }}
+          />
+        </div>
+        <div className="map-dialog-actions">
+          <button className="hud-btn" onClick={onClose}>CANCEL</button>
+          <button
+            className="hud-btn hud-btn-new-base"
+            onClick={handleSubmit}
+            disabled={renaming || !name.trim() || name.trim() === currentName}
+          >
+            {renaming ? 'RENAMING...' : 'RENAME'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 // ─── New Map Dialog ───────────────────────────────────────────────────────────
@@ -411,6 +509,212 @@ function LoadMapDialog({ maps, currentMapId, onLoad, onDelete, onClose }: LoadMa
   )
 }
 
+// ─── Stamp Image Dialog ───────────────────────────────────────────────────────
+
+interface StampImageDialogProps {
+  mapWidth: number
+  mapHeight: number
+  customColor: string
+  onClose: () => void
+  onStamp: (stampedTiles: Record<string, MapTile>, offsetCol: number, offsetRow: number) => void
+  onToast: (msg: string, type: 'success' | 'error' | 'info') => void
+}
+
+function StampImageDialog({ mapWidth, mapHeight, customColor, onClose, onStamp, onToast }: StampImageDialogProps) {
+  const [imageUrl, setImageUrl] = useState<string | null>(null)
+  const [isDragging, setIsDragging] = useState(false)
+  const [stampWidth, setStampWidth] = useState(mapWidth)
+  const [stampHeight, setStampHeight] = useState(mapHeight)
+  const [offsetCol, setOffsetCol] = useState(0)
+  const [offsetRow, setOffsetRow] = useState(0)
+  const [isProcessing, setIsProcessing] = useState(false)
+  const imgRef = useRef<HTMLImageElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleFile = (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      onToast('Please select an image file', 'error')
+      return
+    }
+    const url = URL.createObjectURL(file)
+    setImageUrl(prev => { if (prev) URL.revokeObjectURL(prev); return url })
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(false)
+    const file = e.dataTransfer.files[0]
+    if (file) handleFile(file)
+  }
+
+  const handleStamp = () => {
+    if (!imageUrl || !imgRef.current) return
+    const img = imgRef.current
+    if (!img.complete || img.naturalWidth === 0) {
+      onToast('Image not loaded yet', 'error')
+      return
+    }
+    setIsProcessing(true)
+    try {
+      const canvas = document.createElement('canvas')
+      canvas.width = stampWidth
+      canvas.height = stampHeight
+      const ctx = canvas.getContext('2d')!
+      ctx.drawImage(img, 0, 0, stampWidth, stampHeight)
+      const imageData = ctx.getImageData(0, 0, stampWidth, stampHeight)
+      const data = imageData.data
+
+      const stampedTiles: Record<string, MapTile> = {}
+      // Process image in chunks of rows to avoid blocking the UI thread on large stamps
+      const CHUNK_ROWS = 10
+      let currentRow = 0
+
+      const processChunk = () => {
+        try {
+          const endRow = Math.min(currentRow + CHUNK_ROWS, stampHeight)
+          for (let row = currentRow; row < endRow; row++) {
+            for (let col = 0; col < stampWidth; col++) {
+              const idx = (row * stampWidth + col) * 4
+              const a = data[idx + 3]
+              if (a < 128) continue // skip transparent pixels
+              const r = data[idx]
+              const g = data[idx + 1]
+              const b = data[idx + 2]
+              const { type, color } = findNearestTileType(r, g, b, customColor)
+              stampedTiles[`${col},${row}`] = { type, color }
+            }
+          }
+          currentRow = endRow
+          if (currentRow < stampHeight) {
+            setTimeout(processChunk, 0)
+          } else {
+            onStamp(stampedTiles, offsetCol, offsetRow)
+            onClose()
+          }
+        } catch (err: any) {
+          onToast(`Stamp failed: ${err.message}`, 'error')
+          setIsProcessing(false)
+        }
+      }
+
+      processChunk()
+    } catch (err: any) {
+      onToast(`Stamp failed: ${err.message}`, 'error')
+      setIsProcessing(false)
+    }
+  }
+
+  return (
+    <div className="map-dialog-overlay" onClick={onClose}>
+      <div className="map-dialog map-dialog-stamp" onClick={e => e.stopPropagation()}>
+        <div className="map-dialog-title">&#x25a3; STAMP IMAGE TO MAP</div>
+
+        {/* Drop zone / image preview */}
+        <div
+          className={`stamp-drop-zone${isDragging ? ' drag-over' : ''}${imageUrl ? ' has-image' : ''}`}
+          onDragOver={e => { e.preventDefault(); setIsDragging(true) }}
+          onDragLeave={() => setIsDragging(false)}
+          onDrop={handleDrop}
+          onClick={() => fileInputRef.current?.click()}
+        >
+          {imageUrl ? (
+            <img
+              ref={imgRef}
+              src={imageUrl}
+              alt="Stamp preview"
+              className="stamp-preview-img"
+            />
+          ) : (
+            <div className="stamp-drop-hint">
+              <span className="stamp-drop-icon">🖼</span>
+              <span>Drop image here or click to browse</span>
+              <span className="stamp-drop-sub">PNG · JPG · SVG · WebP · transparent supported</span>
+            </div>
+          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            style={{ display: 'none' }}
+            onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f) }}
+          />
+        </div>
+
+        {imageUrl && (
+          <button className="hud-btn stamp-change-btn" onClick={e => { e.stopPropagation(); fileInputRef.current?.click() }}>
+            &#x21ba; CHANGE IMAGE
+          </button>
+        )}
+
+        {/* Stamp dimensions */}
+        <div className="palette-section-title">STAMP SIZE (tiles)</div>
+        <div className="map-dialog-row">
+          <div className="map-dialog-field">
+            <label>Width</label>
+            <input
+              className="map-dialog-input"
+              type="number"
+              min={1} max={mapWidth}
+              value={stampWidth}
+              onChange={e => setStampWidth(Math.min(mapWidth, Math.max(1, Number(e.target.value))))}
+            />
+          </div>
+          <div className="map-dialog-field">
+            <label>Height</label>
+            <input
+              className="map-dialog-input"
+              type="number"
+              min={1} max={mapHeight}
+              value={stampHeight}
+              onChange={e => setStampHeight(Math.min(mapHeight, Math.max(1, Number(e.target.value))))}
+            />
+          </div>
+        </div>
+
+        {/* Position offset */}
+        <div className="palette-section-title">POSITION OFFSET</div>
+        <div className="map-dialog-row">
+          <div className="map-dialog-field">
+            <label>Col</label>
+            <input
+              className="map-dialog-input"
+              type="number"
+              min={0} max={mapWidth - 1}
+              value={offsetCol}
+              onChange={e => setOffsetCol(Math.min(mapWidth - 1, Math.max(0, Number(e.target.value))))}
+            />
+          </div>
+          <div className="map-dialog-field">
+            <label>Row</label>
+            <input
+              className="map-dialog-input"
+              type="number"
+              min={0} max={mapHeight - 1}
+              value={offsetRow}
+              onChange={e => setOffsetRow(Math.min(mapHeight - 1, Math.max(0, Number(e.target.value))))}
+            />
+          </div>
+        </div>
+
+        <div className="map-dialog-size-hint">
+          Stamps {stampWidth}×{stampHeight} tiles starting at col {offsetCol}, row {offsetRow} · each pixel → nearest tile color
+        </div>
+
+        <div className="map-dialog-actions">
+          <button className="hud-btn" onClick={onClose}>CANCEL</button>
+          <button
+            className="hud-btn hud-btn-new-base"
+            onClick={handleStamp}
+            disabled={!imageUrl || isProcessing}
+          >
+            {isProcessing ? 'STAMPING...' : '▣ STAMP'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Main MapEditor component ─────────────────────────────────────────────────
 
 const ZOOM_MIN = 0.3
@@ -433,6 +737,7 @@ export function MapEditor() {
   const [tool, setTool] = useState<Tool>('paint')
   const [selectedType, setSelectedType] = useState<TileKey>('ground')
   const [customColor, setCustomColor] = useState('#00ff88')
+  const [brushSize, setBrushSize] = useState(1)
   const [hoveredTile, setHoveredTile] = useState<{ col: number; row: number } | null>(null)
   const [isPainting, setIsPainting] = useState(false)
 
@@ -445,21 +750,21 @@ export function MapEditor() {
   // Dialog state
   const [showNewMap, setShowNewMap] = useState(false)
   const [showLoadMap, setShowLoadMap] = useState(false)
+  const [showRenameMap, setShowRenameMap] = useState(false)
+  const [showStampImage, setShowStampImage] = useState(false)
   const [editingName, setEditingName] = useState(false)
   const [nameInput, setNameInput] = useState('')
 
-  // Refs for rendering
+  // Refs for rendering — assigned directly during render for immediate sync (no useEffect overhead)
   const tilesRef = useRef(tiles)
   const hoveredRef = useRef(hoveredTile)
   const zoomRef = useRef(zoom)
   const offsetRef = useRef(offset)
   const mapRef = useRef(currentMap)
-
-  useEffect(() => { tilesRef.current = tiles }, [tiles])
-  useEffect(() => { hoveredRef.current = hoveredTile }, [hoveredTile])
-  useEffect(() => { zoomRef.current = zoom }, [zoom])
-  useEffect(() => { offsetRef.current = offset }, [offset])
-  useEffect(() => { mapRef.current = currentMap }, [currentMap])
+  const brushSizeRef = useRef(brushSize)
+  const activeTileColorRef = useRef('')
+  const hasPendingPaintRef = useRef(false)
+  const isPaintingRef = useRef(false)
 
   // Load all maps on mount
   useEffect(() => {
@@ -473,14 +778,20 @@ export function MapEditor() {
     if (!canvas) return
     const ctx = canvas.getContext('2d')
     if (!ctx) return
+    const dpr = window.devicePixelRatio || 1
+    const logW = canvas.width / dpr
+    const logH = canvas.height / dpr
     const map = mapRef.current
     if (!map) {
       ctx.fillStyle = '#0a1510'
       ctx.fillRect(0, 0, canvas.width, canvas.height)
+      ctx.save()
+      ctx.scale(dpr, dpr)
       ctx.fillStyle = 'rgba(57,255,20,0.3)'
       ctx.font = '14px JetBrains Mono, monospace'
       ctx.textAlign = 'center'
-      ctx.fillText('NO MAP LOADED — CREATE OR LOAD A MAP', canvas.width / 2, canvas.height / 2)
+      ctx.fillText('NO MAP LOADED — CREATE OR LOAD A MAP', logW / 2, logH / 2)
+      ctx.restore()
       return
     }
 
@@ -493,7 +804,7 @@ export function MapEditor() {
     ctx.save()
     ctx.fillStyle = '#0a1510'
     ctx.fillRect(0, 0, canvas.width, canvas.height)
-    ctx.scale(sc, sc)
+    ctx.scale(dpr * sc, dpr * sc)
     ctx.translate(ox, oy)
 
     // Draw rows back-to-front for correct depth
@@ -502,7 +813,9 @@ export function MapEditor() {
         const key = `${col},${row}`
         const tile = currentTiles[key]
         const { x: sx, y: sy } = toScreenPos(col, row, 0, 0)
-        const isHovered = hov?.col === col && hov?.row === row
+        const bs = brushSizeRef.current
+        const isHovered = hov !== null &&
+          Math.abs(col - hov.col) < bs && Math.abs(row - hov.row) < bs
 
         if (tile) {
           drawIsoTile(ctx, sx, sy, tile.color, isHovered)
@@ -515,8 +828,18 @@ export function MapEditor() {
     ctx.restore()
   }, [])
 
-  // Trigger render on state changes
-  useEffect(() => { render() }, [tiles, hoveredTile, zoom, offset, currentMap, render])
+  // rAF-batched render scheduler — coalesces multiple state changes into a single canvas redraw per frame
+  const rafRef = useRef<number | null>(null)
+  const scheduleRender = useCallback(() => {
+    if (rafRef.current !== null) return
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = null
+      render()
+    })
+  }, [render])
+
+  // Trigger render on state changes (batched via rAF)
+  useEffect(() => { scheduleRender() }, [tiles, hoveredTile, zoom, offset, currentMap, scheduleRender])
 
   // Resize canvas to container
   useEffect(() => {
@@ -524,21 +847,24 @@ export function MapEditor() {
     const canvas = canvasRef.current
     if (!container || !canvas) return
 
-    const observer = new ResizeObserver(() => {
-      canvas.width = container.clientWidth
-      canvas.height = container.clientHeight
+    const resizeCanvas = () => {
+      const dpr = window.devicePixelRatio || 1
+      canvas.width = container.clientWidth * dpr
+      canvas.height = container.clientHeight * dpr
+      canvas.style.width = `${container.clientWidth}px`
+      canvas.style.height = `${container.clientHeight}px`
       render()
-    })
+    }
+
+    const observer = new ResizeObserver(resizeCanvas)
     observer.observe(container)
-    canvas.width = container.clientWidth
-    canvas.height = container.clientHeight
-    render()
+    resizeCanvas()
     return () => observer.disconnect()
   }, [render])
 
   // ── Active tile color ───────────────────────────────────────────────────────
 
-  const getActiveTileColor = useCallback(() => {
+  const activeTileColor = useMemo(() => {
     if (selectedType === 'custom') return customColor
     return TILE_TYPES[selectedType]?.color ?? '#4a6b2a'
   }, [selectedType, customColor])
@@ -548,30 +874,41 @@ export function MapEditor() {
   const applyTool = useCallback((col: number, row: number) => {
     const map = mapRef.current
     if (!map) return
-    if (col < 0 || col >= map.width || row < 0 || row >= map.height) return
 
-    const key = `${col},${row}`
-
-    if (tool === 'erase') {
-      setTiles(prev => {
-        const next = { ...prev }
-        delete next[key]
-        return next
-      })
-      setIsDirty(true)
-    } else if (tool === 'paint') {
-      const color = getActiveTileColor()
-      setTiles(prev => ({ ...prev, [key]: { type: selectedType, color } }))
-      setIsDirty(true)
-    } else if (tool === 'fill') {
-      const color = getActiveTileColor()
+    if (tool === 'fill') {
+      if (col < 0 || col >= map.width || row < 0 || row >= map.height) return
+      const color = activeTileColorRef.current
       setTiles(prev => {
         const result = floodFill(prev, col, row, { type: selectedType, color }, map.width, map.height)
         return result
       })
       setIsDirty(true)
+      return
     }
-  }, [tool, selectedType, getActiveTileColor])
+
+    // paint / erase: mutate tilesRef directly and schedule a canvas redraw.
+    // React state is flushed once on mouseUp to avoid O(n) re-renders during drag.
+    const radius = brushSizeRef.current - 1
+    const color = activeTileColorRef.current
+    const next = { ...tilesRef.current }
+    for (let dr = -radius; dr <= radius; dr++) {
+      for (let dc = -radius; dc <= radius; dc++) {
+        const c = col + dc
+        const r = row + dr
+        if (c < 0 || c >= map.width || r < 0 || r >= map.height) continue
+        const key = `${c},${r}`
+        if (tool === 'erase') {
+          delete next[key]
+        } else {
+          next[key] = { type: selectedType, color }
+        }
+      }
+    }
+    tilesRef.current = next
+    hasPendingPaintRef.current = true
+    scheduleRender()
+    setIsDirty(true)
+  }, [tool, selectedType, scheduleRender])
 
   // ── Mouse handlers ──────────────────────────────────────────────────────────
 
@@ -591,6 +928,7 @@ export function MapEditor() {
 
     const { x, y } = getCanvasPos(e)
     const { col, row } = toTileCoords(x, y, offsetRef.current.x, offsetRef.current.y, zoomRef.current)
+    isPaintingRef.current = true
     setIsPainting(true)
     applyTool(col, row)
   }, [currentMap, applyTool])
@@ -608,21 +946,33 @@ export function MapEditor() {
     const { col, row } = toTileCoords(x, y, offsetRef.current.x, offsetRef.current.y, zoomRef.current)
     setHoveredTile({ col, row })
 
-    if (isPainting && currentMap) {
+    if (isPaintingRef.current && mapRef.current) {
       applyTool(col, row)
     }
-  }, [isPainting, isPanningMap, panStart, currentMap, applyTool])
+  }, [isPanningMap, panStart, applyTool])
 
-  const handleMouseUp = useCallback(() => {
-    setIsPainting(false)
-    setIsPanningMap(false)
+  // Flush accumulated paint changes to React state (called on mouseUp / mouseLeave)
+  const flushPendingPaint = useCallback(() => {
+    if (hasPendingPaintRef.current) {
+      setTiles({ ...tilesRef.current })
+      hasPendingPaintRef.current = false
+    }
   }, [])
 
+  const handleMouseUp = useCallback(() => {
+    flushPendingPaint()
+    isPaintingRef.current = false
+    setIsPainting(false)
+    setIsPanningMap(false)
+  }, [flushPendingPaint])
+
   const handleMouseLeave = useCallback(() => {
+    flushPendingPaint()
+    isPaintingRef.current = false
     setIsPainting(false)
     setIsPanningMap(false)
     setHoveredTile(null)
-  }, [])
+  }, [flushPendingPaint])
 
   const handleWheel = useCallback((e: React.WheelEvent<HTMLCanvasElement>) => {
     e.preventDefault()
@@ -685,6 +1035,14 @@ export function MapEditor() {
     }
   }
 
+  const handleRenameDialog = async (newName: string) => {
+    if (!currentMap) return
+    const updated = await api.saveMap(currentMap.id, { name: newName })
+    setCurrentMap(updated)
+    setAllMaps(prev => prev.map(m => m.id === updated.id ? updated : m))
+    onToast('Map renamed', 'success')
+  }
+
   // ── Load map ─────────────────────────────────────────────────────────────────
 
   const handleLoadMap = (map: GameMap) => {
@@ -726,9 +1084,36 @@ export function MapEditor() {
     setIsDirty(true)
   }
 
+  // ── Stamp image to map ────────────────────────────────────────────────────────
+
+  const handleStampImage = useCallback((stampedTiles: Record<string, MapTile>, offsetCol: number, offsetRow: number) => {
+    const map = mapRef.current
+    if (!map) return
+    setTiles(prev => {
+      const next = { ...prev }
+      for (const [key, tile] of Object.entries(stampedTiles)) {
+        const [c, r] = key.split(',').map(Number)
+        const fc = c + offsetCol
+        const fr = r + offsetRow
+        if (fc < 0 || fc >= map.width || fr < 0 || fr >= map.height) continue
+        next[`${fc},${fr}`] = tile
+      }
+      return next
+    })
+    setIsDirty(true)
+    onToast('Image stamped to map', 'success')
+  }, [onToast])
+
   // ─── Render ─────────────────────────────────────────────────────────────────
 
-  const activeTileColor = getActiveTileColor()
+  // Sync refs during render so rAF callbacks and event handlers always see current values
+  tilesRef.current = tiles
+  hoveredRef.current = hoveredTile
+  zoomRef.current = zoom
+  offsetRef.current = offset
+  mapRef.current = currentMap
+  brushSizeRef.current = brushSize
+  activeTileColorRef.current = activeTileColor
 
   return (
     <div className="map-editor-layout">
@@ -774,21 +1159,29 @@ export function MapEditor() {
               className={`hud-btn${tool === t ? ' active' : ''}`}
               onClick={() => setTool(t)}
             >
-              {t === 'paint' ? '✏ PAINT' : t === 'erase' ? '⌫ ERASE' : '⬛ FILL'}
+              {t === 'paint' ? <><Pencil size={12} /> PAINT</> : t === 'erase' ? <><Eraser size={12} /> ERASE</> : <><PaintBucket size={12} /> FILL</>}
             </button>
           ))}
 
           <span className="hud-zoom-sep" />
 
           {/* Map management */}
-          <button className="hud-btn hud-btn-new-base" onClick={() => setShowNewMap(true)}>&#x2b; NEW</button>
-          <button className="hud-btn" onClick={() => setShowLoadMap(true)}>&#x25bc; LOAD</button>
+          <button className="hud-btn hud-btn-new-base" onClick={() => setShowNewMap(true)}><Plus size={12} /> NEW</button>
+          <button className="hud-btn" onClick={() => setShowLoadMap(true)}><FolderOpen size={12} /> LOAD</button>
+          <button
+            className="hud-btn"
+            onClick={() => setShowRenameMap(true)}
+            disabled={!currentMap}
+            title="Rename current map"
+          >
+            &#x270e; RENAME
+          </button>
           <button
             className="hud-btn"
             onClick={handleSave}
             disabled={!currentMap || !isDirty || isSaving}
           >
-            {isSaving ? '◌ SAVING...' : '&#x25ce; SAVE'}
+            <Save size={12} /> {isSaving ? 'SAVING...' : 'SAVE'}
           </button>
           <button
             className="hud-btn"
@@ -796,15 +1189,23 @@ export function MapEditor() {
             disabled={!currentMap}
             title="Clear all tiles"
           >
-            &#x2715; CLEAR
+            <Trash2 size={12} /> CLEAR
+          </button>
+          <button
+            className="hud-btn"
+            onClick={() => setShowStampImage(true)}
+            disabled={!currentMap}
+            title="Stamp image to map"
+          >
+            <Stamp size={12} /> STAMP
           </button>
 
           <span className="hud-zoom-sep" />
 
           {/* Zoom */}
-          <button className="hud-btn hud-zoom-btn" onClick={zoomOut} disabled={zoom <= ZOOM_MIN}>−</button>
+          <button className="hud-btn hud-zoom-btn" onClick={zoomOut} disabled={zoom <= ZOOM_MIN}><ZoomOut size={12} /></button>
           <span className="hud-zoom-level" onClick={zoomReset} title="Reset zoom">{Math.round(zoom * 100)}%</span>
-          <button className="hud-btn hud-zoom-btn" onClick={zoomIn} disabled={zoom >= ZOOM_MAX}>+</button>
+          <button className="hud-btn hud-zoom-btn" onClick={zoomIn} disabled={zoom >= ZOOM_MAX}><ZoomIn size={12} /></button>
         </div>
       </div>
 
@@ -841,6 +1242,21 @@ export function MapEditor() {
               <span className="color-hex-label">{customColor.toUpperCase()}</span>
             </div>
           )}
+
+          <div className="palette-divider" />
+          <div className="palette-section-title">BRUSH SIZE</div>
+          <div className="palette-brush-size">
+            {[1, 2, 3, 4, 5].map(size => (
+              <button
+                key={size}
+                className={`brush-size-btn${brushSize === size ? ' active' : ''}`}
+                onClick={() => setBrushSize(size)}
+                title={`${size * 2 - 1}×${size * 2 - 1} brush`}
+              >
+                {size}
+              </button>
+            ))}
+          </div>
 
           <div className="palette-divider" />
           <div className="palette-section-title">ACTIVE</div>
@@ -897,6 +1313,23 @@ export function MapEditor() {
           onLoad={handleLoadMap}
           onDelete={handleMapDeleted}
           onClose={() => setShowLoadMap(false)}
+        />
+      )}
+      {showRenameMap && currentMap && (
+        <RenameMapDialog
+          currentName={currentMap.name}
+          onClose={() => setShowRenameMap(false)}
+          onRename={handleRenameDialog}
+        />
+      )}
+      {showStampImage && currentMap && (
+        <StampImageDialog
+          mapWidth={currentMap.width}
+          mapHeight={currentMap.height}
+          customColor={customColor}
+          onClose={() => setShowStampImage(false)}
+          onStamp={handleStampImage}
+          onToast={onToast}
         />
       )}
     </div>

@@ -1,19 +1,104 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import type { DashboardEntry, GHPR, GHIssue, Branch, WorkflowRun, RepoMeta } from '../types'
+import { getPROrigin } from '../types'
 import type { ModalState } from './ActionModal'
 import { CloseIcon, LinkIcon, LabelIcon, CommentIcon, RefreshIcon, ExternalLinkIcon, AssigneeIcon } from './Icons'
 import { api } from '../api'
+import { BranchBuilding, getBranchState } from './BranchBuilding'
+
+// ── Canvas color utilities ────────────────────────────────────────────────────
+
+function hexToRgb(hex: string): [number, number, number] {
+  const clean = hex.replace('#', '')
+  const full = clean.length === 3
+    ? clean.split('').map(c => c + c).join('')
+    : clean
+  const n = parseInt(full, 16)
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255]
+}
+
+// ── ColorizedBuilding: canvas-based chroma-key color replacement ──────────────
+// Green pixels (G dominant, high saturation) are replaced with the repo color
+// while preserving the original luminance so shading/depth is maintained.
+
+interface ColorizedBuildingProps {
+  src: string
+  fallback?: string
+  width: number
+  height: number
+  color: string
+}
+
+function ColorizedBuilding({ src, fallback = src, width, height, color }: ColorizedBuildingProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d', { willReadFrequently: true })
+    if (!ctx) return
+
+    const dpr = window.devicePixelRatio || 1
+    const pw = width * dpr
+    const ph = height * dpr
+
+    canvas.width = pw
+    canvas.height = ph
+    ctx.scale(dpr, dpr)
+
+    const applyColorReplacement = (source: string) => {
+      const img = new Image()
+      img.onload = () => {
+        ctx.clearRect(0, 0, width, height)
+        ctx.drawImage(img, 0, 0, width, height)
+
+        const imageData = ctx.getImageData(0, 0, pw, ph)
+        const d = imageData.data
+        const [rr, rg, rb] = hexToRgb(color)
+
+        for (let i = 0; i < d.length; i += 4) {
+          const r = d[i], g = d[i + 1], b = d[i + 2], a = d[i + 3]
+          if (a === 0) continue
+          // Detect chroma-key green: green channel dominant with high saturation
+          if (g > 100 && g > r * 1.4 && g > b * 1.4) {
+            // Preserve relative luminance so shading / depth is maintained
+            const lum = g / 255
+            d[i]     = Math.round(rr * lum)
+            d[i + 1] = Math.round(rg * lum)
+            d[i + 2] = Math.round(rb * lum)
+          }
+        }
+
+        ctx.putImageData(imageData, 0, 0)
+      }
+      img.onerror = () => {
+        // Fallback: draw the original building without color replacement
+        if (source !== fallback) applyColorReplacement(fallback)
+      }
+      img.src = source
+    }
+
+    applyColorReplacement(src)
+  }, [src, fallback, color, width, height])
+
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{ display: 'block', width, height }}
+    />
+  )
+}
 
 // ── Isometric building PNG components ─────────────────────────────────────────
 
-function IsoBaseBuilding() {
+function IsoBaseBuilding({ color }: { color: string }) {
   return (
-    <img
-      src="/buildings/repository_kommando.png"
-      width="120"
-      height="120"
-      style={{ display: 'block', imageRendering: 'pixelated' }}
-      draggable={false}
+    <ColorizedBuilding
+      src="/buildings/kommando_chromakey.png"
+      fallback="/buildings/repository_kommando.png"
+      width={120}
+      height={120}
+      color={color}
     />
   )
 }
@@ -52,6 +137,13 @@ const PR_BUILDING_OFFSET_Y = -5
 const PR_BUILDING_COL_WIDTH = 80
 const PR_BUILDING_ROW_HEIGHT = 100
 const MAX_PR_BUILDINGS = 8
+
+const BRANCH_BUILDING_OFFSET_X = -224
+const BRANCH_BUILDING_OFFSET_Y = 0
+const BRANCH_BUILDING_COL_WIDTH = 54
+const BRANCH_BUILDING_ROW_HEIGHT = 68
+const BRANCH_BUILDING_COLS = 4
+const MAX_BRANCH_BUILDINGS = 12
 
 export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, onConstruct, onStartRelocate, onRefreshRepo, onToast, onModalOpen }: Props) {
   const { repo, data } = entry
@@ -101,6 +193,15 @@ export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, on
   }, [isRelocateMode])
 
   const visiblePRs = data.prs.slice(0, MAX_PR_BUILDINGS)
+
+  // Branch buildings: exclude default branch, sort stale first, cap at MAX_BRANCH_BUILDINGS
+  const nonDefaultBranches = (data.branches ?? []).filter(b => b.name !== (data.defaultBranch ?? 'main'))
+  const sortedBranches = [...nonDefaultBranches].sort((a, b) => {
+    const stateOrder = { 'very-stale': 0, 'stale': 1, 'active': 2 }
+    return stateOrder[getBranchState(a.committedDate)] - stateOrder[getBranchState(b.committedDate)]
+  })
+  const visibleBranches = sortedBranches.slice(0, MAX_BRANCH_BUILDINGS)
+  const extraBranches = sortedBranches.length - visibleBranches.length
 
   return (
     <>
@@ -172,9 +273,9 @@ export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, on
           )}
         </div>
 
-        {/* Building graphic — isometric PNG */}
+        {/* Building graphic — isometric PNG with repo-color overlay */}
         <div className="base-building">
-          <IsoBaseBuilding />
+          <IsoBaseBuilding color={repo.color || '#00ff88'} />
         </div>
 
         {/* Floating HUD toolbar — appears on hover */}
@@ -208,6 +309,35 @@ export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, on
           )}
         </div>
       </div>
+
+      {/* Branch buildings — 4-column grid to the left of the base, right-aligned (fills toward the base) */}
+      {visibleBranches.map((branch, i) => {
+        const col = BRANCH_BUILDING_COLS - 1 - (i % BRANCH_BUILDING_COLS)
+        const row = Math.floor(i / BRANCH_BUILDING_COLS)
+        return (
+          <BranchBuilding
+            key={branch.name}
+            branch={branch}
+            position={{
+              x: position.x + BRANCH_BUILDING_OFFSET_X + col * BRANCH_BUILDING_COL_WIDTH,
+              y: position.y + BRANCH_BUILDING_OFFSET_Y + row * BRANCH_BUILDING_ROW_HEIGHT,
+            }}
+            repoFullName={repo.fullName}
+            defaultBranch={data.defaultBranch ?? 'main'}
+          />
+        )
+      })}
+      {extraBranches > 0 && (
+        <div
+          className="branch-overflow-label"
+          style={{
+            left: position.x + BRANCH_BUILDING_OFFSET_X - 20,
+            top: position.y + BRANCH_BUILDING_OFFSET_Y + Math.floor((visibleBranches.length - 1) / BRANCH_BUILDING_COLS) * BRANCH_BUILDING_ROW_HEIGHT + 10,
+          }}
+        >
+          +{extraBranches}
+        </div>
+      )}
 
       {/* Floating detail panel */}
       {showDetail && !isRelocateMode && (
@@ -378,7 +508,7 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
               <div className="bdp-item-left">
                 <span className={`action-status-dot ${run.status === 'in_progress' ? 'spinning-process' : ''}`} title={run.status}>⚙</span>
                 <span className="bdp-text-btn" style={{ cursor: 'default' }}>{run.workflowName}</span>
-                <span className="bdp-branch-date">{run.headBranch}</span>
+                <span className="bdp-branch-date">{run.displayTitle || run.headBranch}</span>
               </div>
               <div className="bdp-item-right">
                 <a
@@ -677,6 +807,7 @@ function PRBuilding({ pr, position, repo, onModalOpen }: {
   const isApproved = pr.reviewDecision === 'APPROVED'
   const isReviewRequired = pr.reviewDecision === 'REVIEW_REQUIRED'
 
+  const isExternal = getPROrigin(pr) === 'external'
   const prColor = isConflict || isChangesRequested
     ? 'var(--crt-red)'
     : isApproved
@@ -685,6 +816,8 @@ function PRBuilding({ pr, position, repo, onModalOpen }: {
     ? 'var(--crt-amber)'
     : pr.isDraft
     ? 'var(--chrome-silver)'
+    : isExternal
+    ? 'var(--blue)'
     : repo.color
 
   const statusLabel = pr.isDraft ? 'DRAFT'
@@ -692,6 +825,7 @@ function PRBuilding({ pr, position, repo, onModalOpen }: {
     : isChangesRequested ? 'CHANGES'
     : isApproved ? 'APPROVED'
     : isReviewRequired ? 'REVIEW'
+    : isExternal ? 'EXT'
     : 'OPEN'
 
   const shortTitle = pr.title.length > 14 ? pr.title.slice(0, 12) + '…' : pr.title

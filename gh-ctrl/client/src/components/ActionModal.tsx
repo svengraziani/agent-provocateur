@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import type { GHLabel, IssueDetail, PRDetail } from '../types'
+import { getPROrigin } from '../types'
 import { api } from '../api'
 import { MarkdownContent } from './MarkdownContent'
 import { VoiceButton } from './VoiceButton'
@@ -366,7 +367,7 @@ function CreatePRForm({ state, onClose, onSuccess, onError }: {
         if (!state.base) setBase(defaultBranch)
         setCollaborators(collabs)
       })
-      .catch((err) => onError(`Failed to load data: ${err.message}`))
+      .catch((err) => onError(`Failed to load branches: ${err.message}`))
       .finally(() => setLoading(false))
   }, [state.owner, state.repoName, state.base])
 
@@ -391,7 +392,6 @@ function CreatePRForm({ state, onClose, onSuccess, onError }: {
         base,
         title: title.trim(),
         prBody: prBody.trim() || undefined,
-        assignees: selectedAssignees.size > 0 ? [...selectedAssignees] : undefined,
       })
       onSuccess(`PR created: ${result.url || `${effectiveHead} → ${base}`}`)
       onClose()
@@ -497,6 +497,7 @@ function CreatePRForm({ state, onClose, onSuccess, onError }: {
           </div>
         </div>
       )}
+
 
       <div className="modal-actions">
         <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
@@ -874,6 +875,9 @@ function PRDetailView({ state, onClose, onError, onTransition }: {
             <h3 className="issue-detail-title">{pr.title}</h3>
             <div className="issue-detail-meta">
               <span className="issue-meta-author">opened by <strong>{pr.author.login}</strong></span>
+              {getPROrigin(pr) === 'external' && (
+                <span className="badge badge-external" title={`Author association: ${pr.authorAssociation ?? 'unknown'}`}>External Contributor</span>
+              )}
               <span className="issue-meta-date">on {formatDate(pr.createdAt)}</span>
               <span>{pr.headRefName} → {pr.baseRefName}</span>
               {pr.isDraft && <span>· Draft</span>}

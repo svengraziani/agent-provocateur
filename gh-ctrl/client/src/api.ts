@@ -1,4 +1,4 @@
-import type { Repo, DashboardEntry, RepoData, GHLabel, BranchesData, IssueDetail, PRDetail, GameMap, RepoMeta } from './types'
+import type { Repo, DashboardEntry, RepoData, GHLabel, BranchesData, IssueDetail, PRDetail, GameMap, RepoMeta, FeedData } from './types'
 
 const BASE = '/api'
 
@@ -61,6 +61,10 @@ export const api = {
 
   getBranches: (owner: string, name: string) =>
     request<BranchesData>(`/github/branches/${owner}/${name}`),
+
+  getBranchCompare: (owner: string, repoName: string, branch: string, base: string) =>
+    request<{ ahead: number; behind: number }>(`/github/branch-compare/${owner}/${repoName}/${encodeURIComponent(branch)}?base=${encodeURIComponent(base)}`),
+
 
   getRepoMeta: (owner: string, name: string) =>
     request<RepoMeta>(`/github/meta/${owner}/${name}`),
@@ -137,6 +141,7 @@ export const api = {
 
   getCollaborators: (owner: string, name: string) =>
     request<{ login: string }[]>(`/github/collaborators/${owner}/${name}`),
+
 
   createPR: (params: {
     fullName: string
@@ -230,6 +235,16 @@ export const api = {
       body: JSON.stringify(params),
     }),
 
+  getUserRepos: (params: { page?: number; per_page?: number; search?: string }) => {
+    const qs = new URLSearchParams()
+    if (params.page) qs.set('page', String(params.page))
+    if (params.per_page) qs.set('per_page', String(params.per_page))
+    if (params.search) qs.set('search', params.search)
+    return request<{ repos: { name: string; fullName: string; description: string | null; url: string; isPrivate: boolean }[]; page: number; perPage: number; total: number | null; truncated: boolean; ghAvailable: boolean }>(`/github/user-repos?${qs}`)
+  },
+
+  getVersion: () => request<{ version: string }>('/version'),
+
   listMaps: () => request<GameMap[]>('/maps'),
 
   createMap: (params: { name: string; width: number; height: number }) =>
@@ -248,4 +263,6 @@ export const api = {
 
   deleteMap: (id: number) =>
     request<{ ok: boolean }>(`/maps/${id}`, { method: 'DELETE' }),
+
+  getFeed: () => request<FeedData>('/github/feed'),
 }

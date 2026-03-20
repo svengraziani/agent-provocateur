@@ -8,6 +8,14 @@ export interface Repo {
   createdAt: string | number | null
 }
 
+export type AuthorAssociation = 'OWNER' | 'MEMBER' | 'COLLABORATOR' | 'CONTRIBUTOR' | 'FIRST_TIME_CONTRIBUTOR' | 'FIRST_TIMER' | 'NONE'
+export type PROrigin = 'internal' | 'external'
+
+export function getPROrigin(pr: { authorAssociation?: AuthorAssociation }): PROrigin {
+  const internal: AuthorAssociation[] = ['OWNER', 'MEMBER', 'COLLABORATOR']
+  return pr.authorAssociation && internal.includes(pr.authorAssociation) ? 'internal' : 'external'
+}
+
 export interface GHPR {
   number: number
   title: string
@@ -21,6 +29,7 @@ export interface GHPR {
   labels: { name: string; color: string }[]
   isDraft: boolean
   assignees: { login: string }[]
+  authorAssociation?: AuthorAssociation
   previewUrl?: string | null
 }
 
@@ -67,6 +76,22 @@ export interface WorkflowRun {
   status: 'in_progress' | 'queued' | 'waiting'
   headBranch: string
   workflowName: string
+  displayTitle?: string
+  claudeIssueNumber?: number
+}
+
+export interface ClaudeIssuePRInfo {
+  head: string
+  base: string
+  title: string
+  body: string
+}
+
+export interface ClaudeIssuePRInfo {
+  head: string
+  base: string
+  title: string
+  body: string
 }
 
 export interface RepoData {
@@ -78,8 +103,10 @@ export interface RepoData {
   needsReview: GHPR[]
   claudeIssues: GHIssue[]
   activeClaudeIssues: number[]
-  claudeIssueBranches: Record<number, string>
+  claudeIssuePRLinks: Record<number, ClaudeIssuePRInfo>
   runningWorkflows: WorkflowRun[]
+  branches: Branch[]
+  defaultBranch: string
   error: string | null
 }
 
@@ -103,6 +130,7 @@ export interface PRDetail {
   headRefName: string
   baseRefName: string
   isDraft: boolean
+  authorAssociation?: AuthorAssociation
   comments: { author: { login: string }; body: string; createdAt: string }[]
 }
 
@@ -117,6 +145,49 @@ export interface IssueDetail {
   url: string
   createdAt: string
   comments: { author: { login: string }; body: string; createdAt: string }[]
+}
+
+export interface RepoMetaLanguage {
+  name: string
+  color: string
+  percentage: number
+}
+
+export interface RepoMetaContributor {
+  login: string
+  avatarUrl: string
+  contributions: number
+}
+
+export interface RepoMeta {
+  stars: number
+  forks: number
+  watchers: number
+  primaryLanguage: { name: string; color: string } | null
+  languages: RepoMetaLanguage[]
+  topics: string[]
+  contributors: RepoMetaContributor[]
+  commitWeeks: number[] // last 26 weeks of commit counts
+  createdAt: string
+  pushedAt: string
+}
+
+export interface FeedItem {
+  type: 'issue' | 'pr'
+  feedCategory: 'mention' | 'issue' | 'pr'
+  number: number
+  title: string
+  url: string
+  repo: string
+  author: string
+  updatedAt: string
+  labels: { name: string; color: string }[]
+  isDraft?: boolean
+  state?: string
+}
+
+export interface FeedData {
+  mentions: FeedItem[]
 }
 
 export interface MapTile {

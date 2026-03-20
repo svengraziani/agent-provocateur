@@ -1,5 +1,6 @@
 {
   "name": "gh-ctrl",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "dev": "concurrently \"bun run dev:server\" \"bun run dev:client\"",
@@ -7,12 +8,16 @@
     "dev:client": "cd client && bun run dev",
     "build": "cd client && bun run build",
     "start": "bun src/index.ts",
-    "test:unit": "bun test"
+    "test:unit": "bun test",
+    "version:patch": "node scripts/bump-version.js patch",
+    "version:minor": "node scripts/bump-version.js minor",
+    "version:major": "node scripts/bump-version.js major"
   },
   "dependencies": {
     "concurrently": "^8.2.0",
     "drizzle-orm": "^0.31.0",
     "hono": "^4.4.0",
+    "lucide-react": "^0.577.0",
     "react-router-dom": "^7.13.1",
     "zustand": "^5.0.12"
   },

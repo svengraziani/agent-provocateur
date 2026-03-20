@@ -100,7 +100,7 @@ function parseGitHubComparePRLink(urlStr: string): ClaudeIssuePRInfo | null {
 const PR_LINKS_CACHE_TTL_MS = 30_000
 const prLinksCache = new Map<string, { data: Record<number, ClaudeIssuePRInfo>; expiresAt: number }>()
 
-function fetchClaudeIssuePRLinks(fullName: string, issueNumbers: number[], existingPrHeads: Set<string>): Record<number, ClaudeIssuePRInfo> {
+async function fetchClaudeIssuePRLinks(fullName: string, issueNumbers: number[], existingPrHeads: Set<string>): Promise<Record<number, ClaudeIssuePRInfo>> {
   if (issueNumbers.length === 0) return {}
 
   const cached = prLinksCache.get(fullName)
@@ -108,7 +108,7 @@ function fetchClaudeIssuePRLinks(fullName: string, issueNumbers: number[], exist
 
   const result: Record<number, ClaudeIssuePRInfo> = {}
   for (const issueNumber of issueNumbers) {
-    const res = gh(['issue', 'view', String(issueNumber), '--repo', fullName, '--json', 'comments'])
+    const res = await gh(['issue', 'view', String(issueNumber), '--repo', fullName, '--json', 'comments'])
     if (res.error || !Array.isArray(res.data?.comments)) continue
     const comments: { body: string }[] = res.data.comments
     for (const comment of [...comments].reverse()) {
@@ -129,6 +129,8 @@ interface WorkflowRun {
   status: 'in_progress' | 'queued' | 'waiting'
   headBranch: string
   workflowName: string
+  displayTitle?: string
+  claudeIssueNumber?: number
 }
 
 interface RunningWorkflowsResult {
@@ -139,7 +141,7 @@ interface RunningWorkflowsResult {
 async function fetchRunningWorkflows(fullName: string): Promise<RunningWorkflowsResult> {
   const result = await gh([
     'run', 'list', '--repo', fullName,
-    '--json', 'status,headBranch,databaseId,name,workflowName',
+    '--json', 'status,headBranch,databaseId,name,workflowName,displayTitle',
     '--limit', '30',
   ])
   if (result.error || !result.data) return { activeClaudeIssues: [], runningWorkflows: [] }
@@ -150,20 +152,61 @@ async function fetchRunningWorkflows(fullName: string): Promise<RunningWorkflows
   for (const run of result.data) {
     const status = run.status as string
     if (status === 'in_progress' || status === 'queued' || status === 'waiting') {
+      const match = run.headBranch?.match(CLAUDE_BRANCH_RE)
+      const claudeIssueNumber = match ? Number(match[1]) : undefined
+      if (claudeIssueNumber !== undefined) activeIssues.add(claudeIssueNumber)
       runningWorkflows.push({
         databaseId: run.databaseId,
         name: run.name || '',
         status: status as WorkflowRun['status'],
         headBranch: run.headBranch || '',
         workflowName: run.workflowName || run.name || '',
+        ...(run.displayTitle ? { displayTitle: run.displayTitle } : {}),
+        ...(claudeIssueNumber !== undefined ? { claudeIssueNumber } : {}),
       })
-      const match = run.headBranch?.match(CLAUDE_BRANCH_RE)
-      if (match) activeIssues.add(Number(match[1]))
     }
   }
 
   return { activeClaudeIssues: Array.from(activeIssues), runningWorkflows }
 }
+
+async function fetchRepoBranches(fullName: string): Promise<{ branches: { name: string; committedDate: string }[]; defaultBranch: string }> {
+  const [owner, name] = fullName.split('/')
+  const graphqlQuery = `{
+    repository(owner: "${owner}", name: "${name}") {
+      defaultBranchRef { name }
+      refs(refPrefix: "refs/heads/", first: 100) {
+        nodes {
+          name
+          target {
+            ... on Commit {
+              committedDate
+            }
+          }
+        }
+      }
+    }
+  }`
+  const result = await gh(['api', 'graphql', '-f', `query=${graphqlQuery}`])
+  if (result.error || !result.data?.data?.repository) {
+    return { branches: [], defaultBranch: 'main' }
+  }
+  const repo = result.data.data.repository
+  const defaultBranch: string = repo.defaultBranchRef?.name || 'main'
+  const branches = (repo.refs?.nodes || [])
+    .map((node: any) => ({
+      name: node.name,
+      committedDate: node.target?.committedDate || '',
+    }))
+    .sort((a: any, b: any) => {
+      if (!a.committedDate && !b.committedDate) return 0
+      if (!a.committedDate) return 1
+      if (!b.committedDate) return -1
+      return new Date(b.committedDate).getTime() - new Date(a.committedDate).getTime()
+    })
+  return { branches, defaultBranch }
+}
+
 
 async function fetchRepoData(fullName: string) {
   // PRs and issues are independent — fetch in parallel
@@ -192,6 +235,8 @@ async function fetchRepoData(fullName: string) {
       activeClaudeIssues: [],
       claudeIssuePRLinks: {},
       runningWorkflows: [],
+      branches: [],
+      defaultBranch: 'main',
       error: prResult.error || issueResult.error,
     }
   }
@@ -200,10 +245,11 @@ async function fetchRepoData(fullName: string) {
   const issues = issueResult.data || []
 
   // Netlify URLs depend on prs, but workflows and branches are independent
-  const [previewUrls, { activeClaudeIssues, runningWorkflows }, claudeIssueBranches] = await Promise.all([
+  const [previewUrls, { activeClaudeIssues, runningWorkflows }, claudeIssueBranches, { branches, defaultBranch }] = await Promise.all([
     fetchNetlifyUrls(fullName, prs),
     fetchRunningWorkflows(fullName),
     fetchClaudeIssueBranches(fullName),
+    fetchRepoBranches(fullName),
   ])
 
   const enrichedPrs = prs.map((pr: any) => ({
@@ -224,7 +270,7 @@ async function fetchRepoData(fullName: string) {
   )
 
   const existingPrHeads = new Set<string>(prs.map((pr: any) => pr.headRefName as string))
-  const claudeIssuePRLinks = fetchClaudeIssuePRLinks(fullName, issues.map((i: any) => i.number), existingPrHeads)
+  const claudeIssuePRLinks = await fetchClaudeIssuePRLinks(fullName, claudeIssues.map((i: any) => i.number), existingPrHeads)
 
 
   return {
@@ -247,6 +293,8 @@ async function fetchRepoData(fullName: string) {
     activeClaudeIssues,
     claudeIssuePRLinks,
     runningWorkflows,
+    branches,
+    defaultBranch,
     error: null,
   }
 }
@@ -350,7 +398,8 @@ app.get('/meta/:owner/:name', async (c) => {
   }))
 
   // Commit weeks — last 26 weeks (commitActivity gives 52 weeks of {week, total, days[]})
-  const allWeeks: any[] = commitActivityResult.data || []
+  // The API may return a non-array (e.g. {} / null) while GitHub computes stats async
+  const allWeeks: any[] = Array.isArray(commitActivityResult.data) ? commitActivityResult.data : []
   const commitWeeks = allWeeks.slice(-26).map((w: any) => w.total || 0)
 
   return c.json({
@@ -375,16 +424,6 @@ app.get('/labels/:owner/:name', async (c) => {
   const result = await gh(['label', 'list', '--repo', fullName, '--json', 'name,color,description', '--limit', '100'])
   if (result.error) return c.json({ error: result.error }, 500)
   return c.json(result.data || [])
-})
-
-// GET /api/github/collaborators/:owner/:name — list collaborator logins for assignee picker
-app.get('/collaborators/:owner/:name', async (c) => {
-  const owner = c.req.param('owner')
-  const name = c.req.param('name')
-  const result = await gh(['api', `repos/${owner}/${name}/collaborators?per_page=100`])
-  if (result.error) return c.json({ error: result.error }, 500)
-  const collaborators = (result.data || []).map((u: any) => ({ login: u.login }))
-  return c.json(collaborators)
 })
 
 // GET /api/github/branches/:owner/:name — list branches for a repo, sorted by commit date desc
@@ -428,6 +467,22 @@ app.get('/branches/:owner/:name', async (c) => {
     })
 
   return c.json({ branches, defaultBranch })
+})
+
+// GET /api/github/branch-compare/:owner/:name/:branch — ahead/behind vs default branch
+app.get('/branch-compare/:owner/:name/:branch', async (c) => {
+  const owner = c.req.param('owner')
+  const name = c.req.param('name')
+  const branch = decodeURIComponent(c.req.param('branch'))
+  const base = c.req.query('base') || 'main'
+
+  const result = await gh(['api', `repos/${owner}/${name}/compare/${base}...${branch}`])
+  if (result.error) return c.json({ error: result.error }, 500)
+
+  return c.json({
+    ahead: result.data?.ahead_by ?? 0,
+    behind: result.data?.behind_by ?? 0,
+  })
 })
 
 // POST /api/github/trigger-claude — post @claude comment
@@ -745,6 +800,17 @@ app.post('/create-repo', async (c) => {
   }
 })
 
+// GET /api/github/collaborators/:owner/:name — list repo collaborators
+app.get('/collaborators/:owner/:name', async (c) => {
+  const owner = c.req.param('owner')
+  const name = c.req.param('name')
+  const result = await gh(['api', `repos/${owner}/${name}/collaborators?per_page=100`])
+  if (result.error) return c.json({ error: result.error }, 500)
+  const collaborators = (result.data || []).map((u: any) => ({ login: u.login }))
+  return c.json(collaborators)
+})
+
+
 // POST /api/github/assignee — add an assignee to an issue or PR
 app.post('/assignee', async (c) => {
   const body = await c.req.json()
@@ -810,6 +876,85 @@ app.post('/create-pr', async (c) => {
 
   const url = proc.stdout.toString().trim()
   return c.json({ ok: true, url })
+})
+
+// GET /api/github/user-repos?page=1&per_page=30&search=
+app.get('/user-repos', async (c) => {
+  const page = Math.max(1, parseInt(c.req.query('page') || '1', 10))
+  const perPage = Math.min(100, Math.max(1, parseInt(c.req.query('per_page') || '30', 10)))
+  const search = c.req.query('search')?.trim() || ''
+
+  let result: GHResult
+
+  if (search) {
+    // Fetch a larger batch and filter client-side; includes owned + collaborator repos
+    result = await gh([
+      'api', '/user/repos?affiliation=owner,collaborator,organization_member&per_page=100&sort=pushed',
+    ])
+  } else {
+    // Paginated listing via REST API — includes repos where user is collaborator
+    result = await gh([
+      'api', `/user/repos?affiliation=owner,collaborator,organization_member&per_page=${perPage}&page=${page}&sort=pushed`,
+    ])
+  }
+
+  if (result.error) {
+    // gh CLI not available or not authenticated
+    return c.json({ error: result.error, ghAvailable: false }, 503)
+  }
+
+  let repoList: any[] = result.data || []
+
+  // Normalize field names from GitHub REST API format
+  repoList = repoList.map((r: any) => ({
+    name: r.name,
+    fullName: r.full_name,
+    description: r.description || null,
+    url: r.html_url,
+    isPrivate: r.private ?? false,
+  }))
+
+  // For search, filter by name/description client-side
+  if (search) {
+    const q = search.toLowerCase()
+    repoList = repoList.filter((r) =>
+      r.fullName.toLowerCase().includes(q) ||
+      (r.description && r.description.toLowerCase().includes(q))
+    )
+  }
+
+  const total = search ? repoList.length : null
+  // When searching, we fetch at most 100 repos from the API and filter client-side.
+  // If we got exactly 100 back, the results may be incomplete.
+  const truncated = search ? (result.data || []).length >= 100 : false
+
+  return c.json({ repos: repoList, page, perPage, total, truncated, ghAvailable: true })
+})
+
+// GET /api/github/feed — global feed: @mentions via GitHub search API
+app.get('/feed', async (c) => {
+  const result = await gh(['api', 'search/issues?q=mentions%3A%40me+state%3Aopen&per_page=50'])
+
+  if (result.error) {
+    return c.json({ mentions: [], error: result.error })
+  }
+
+  const items: any[] = result.data?.items ?? []
+  const mentions = items.map((item: any) => ({
+    type: item.pull_request ? 'pr' : 'issue',
+    feedCategory: 'mention',
+    number: item.number,
+    title: item.title,
+    url: item.html_url,
+    repo: (item.repository_url ?? '').replace('https://api.github.com/repos/', ''),
+    author: item.user?.login ?? 'unknown',
+    updatedAt: item.updated_at ?? '',
+    labels: (item.labels ?? []).map((l: any) => ({ name: l.name, color: l.color })),
+    isDraft: item.draft ?? false,
+    state: item.state ?? 'open',
+  }))
+
+  return c.json({ mentions })
 })
 
 export default app

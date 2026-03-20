@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import type { DashboardEntry, GHPR, GHIssue, Branch, ClaudeIssuePRInfo } from '../types'
+import type { DashboardEntry, GHPR, GHIssue, Branch, WorkflowRun, ClaudeIssuePRInfo } from '../types'
+import { getPROrigin } from '../types'
 import { api } from '../api'
 import { ActionModal } from './ActionModal'
 import type { ModalState } from './ActionModal'
@@ -137,6 +138,49 @@ export function RepoCard({ entry }: Props) {
             </div>
           </div>
 
+          {data.runningWorkflows.length > 0 && (
+            <div className="card-section">
+              <div className="card-section-title running-actions">
+                Running Actions ({data.runningWorkflows.length})
+              </div>
+              {data.runningWorkflows.map((run: WorkflowRun) => (
+                <div key={run.databaseId} className="list-item">
+                  <div className="list-item-left">
+                    <span className="claude-active-indicator spinning" title={run.status}>
+                      <RefreshIcon size={12} />
+                    </span>
+                    <span className="list-item-title">{run.workflowName}</span>
+                    <span className="badge badge-running">{run.status.replace('_', ' ')}</span>
+                    {run.claudeIssueNumber !== undefined ? (
+                      <button
+                        className="btn btn-ghost btn-xs item-claude-btn"
+                        onClick={() => openIssueDetail(run.claudeIssueNumber)}
+                        title={`View Issue #${run.claudeIssueNumber}`}
+                      >
+                        Issue #{run.claudeIssueNumber}
+                      </button>
+                    ) : run.displayTitle ? (
+                      <span className="branch-ref" title={run.displayTitle}>{run.displayTitle}</span>
+                    ) : (
+                      <span className="branch-ref" title={run.headBranch}>{run.headBranch}</span>
+                    )}
+                  </div>
+                  <div className="list-item-right">
+                    <a
+                      href={`https://github.com/${repo.fullName}/actions/runs/${run.databaseId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn btn-ghost btn-xs item-claude-btn"
+                      title="View action run on GitHub"
+                    >
+                      <LinkIcon size={11} /> View run
+                    </a>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
           {data.conflicts.length > 0 && (
             <div className="card-section">
               <div className="card-section-title conflicts">Conflicts</div>
@@ -149,6 +193,7 @@ export function RepoCard({ entry }: Props) {
                   assignees={pr.assignees}
                   badge={<span className="badge badge-conflict">Conflict</span>}
                   previewUrl={pr.previewUrl}
+                  prOrigin={getPROrigin(pr)}
                   onClaude={() => openTriggerClaude(pr.number, 'pr')}
                   onComment={() => openComment(pr.number, 'pr')}
                   onLabel={() => openLabel(pr.number, 'pr', pr.labels.map((l) => l.name))}
@@ -171,6 +216,7 @@ export function RepoCard({ entry }: Props) {
                   assignees={pr.assignees}
                   badge={<span className="badge badge-review">Review</span>}
                   previewUrl={pr.previewUrl}
+                  prOrigin={getPROrigin(pr)}
                   onClaude={() => openTriggerClaude(pr.number, 'pr')}
                   onComment={() => openComment(pr.number, 'pr')}
                   onLabel={() => openLabel(pr.number, 'pr', pr.labels.map((l) => l.name))}
@@ -222,6 +268,7 @@ export function RepoCard({ entry }: Props) {
                   assignees={pr.assignees}
                   badge={pr.isDraft ? <span className="badge badge-draft">Draft</span> : pr.reviewDecision === 'APPROVED' ? <span className="badge badge-approved">Approved</span> : undefined}
                   previewUrl={pr.previewUrl}
+                  prOrigin={getPROrigin(pr)}
                   onClaude={() => openTriggerClaude(pr.number, 'pr')}
                   onComment={() => openComment(pr.number, 'pr')}
                   onLabel={() => openLabel(pr.number, 'pr', pr.labels.map((l) => l.name))}
@@ -317,7 +364,7 @@ function labelTextColor(hex: string): string {
 }
 
 function ItemRow({
-  number, title, labels, assignees, badge, previewUrl, isClaudeActive, isUntouched, onClaude, onComment, onLabel, onAssignee, onDetail, onCreatePR,
+  number, title, labels, assignees, badge, previewUrl, isClaudeActive, isUntouched, prOrigin, onClaude, onComment, onLabel, onAssignee, onDetail, onCreatePR,
 }: {
   number: number
   title: string
@@ -327,6 +374,7 @@ function ItemRow({
   previewUrl?: string | null
   isClaudeActive?: boolean
   isUntouched?: boolean
+  prOrigin?: 'internal' | 'external'
   onClaude: () => void
   onComment: () => void
   onLabel: () => void
@@ -334,8 +382,9 @@ function ItemRow({
   onDetail?: () => void
   onCreatePR?: () => void
 }) {
+  const originClass = prOrigin ? ` pr-${prOrigin}` : ''
   return (
-    <div className={`list-item${isUntouched ? ' untouched-issue' : ''}`}>
+    <div className={`list-item${isUntouched ? ' untouched-issue' : ''}${originClass}`}>
       <div className="list-item-left">
         <span className="list-item-number">#{number}</span>
         {isClaudeActive && (
@@ -375,6 +424,9 @@ function ItemRow({
         )}
       </div>
       <div className="list-item-right">
+        {prOrigin === 'external' && (
+          <span className="badge badge-external" title="External contributor">EXT</span>
+        )}
         {badge}
         {previewUrl && (
           <a

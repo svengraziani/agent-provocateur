@@ -6,3 +6,6 @@ client/node_modules/
 *.db-wal
 *.db-shm
 bun.lockb
+
+# macOS
+.DS_Store
