@@ -209,6 +209,32 @@ export interface MapTile {
   color: string
 }
 
+export interface ClawComConfig {
+  clawType: 'openclaw' | 'nanoclaw'
+  host: string
+  configured: boolean
+}
+
+export interface Building {
+  id: number
+  type: string
+  name: string
+  color: string
+  posX: number
+  posY: number
+  config: string // JSON-encoded ClawComConfig or {}
+  createdAt: string | number | null
+  updatedAt: string | number | null
+}
+
+export interface ClawComMessage {
+  id: number
+  buildingId: number
+  direction: 'in' | 'out'
+  content: string
+  createdAt: string | number | null
+}
+
 export interface GameMap {
   id: number
   name: string

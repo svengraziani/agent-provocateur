@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Repo, DashboardEntry, RepoData, GameMap } from './types'
+import type { Repo, DashboardEntry, RepoData, GameMap, Building } from './types'
 import { api } from './api'
 
 type ToastType = 'success' | 'error' | 'info'
@@ -29,6 +29,7 @@ interface AppStore {
   refreshInterval: number
   toasts: Toast[]
   maps: GameMap[]
+  buildings: Building[]
 
   // Toast
   addToast: (message: string, type?: ToastType) => void
@@ -43,6 +44,10 @@ interface AppStore {
   loadMaps: () => Promise<void>
   assignRepoToMap: (mapId: number, repoId: number) => Promise<void>
   unassignRepoFromMap: (mapId: number, repoId: number) => Promise<void>
+  loadBuildings: () => Promise<void>
+  updateBuildingPosition: (id: number, posX: number, posY: number) => Promise<void>
+  updateBuildingColor: (id: number, color: string) => Promise<void>
+  deleteBuilding: (id: number) => Promise<void>
 }
 
 export const useAppStore = create<AppStore>((set, get) => ({
@@ -53,6 +58,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   refreshInterval: getStoredRefreshInterval(),
   toasts: [],
   maps: [],
+  buildings: [],
 
   addToast: (message, type = 'info') => {
     const id = nextToastId++
@@ -150,6 +156,49 @@ export const useAppStore = create<AppStore>((set, get) => ({
       await api.unassignRepoFromMap(mapId, repoId)
     } catch (err: any) {
       get().addToast(`Failed to unassign repo from map: ${err.message}`, 'error')
+      throw err
+    }
+  },
+
+  loadBuildings: async () => {
+    try {
+      const data = await api.listBuildings()
+      set({ buildings: data })
+    } catch (err: any) {
+      get().addToast(`Failed to load buildings: ${err.message}`, 'error')
+    }
+  },
+
+  updateBuildingPosition: async (id: number, posX: number, posY: number) => {
+    try {
+      const updated = await api.updateBuilding(id, { posX, posY })
+      set((state) => ({
+        buildings: state.buildings.map((b) => b.id === id ? { ...b, posX: updated.posX, posY: updated.posY } : b),
+      }))
+    } catch (err: any) {
+      get().addToast(`Failed to update building position: ${err.message}`, 'error')
+    }
+  },
+
+  updateBuildingColor: async (id: number, color: string) => {
+    try {
+      const updated = await api.updateBuilding(id, { color })
+      set((state) => ({
+        buildings: state.buildings.map((b) => b.id === id ? { ...b, color: updated.color } : b),
+      }))
+    } catch (err: any) {
+      get().addToast(`Failed to update building color: ${err.message}`, 'error')
+    }
+  },
+
+  deleteBuilding: async (id: number) => {
+    try {
+      await api.deleteBuilding(id)
+      set((state) => ({
+        buildings: state.buildings.filter((b) => b.id !== id),
+      }))
+    } catch (err: any) {
+      get().addToast(`Failed to delete building: ${err.message}`, 'error')
       throw err
     }
   },
