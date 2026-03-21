@@ -217,4 +217,5 @@ export interface GameMap {
   tiles: string // JSON-encoded Record<string, MapTile> keyed by "col,row"
   createdAt: string | number | null
   updatedAt: string | number | null
+  assignedRepos?: Repo[]
 }

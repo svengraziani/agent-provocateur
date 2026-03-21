@@ -355,6 +355,7 @@ export function BattlefieldView() {
   const [activeMap, setActiveMap] = useState<GameMap | null>(null)
   const [allMaps, setAllMaps] = useState<GameMap[]>([])
   const [showMapSelector, setShowMapSelector] = useState(false)
+  const [activeMapRepoIds, setActiveMapRepoIds] = useState<Set<number> | null>(null)
   const [showFeedPanel, setShowFeedPanel] = useState(false)
   const [branchSiloEntry, setBranchSiloEntry] = useState<DashboardEntry | null>(null)
   const [detailEntry, setDetailEntry] = useState<DashboardEntry | null>(null)
@@ -402,6 +403,17 @@ export function BattlefieldView() {
       api.getMap(savedId).then(setActiveMap).catch(() => saveActiveMapId(null))
     }
   }, [])
+
+  // Load assigned repos whenever activeMap changes
+  useEffect(() => {
+    if (!activeMap) {
+      setActiveMapRepoIds(null)
+      return
+    }
+    api.getMapRepos(activeMap.id)
+      .then((repos) => setActiveMapRepoIds(new Set(repos.map((r) => r.id))))
+      .catch(() => setActiveMapRepoIds(null))
+  }, [activeMap])
 
   // Load all maps when selector opens
   useEffect(() => {
@@ -603,13 +615,18 @@ export function BattlefieldView() {
     setRelocatingStart({ mouseX, mouseY, nodeX: pos.x, nodeY: pos.y })
   }, [positions])
 
-  const totalConflicts = entries.reduce((sum, e) => sum + e.data.stats.conflicts, 0)
-  const totalRunningActions = entries.reduce((sum, e) => sum + (e.data.stats.runningActions ?? 0), 0)
+  // When an active map is selected, filter to only its assigned repos
+  const visibleEntries = activeMapRepoIds === null
+    ? entries
+    : entries.filter((e) => activeMapRepoIds.has(e.repo.id))
+
+  const totalConflicts = visibleEntries.reduce((sum, e) => sum + e.data.stats.conflicts, 0)
+  const totalRunningActions = visibleEntries.reduce((sum, e) => sum + (e.data.stats.runningActions ?? 0), 0)
   const loadedFullNames = new Set(entries.map((e) => e.repo.fullName))
   const pendingRepos = loading ? repos.filter((r) => !loadedFullNames.has(r.fullName)) : []
 
-  // Stale branch counts across all repos
-  const staleBranchStats = entries.reduce((acc, e) => {
+  // Stale branch counts across visible repos
+  const staleBranchStats = visibleEntries.reduce((acc, e) => {
     const defaultBranch = e.data.defaultBranch ?? 'main'
     const nonDefault = (e.data.branches ?? []).filter(b => b.name !== defaultBranch)
     const stale = nonDefault.filter(b => getBranchState(b.committedDate) === 'stale' || getBranchState(b.committedDate) === 'very-stale')
@@ -636,7 +653,7 @@ export function BattlefieldView() {
       <div className="battlefield-hud">
         <div className="hud-brand">&#x25a0; C&amp;C GITAGENTS — TACTICAL COMMAND</div>
         <div className="hud-controls">
-          <span className="hud-stat">BASES: <strong>{entries.length}</strong></span>
+          <span className="hud-stat">BASES: <strong>{visibleEntries.length}</strong>{activeMapRepoIds !== null && entries.length !== visibleEntries.length && <span style={{ opacity: 0.6, fontSize: 10 }}> /{entries.length}</span>}</span>
           {totalConflicts > 0 && (
             <span className="hud-stat hud-alert blink">&#x26a0; CONFLICTS: <strong>{totalConflicts}</strong></span>
           )}
@@ -738,7 +755,7 @@ export function BattlefieldView() {
           </div>
         ))}
 
-        {entries.map((entry) => {
+        {visibleEntries.map((entry) => {
           const pos = positions[entry.repo.id] ?? { x: 0, y: 0 }
           return (
             <BaseNode
@@ -777,8 +794,8 @@ export function BattlefieldView() {
       </div>
 
       {/* Minimap */}
-      {(entries.length > 0 || pendingRepos.length > 0) && (
-        <Minimap entries={entries} positions={positions} offset={offset} zoom={zoom} onJump={setOffset} />
+      {(visibleEntries.length > 0 || pendingRepos.length > 0) && (
+        <Minimap entries={visibleEntries} positions={positions} offset={offset} zoom={zoom} onJump={setOffset} />
       )}
 
       {/* Empty state */}
@@ -786,6 +803,14 @@ export function BattlefieldView() {
         <div className="battlefield-empty">
           <div className="battlefield-empty-title">&#x25a0; NO BASES DETECTED</div>
           <div className="battlefield-empty-sub">Add repositories in the Repositories panel to deploy bases.</div>
+        </div>
+      )}
+
+      {/* Active map with no assigned repos */}
+      {activeMap && activeMapRepoIds !== null && activeMapRepoIds.size === 0 && !loading && entries.length > 0 && (
+        <div className="battlefield-empty">
+          <div className="battlefield-empty-title">&#x25a6; NO BASES ON THIS MAP</div>
+          <div className="battlefield-empty-sub">Assign repositories to &quot;{activeMap.name}&quot; in the Repositories panel.</div>
         </div>
       )}
 
@@ -848,7 +873,7 @@ export function BattlefieldView() {
 
       {/* Intel Feed Panel */}
       <FeedPanel
-        entries={entries}
+        entries={visibleEntries}
         isOpen={showFeedPanel}
         onClose={() => setShowFeedPanel(false)}
       />

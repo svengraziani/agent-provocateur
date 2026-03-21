@@ -19,3 +19,10 @@ export const maps = sqliteTable('maps', {
   createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
 })
+
+export const mapRepos = sqliteTable('map_repos', {
+  id:        integer('id').primaryKey({ autoIncrement: true }),
+  mapId:     integer('map_id').notNull().references(() => maps.id),
+  repoId:    integer('repo_id').notNull().references(() => repos.id),
+  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
+})

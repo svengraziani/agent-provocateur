@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { db } from '../db'
-import { maps } from '../db/schema'
-import { eq } from 'drizzle-orm'
+import { maps, mapRepos, repos } from '../db/schema'
+import { eq, and } from 'drizzle-orm'
 
 const app = new Hono()
 
@@ -67,6 +67,39 @@ app.delete('/:id', async (c) => {
   const id = Number(c.req.param('id'))
   const result = await db.delete(maps).where(eq(maps.id, id)).returning()
   if (result.length === 0) return c.json({ error: 'Map not found' }, 404)
+  return c.json({ ok: true })
+})
+
+// GET /:id/repos — list repos assigned to this map
+app.get('/:id/repos', async (c) => {
+  const id = Number(c.req.param('id'))
+  const map = await db.select().from(maps).where(eq(maps.id, id))
+  if (map.length === 0) return c.json({ error: 'Map not found' }, 404)
+  const result = await db
+    .select({ repo: repos })
+    .from(mapRepos)
+    .innerJoin(repos, eq(mapRepos.repoId, repos.id))
+    .where(eq(mapRepos.mapId, id))
+  return c.json(result.map((r) => r.repo))
+})
+
+// POST /:id/repos/:repoId — assign a repo to a map
+app.post('/:id/repos/:repoId', async (c) => {
+  const mapId = Number(c.req.param('id'))
+  const repoId = Number(c.req.param('repoId'))
+  const map = await db.select().from(maps).where(eq(maps.id, mapId))
+  if (map.length === 0) return c.json({ error: 'Map not found' }, 404)
+  const repo = await db.select().from(repos).where(eq(repos.id, repoId))
+  if (repo.length === 0) return c.json({ error: 'Repo not found' }, 404)
+  await db.insert(mapRepos).values({ mapId, repoId }).onConflictDoNothing()
+  return c.json({ ok: true })
+})
+
+// DELETE /:id/repos/:repoId — unassign a repo from a map
+app.delete('/:id/repos/:repoId', async (c) => {
+  const mapId = Number(c.req.param('id'))
+  const repoId = Number(c.req.param('repoId'))
+  await db.delete(mapRepos).where(and(eq(mapRepos.mapId, mapId), eq(mapRepos.repoId, repoId)))
   return c.json({ ok: true })
 })
 
