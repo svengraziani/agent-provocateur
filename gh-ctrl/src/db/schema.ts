@@ -7,6 +7,7 @@ export const repos = sqliteTable('repos', {
   fullName:    text('full_name').notNull().unique(),
   description: text('description'),
   color:       text('color').default('#00ff88'),
+  baseDesign:  text('base_design').default('default'),
   createdAt:   integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
 })
 

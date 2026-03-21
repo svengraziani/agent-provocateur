@@ -694,7 +694,7 @@ app.get('/pr/:owner/:name/:number', async (c) => {
 // POST /api/github/create-repo — create a new GitHub repository and track it
 app.post('/create-repo', async (c) => {
   const body = await c.req.json()
-  const { name, description, visibility } = body
+  const { name, description, visibility, baseDesign } = body
 
   if (!name) {
     return c.json({ error: 'Missing required field: name' }, 400)
@@ -702,6 +702,11 @@ app.post('/create-repo', async (c) => {
 
   if (visibility !== 'public' && visibility !== 'private') {
     return c.json({ error: 'visibility must be "public" or "private"' }, 400)
+  }
+
+  const VALID_DESIGNS = ['default', 'landing_base', 'api_base', 'frontend_base']
+  if (baseDesign && !VALID_DESIGNS.includes(baseDesign)) {
+    return c.json({ error: 'Invalid baseDesign value' }, 400)
   }
 
   // Get authenticated user to build fullName
@@ -728,6 +733,7 @@ app.post('/create-repo', async (c) => {
       fullName,
       description: description || null,
       color: '#00ff88',
+      baseDesign: baseDesign || 'default',
     }).returning()
 
     return c.json({ ok: true, repo: result[0] }, 201)

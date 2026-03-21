@@ -1,4 +1,4 @@
-import type { Repo, DashboardEntry, RepoData, GHLabel, BranchesData, IssueDetail, PRDetail, GameMap, RepoMeta, FeedData, SetupStatus } from './types'
+import type { Repo, DashboardEntry, RepoData, GHLabel, BranchesData, IssueDetail, PRDetail, GameMap, RepoMeta, FeedData, SetupStatus, BaseDesign } from './types'
 
 const BASE = '/api'
 
@@ -23,7 +23,7 @@ export const api = {
       body: JSON.stringify({ fullName, color }),
     }),
 
-  updateRepo: (id: number, updates: { color?: string; description?: string }) =>
+  updateRepo: (id: number, updates: { color?: string; description?: string; baseDesign?: string }) =>
     request<Repo>(`/repos/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(updates),
@@ -191,6 +191,7 @@ export const api = {
     name: string
     description?: string
     visibility: 'public' | 'private'
+    baseDesign?: BaseDesign
   }) =>
     request<{ ok: boolean; repo: import('./types').Repo }>('/github/create-repo', {
       method: 'POST',

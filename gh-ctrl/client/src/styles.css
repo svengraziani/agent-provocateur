@@ -1822,7 +1822,8 @@ select.input {
   z-index: 10;
 }
 
-.base-node:hover .base-hud {
+.base-node:hover .base-hud,
+.base-hud.base-hud-pinned {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
   pointer-events: auto;
@@ -1903,6 +1904,102 @@ select.input {
 .base-scan-btn:disabled {
   opacity: 0.6;
   cursor: default;
+}
+
+/* Design button */
+.base-design-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: transparent;
+  border: 1px solid rgba(57, 255, 20, 0.4);
+  color: var(--text-2);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 1px;
+  padding: 3px 8px;
+  cursor: pointer;
+  width: 100%;
+  text-align: center;
+  transition: all 0.15s;
+}
+
+.base-design-btn:hover {
+  background: rgba(57, 255, 20, 0.08);
+  color: var(--crt-green);
+}
+
+/* Design picker popup */
+.base-design-picker {
+  position: absolute;
+  top: 0;
+  left: calc(100% + 8px);
+  background: rgba(10, 14, 18, 0.96);
+  border: 1px solid rgba(57, 255, 20, 0.4);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 160px;
+  z-index: 1000;
+}
+
+.bdp-title {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 2px;
+  color: var(--crt-green);
+  text-align: center;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(57, 255, 20, 0.2);
+  margin-bottom: 2px;
+}
+
+.bdp-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  border: 1px solid rgba(57, 255, 20, 0.2);
+  color: var(--text-2);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.5px;
+  padding: 4px 6px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s;
+  width: 100%;
+}
+
+.bdp-option:hover {
+  background: rgba(57, 255, 20, 0.08);
+  border-color: rgba(57, 255, 20, 0.5);
+  color: var(--crt-green);
+}
+
+.bdp-option.bdp-active {
+  border-color: rgba(57, 255, 20, 0.6);
+  color: var(--crt-green);
+}
+
+.bdp-preview {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  flex-shrink: 0;
+}
+
+.bdp-label {
+  flex: 1;
+}
+
+.bdp-check {
+  color: var(--crt-green);
+  font-size: 10px;
 }
 
 /* ---- PR Buildings ---- */
@@ -2954,6 +3051,61 @@ select.input {
   letter-spacing: 0.5px;
   opacity: 0.7;
   text-align: center;
+}
+
+/* Create base design selector */
+.create-base-designs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.create-base-design-btn {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px;
+  background: rgba(0, 255, 136, 0.03);
+  border: 1px solid rgba(0, 255, 136, 0.15);
+  color: #39ff14;
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.15s, background 0.15s;
+  min-width: 90px;
+}
+
+.create-base-design-btn:hover {
+  background: rgba(57, 255, 20, 0.06);
+  border-color: rgba(57, 255, 20, 0.3);
+}
+
+.create-base-design-btn.selected {
+  background: rgba(57, 255, 20, 0.08);
+  border-color: rgba(57, 255, 20, 0.6);
+}
+
+.create-base-design-preview {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+.create-base-design-label {
+  font-size: 9px;
+  letter-spacing: 0.5px;
+  text-align: center;
+  opacity: 0.9;
+}
+
+.create-base-design-check {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  font-size: 10px;
+  color: #39ff14;
 }
 
 /* ============================================================

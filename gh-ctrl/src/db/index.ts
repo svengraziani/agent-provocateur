@@ -12,9 +12,17 @@ sqlite.exec(`
     full_name TEXT NOT NULL UNIQUE,
     description TEXT,
     color TEXT DEFAULT '#00ff88',
+    base_design TEXT DEFAULT 'default',
     created_at INTEGER DEFAULT (unixepoch())
   )
 `)
+
+// Migrate existing databases: add base_design column if it doesn't exist
+try {
+  sqlite.exec(`ALTER TABLE repos ADD COLUMN base_design TEXT DEFAULT 'default'`)
+} catch {
+  // Column already exists — ignore
+}
 
 sqlite.exec(`
   CREATE TABLE IF NOT EXISTS maps (
