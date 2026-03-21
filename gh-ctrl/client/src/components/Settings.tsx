@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import type { Repo } from '../types'
 import { api } from '../api'
 import { useAppStore } from '../store'
+import type { GameMap } from '../types'
 
 const COLORS = ['#39d353', '#58a6ff', '#f0883e', '#f85149', '#bc8cff', '#ffa657', '#ff7b72', '#79c0ff']
 
@@ -22,8 +23,17 @@ export function Settings() {
   const loadDashboard = useAppStore((s) => s.loadDashboard)
   const handleRefreshIntervalChange = useAppStore((s) => s.handleRefreshIntervalChange)
   const updateRepoColor = useAppStore((s) => s.updateRepoColor)
+  const storeMaps = useAppStore((s) => s.maps)
+  const loadMaps = useAppStore((s) => s.loadMaps)
+  const assignRepoToMap = useAppStore((s) => s.assignRepoToMap)
+  const unassignRepoFromMap = useAppStore((s) => s.unassignRepoFromMap)
   const [openColorPicker, setOpenColorPicker] = useState<number | null>(null)
   const popoverRef = useRef<HTMLDivElement>(null)
+
+  // Map assignment state: repoId → Set of assigned mapIds
+  const [repoMapIds, setRepoMapIds] = useState<Record<number, Set<number>>>({})
+  const [openMapPicker, setOpenMapPicker] = useState<number | null>(null)
+  const mapPickerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (openColorPicker === null) return
@@ -35,6 +45,63 @@ export function Settings() {
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
   }, [openColorPicker])
+
+  useEffect(() => {
+    if (openMapPicker === null) return
+    const handleClick = (e: MouseEvent) => {
+      if (mapPickerRef.current && !mapPickerRef.current.contains(e.target as Node)) {
+        setOpenMapPicker(null)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [openMapPicker])
+
+  // Load maps and their repo assignments
+  useEffect(() => {
+    loadMaps()
+  }, [])
+
+  useEffect(() => {
+    if (storeMaps.length === 0 || repos.length === 0) return
+    // Load all map-repo assignments and build repoId → Set<mapId>
+    Promise.all(storeMaps.map((m) => api.getMapRepos(m.id).then((r) => ({ mapId: m.id, repos: r }))))
+      .then((results) => {
+        const mapping: Record<number, Set<number>> = {}
+        for (const { mapId, repos: assignedRepos } of results) {
+          for (const repo of assignedRepos) {
+            if (!mapping[repo.id]) mapping[repo.id] = new Set()
+            mapping[repo.id].add(mapId)
+          }
+        }
+        setRepoMapIds(mapping)
+      })
+      .catch(() => {})
+  }, [storeMaps, repos])
+
+  const handleToggleRepoMap = async (repo: Repo, mapId: number) => {
+    const current = repoMapIds[repo.id] ?? new Set<number>()
+    const isAssigned = current.has(mapId)
+    try {
+      if (isAssigned) {
+        await unassignRepoFromMap(mapId, repo.id)
+        setRepoMapIds((prev) => {
+          const next = new Set(prev[repo.id] ?? [])
+          next.delete(mapId)
+          return { ...prev, [repo.id]: next }
+        })
+      } else {
+        await assignRepoToMap(mapId, repo.id)
+        setRepoMapIds((prev) => {
+          const next = new Set(prev[repo.id] ?? [])
+          next.add(mapId)
+          return { ...prev, [repo.id]: next }
+        })
+      }
+    } catch {
+      // toast already shown by store action
+    }
+  }
 
   const [fullName, setFullName] = useState('')
   const [selectedColor, setSelectedColor] = useState(COLORS[0])
@@ -371,6 +438,77 @@ export function Settings() {
                     )}
                   </div>
                   <span>{repo.fullName}</span>
+                </div>
+                <div className="repo-map-assignment" style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+                  {storeMaps.length > 0 && (repoMapIds[repo.id]?.size ?? 0) === 0 && (
+                    <span className="repo-map-badge repo-map-badge-none">no map</span>
+                  )}
+                  {storeMaps
+                    .filter((m) => repoMapIds[repo.id]?.has(m.id))
+                    .map((m) => (
+                      <span
+                        key={m.id}
+                        className="repo-map-badge repo-map-badge-assigned"
+                        title={`Remove from "${m.name}"`}
+                        onClick={() => handleToggleRepoMap(repo, m.id)}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        &#x25a6; {m.name} ✕
+                      </span>
+                    ))}
+                  {storeMaps.length > 0 && (
+                    <div style={{ position: 'relative' }}>
+                      <button
+                        className="btn btn-ghost btn-sm"
+                        style={{ fontSize: '11px', padding: '2px 6px' }}
+                        title="Assign to map"
+                        onClick={() => setOpenMapPicker(openMapPicker === repo.id ? null : repo.id)}
+                        type="button"
+                      >
+                        + map
+                      </button>
+                      {openMapPicker === repo.id && (
+                        <div ref={mapPickerRef} style={{
+                          position: 'absolute',
+                          top: '100%',
+                          right: 0,
+                          zIndex: 100,
+                          background: 'var(--surface)',
+                          border: '1px solid var(--border)',
+                          borderRadius: '6px',
+                          padding: '4px',
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                          minWidth: '150px',
+                        }}>
+                          {storeMaps.map((m) => {
+                            const assigned = repoMapIds[repo.id]?.has(m.id) ?? false
+                            return (
+                              <div
+                                key={m.id}
+                                onClick={() => handleToggleRepoMap(repo, m.id)}
+                                style={{
+                                  padding: '6px 8px',
+                                  cursor: 'pointer',
+                                  borderRadius: '4px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                  fontSize: '12px',
+                                  color: assigned ? 'var(--green-neon)' : 'var(--text)',
+                                  background: assigned ? 'rgba(0,255,136,0.08)' : 'transparent',
+                                }}
+                                onMouseEnter={(e) => (e.currentTarget.style.background = assigned ? 'rgba(0,255,136,0.15)' : 'var(--surface-hover, rgba(255,255,255,0.05))')}
+                                onMouseLeave={(e) => (e.currentTarget.style.background = assigned ? 'rgba(0,255,136,0.08)' : 'transparent')}
+                              >
+                                <span>{assigned ? '✓' : '○'}</span>
+                                <span>&#x25a6; {m.name}</span>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <button
                   className="btn btn-danger btn-sm"

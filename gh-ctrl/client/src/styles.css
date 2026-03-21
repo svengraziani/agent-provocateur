@@ -587,10 +587,38 @@ a:hover { text-decoration: underline; }
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 8px;
   padding: 12px 16px;
   background: var(--bg-2);
   border: 1px solid var(--border);
   border-radius: 8px;
+}
+
+.repo-map-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-family: var(--font-mono, monospace);
+  border: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.repo-map-badge-none {
+  color: var(--text-muted, #666);
+  background: transparent;
+}
+
+.repo-map-badge-assigned {
+  color: var(--green-neon, #00ff88);
+  background: rgba(0, 255, 136, 0.08);
+  border-color: rgba(0, 255, 136, 0.3);
+}
+
+.repo-map-badge-assigned:hover {
+  background: rgba(0, 255, 136, 0.15);
 }
 
 .repo-list-item-info {

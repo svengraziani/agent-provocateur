@@ -226,6 +226,15 @@ export const api = {
   deleteMap: (id: number) =>
     request<{ ok: boolean }>(`/maps/${id}`, { method: 'DELETE' }),
 
+  getMapRepos: (mapId: number) =>
+    request<Repo[]>(`/maps/${mapId}/repos`),
+
+  assignRepoToMap: (mapId: number, repoId: number) =>
+    request<{ ok: boolean }>(`/maps/${mapId}/repos/${repoId}`, { method: 'POST' }),
+
+  unassignRepoFromMap: (mapId: number, repoId: number) =>
+    request<{ ok: boolean }>(`/maps/${mapId}/repos/${repoId}`, { method: 'DELETE' }),
+
   getFeed: () => request<FeedData>('/github/feed'),
 
   getSetupStatus: () => request<SetupStatus>('/setup/status'),

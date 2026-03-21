@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Repo, DashboardEntry, RepoData } from './types'
+import type { Repo, DashboardEntry, RepoData, GameMap } from './types'
 import { api } from './api'
 
 type ToastType = 'success' | 'error' | 'info'
@@ -28,6 +28,7 @@ interface AppStore {
   lastRefresh: Date | null
   refreshInterval: number
   toasts: Toast[]
+  maps: GameMap[]
 
   // Toast
   addToast: (message: string, type?: ToastType) => void
@@ -39,6 +40,9 @@ interface AppStore {
   loadSingleRepo: (owner: string, name: string) => Promise<void>
   handleRefreshIntervalChange: (ms: number) => void
   updateRepoColor: (id: number, color: string) => Promise<void>
+  loadMaps: () => Promise<void>
+  assignRepoToMap: (mapId: number, repoId: number) => Promise<void>
+  unassignRepoFromMap: (mapId: number, repoId: number) => Promise<void>
 }
 
 export const useAppStore = create<AppStore>((set, get) => ({
@@ -48,6 +52,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   lastRefresh: null,
   refreshInterval: getStoredRefreshInterval(),
   toasts: [],
+  maps: [],
 
   addToast: (message, type = 'info') => {
     const id = nextToastId++
@@ -119,6 +124,33 @@ export const useAppStore = create<AppStore>((set, get) => ({
       }))
     } catch (err: any) {
       get().addToast(`Failed to update color: ${err.message}`, 'error')
+    }
+  },
+
+  loadMaps: async () => {
+    try {
+      const data = await api.listMaps()
+      set({ maps: data })
+    } catch (err: any) {
+      get().addToast(`Failed to load maps: ${err.message}`, 'error')
+    }
+  },
+
+  assignRepoToMap: async (mapId: number, repoId: number) => {
+    try {
+      await api.assignRepoToMap(mapId, repoId)
+    } catch (err: any) {
+      get().addToast(`Failed to assign repo to map: ${err.message}`, 'error')
+      throw err
+    }
+  },
+
+  unassignRepoFromMap: async (mapId: number, repoId: number) => {
+    try {
+      await api.unassignRepoFromMap(mapId, repoId)
+    } catch (err: any) {
+      get().addToast(`Failed to unassign repo from map: ${err.message}`, 'error')
+      throw err
     }
   },
 }))

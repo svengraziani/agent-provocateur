@@ -28,4 +28,14 @@ sqlite.exec(`
   )
 `)
 
+sqlite.exec(`
+  CREATE TABLE IF NOT EXISTS map_repos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    map_id INTEGER NOT NULL REFERENCES maps(id) ON DELETE CASCADE,
+    repo_id INTEGER NOT NULL REFERENCES repos(id) ON DELETE CASCADE,
+    created_at INTEGER DEFAULT (unixepoch()),
+    UNIQUE(map_id, repo_id)
+  )
+`)
+
 export const db = drizzle(sqlite, { schema })
