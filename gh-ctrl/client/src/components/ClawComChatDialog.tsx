@@ -73,12 +73,11 @@ export function ClawComChatDialog({ building, onClose, onReconfigure, onError }:
   }
 
   return (
-    <div className="map-dialog-overlay" onClick={onClose} onWheel={(e) => e.stopPropagation()}>
-      <div
-        className="map-dialog"
-        style={{ maxWidth: 520, width: '95%', display: 'flex', flexDirection: 'column', maxHeight: '80vh' }}
-        onClick={(e) => e.stopPropagation()}
-      >
+    <div
+      className="map-dialog"
+      style={{ display: 'flex', flexDirection: 'column' }}
+      onWheel={(e) => e.stopPropagation()}
+    >
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
           <div>
@@ -181,7 +180,6 @@ export function ClawComChatDialog({ building, onClose, onReconfigure, onError }:
         <div className="map-dialog-actions" style={{ marginTop: 12 }}>
           <button className="hud-btn" onClick={onClose}>SCHLIESSEN</button>
         </div>
-      </div>
     </div>
   )
 }

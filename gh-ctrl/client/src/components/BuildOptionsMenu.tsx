@@ -52,12 +52,10 @@ export function BuildOptionsMenu({ onClose, onSuccess, onError }: BuildOptionsMe
   }
 
   return (
-    <div className="map-dialog-overlay" onClick={onClose} onWheel={(e) => e.stopPropagation()}>
-      <div
-        className="map-dialog"
-        style={{ maxWidth: 680, width: '95%' }}
-        onClick={(e) => e.stopPropagation()}
-      >
+    <div
+      className="map-dialog"
+      onWheel={(e) => e.stopPropagation()}
+    >
         <div className="map-dialog-title">&#x25a0; BAU OPTIONEN — GEBÄUDE ERRICHTEN</div>
 
         {!selected ? (
@@ -179,7 +177,6 @@ export function BuildOptionsMenu({ onClose, onSuccess, onError }: BuildOptionsMe
             </div>
           </>
         )}
-      </div>
     </div>
   )
 }

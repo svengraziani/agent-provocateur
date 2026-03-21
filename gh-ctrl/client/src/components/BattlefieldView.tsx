@@ -364,6 +364,7 @@ export function BattlefieldView() {
   const [showFeedPanel, setShowFeedPanel] = useState(false)
   const [branchSiloEntry, setBranchSiloEntry] = useState<DashboardEntry | null>(null)
   const [detailEntry, setDetailEntry] = useState<DashboardEntry | null>(null)
+  const [selectedBuildingId, setSelectedBuildingId] = useState<number | null>(null)
   const detailPanelRef = useRef<HTMLDivElement>(null)
   const [showBuildMenu, setShowBuildMenu] = useState(false)
   // Building positions: keyed by building id, stored in memory for smooth dragging
@@ -835,9 +836,9 @@ export function BattlefieldView() {
               onRefreshRepo={onRefreshRepo}
               addToast={addToast}
               onModalOpen={(state) => { play('peep'); setModalState(state) }}
-              onBranchSiloClick={(e) => { play('peep'); setBranchSiloEntry(e); setDetailEntry(null) }}
+              onBranchSiloClick={(e) => { play('peep'); setBranchSiloEntry(e); setDetailEntry(null); setSelectedBuildingId(null) }}
               onZoomToBase={() => handleZoomToBase(pos)}
-              onBaseDetailOpen={(e) => { play('peep'); setDetailEntry(prev => prev?.repo.id === e.repo.id ? null : e); setBranchSiloEntry(null) }}
+              onBaseDetailOpen={(e) => { play('peep'); setDetailEntry(prev => prev?.repo.id === e.repo.id ? null : e); setBranchSiloEntry(null); setSelectedBuildingId(null) }}
               isSelected={detailEntry?.repo.id === entry.repo.id}
               isSiloSelected={branchSiloEntry?.repo.id === entry.repo.id}
             />
@@ -870,6 +871,9 @@ export function BattlefieldView() {
               isBeingRelocated={relocatingBuildingId === building.id}
               onStartRelocate={(mouseX, mouseY) => handleStartBuildingRelocate(building.id, mouseX, mouseY)}
               addToast={addToast}
+              isSelected={selectedBuildingId === building.id}
+              onSelect={() => { play('peep'); setSelectedBuildingId(prev => prev === building.id ? null : building.id); setDetailEntry(null); setBranchSiloEntry(null) }}
+              onDeselect={() => setSelectedBuildingId(null)}
             />
           )
         })}

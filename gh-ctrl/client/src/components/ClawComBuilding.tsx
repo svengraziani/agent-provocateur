@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { api } from '../api'
 import { useAppStore } from '../store'
 import type { Building, ClawComConfig, ClawComMessage } from '../types'
@@ -17,6 +18,9 @@ interface ClawComBuildingProps {
   isBeingRelocated: boolean
   onStartRelocate: (mouseX: number, mouseY: number) => void
   addToast: (msg: string, type?: 'success' | 'error' | 'info') => void
+  isSelected?: boolean
+  onSelect?: () => void
+  onDeselect?: () => void
 }
 
 // Chroma-key: replace the green channel in the PNG with the building's color
@@ -68,6 +72,9 @@ export function ClawComBuilding({
   isBeingRelocated,
   onStartRelocate,
   addToast,
+  isSelected = false,
+  onSelect,
+  onDeselect,
 }: ClawComBuildingProps) {
   const loadBuildings = useAppStore((s) => s.loadBuildings)
   const deleteBuilding = useAppStore((s) => s.deleteBuilding)
@@ -114,14 +121,26 @@ export function ClawComBuilding({
     return () => clearInterval(interval)
   }, [isConfigured, pollMessages])
 
+  // Open/close panel in sync with selection state
+  useEffect(() => {
+    if (isSelected) {
+      if (!isConfigured) {
+        setShowSetup(true)
+        setShowChat(false)
+      } else {
+        setIncomingCount(0)
+        setShowChat(true)
+        setShowSetup(false)
+      }
+    } else {
+      setShowSetup(false)
+      setShowChat(false)
+    }
+  }, [isSelected, isConfigured])
+
   function handleClick() {
     if (isRelocateMode) return
-    if (!isConfigured) {
-      setShowSetup(true)
-    } else {
-      setIncomingCount(0)
-      setShowChat(true)
-    }
+    onSelect?.()
   }
 
   function handleMouseDown(e: React.MouseEvent) {
@@ -147,7 +166,7 @@ export function ClawComBuilding({
   return (
     <>
       <div
-        className="base-node clawcom-building"
+        className={`base-node clawcom-building${isSelected ? ' clawcom-selected' : ''}`}
         style={{
           position: 'absolute',
           left: position.x,
@@ -167,7 +186,7 @@ export function ClawComBuilding({
         onClick={handleClick}
       >
         {/* Building image */}
-        <div style={{ position: 'relative' }}>
+        <div className="clawcom-img-wrap" style={{ position: 'relative' }}>
           {colorizedSrc ? (
             <img
               src={colorizedSrc}
@@ -277,31 +296,32 @@ export function ClawComBuilding({
         )}
       </div>
 
-      {/* Setup dialog */}
-      {showSetup && (
+      {/* Setup dialog — portaled to body to escape battlefield transform context */}
+      {showSetup && createPortal(
         <ClawComSetupDialog
           building={currentBuilding}
-          onClose={() => setShowSetup(false)}
+          onClose={() => onDeselect?.()}
           onConfigured={(updated) => {
             setCurrentBuilding(updated)
-            setShowSetup(false)
             addToast(`${updated.name} erfolgreich konfiguriert!`, 'success')
           }}
           onError={(msg) => addToast(msg, 'error')}
-        />
+        />,
+        document.body
       )}
 
-      {/* Chat dialog */}
-      {showChat && (
+      {/* Chat dialog — portaled to body to escape battlefield transform context */}
+      {showChat && createPortal(
         <ClawComChatDialog
           building={currentBuilding}
-          onClose={() => setShowChat(false)}
+          onClose={() => onDeselect?.()}
           onReconfigure={() => {
             setShowChat(false)
             setShowSetup(true)
           }}
           onError={(msg) => addToast(msg, 'error')}
-        />
+        />,
+        document.body
       )}
     </>
   )

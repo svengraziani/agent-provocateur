@@ -61,13 +61,11 @@ export function ClawComSetupDialog({ building, onClose, onConfigured, onError }:
   }
 
   return (
-    <div className="map-dialog-overlay" onClick={onClose} onWheel={(e) => e.stopPropagation()}>
-      <div
-        className="map-dialog"
-        style={{ maxWidth: 480, width: '95%' }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="map-dialog-title">&#x25a0; CLAWCOM — SETUP</div>
+    <div
+      className="map-dialog"
+      onWheel={(e) => e.stopPropagation()}
+    >
+        <div className="map-dialog-title">&#x25a0; {building.name.toUpperCase()} — SETUP</div>
 
         <div style={{ display: 'flex', gap: 20, marginBottom: 20, alignItems: 'flex-start' }}>
           <img
@@ -143,7 +141,6 @@ export function ClawComSetupDialog({ building, onClose, onConfigured, onError }:
             {saving ? '◌ SPEICHERN...' : '&#x2713; KONFIGURIEREN'}
           </button>
         </div>
-      </div>
     </div>
   )
 }
