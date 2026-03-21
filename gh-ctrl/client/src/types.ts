@@ -175,6 +175,38 @@ export interface RepoMeta {
   pushedAt: string
 }
 
+export interface FeedItem {
+  type: 'issue' | 'pr'
+  feedCategory: 'mention' | 'issue' | 'pr'
+  number: number
+  title: string
+  url: string
+  repo: string
+  author: string
+  updatedAt: string
+  labels: { name: string; color: string }[]
+  isDraft?: boolean
+  state?: string
+}
+
+export interface FeedData {
+  mentions: FeedItem[]
+}
+
+export interface SetupCheck {
+  id: string
+  label: string
+  ok: boolean
+  detail?: string | null
+  fix?: string | null
+}
+
+export interface SetupStatus {
+  ready: boolean
+  mode: 'docker' | 'local'
+  checks: SetupCheck[]
+}
+
 export interface MapTile {
   type: string
   color: string

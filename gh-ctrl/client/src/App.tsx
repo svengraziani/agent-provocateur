@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Routes, Route, NavLink } from 'react-router-dom'
 import { useAppStore } from './store'
 import { Dashboard } from './components/Dashboard'
@@ -6,6 +6,9 @@ import { Settings } from './components/Settings'
 import { BattlefieldView } from './components/BattlefieldView'
 import { MapEditor } from './components/MapEditor'
 import { ToastArea } from './components/Toast'
+import { SetupScreen } from './components/SetupScreen'
+import { api } from './api'
+import type { SetupStatus } from './types'
 
 export default function App() {
   const repos = useAppStore((s) => s.repos)
@@ -15,11 +18,30 @@ export default function App() {
   const toasts = useAppStore((s) => s.toasts)
   const loadRepos = useAppStore((s) => s.loadRepos)
   const loadDashboard = useAppStore((s) => s.loadDashboard)
+  const [appVersion, setAppVersion] = useState<string | null>(null)
+  const [setupStatus, setSetupStatus] = useState<SetupStatus | null>(null)
+  const [setupChecked, setSetupChecked] = useState(false)
+
+  const checkSetup = useCallback(() => {
+    api.getSetupStatus().then((s) => {
+      setSetupStatus(s)
+      setSetupChecked(true)
+    }).catch(() => {
+      // If setup endpoint fails, proceed to main app
+      setSetupChecked(true)
+    })
+  }, [])
 
   useEffect(() => {
+    checkSetup()
+  }, [checkSetup])
+
+  useEffect(() => {
+    if (!setupStatus?.ready) return
     loadRepos()
     loadDashboard()
-  }, [loadRepos, loadDashboard])
+    api.getVersion().then((r) => setAppVersion(r.version)).catch(() => {})
+  }, [setupStatus?.ready, loadRepos, loadDashboard])
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -36,6 +58,18 @@ export default function App() {
     }),
     { prs: 0, issues: 0, conflicts: 0 }
   )
+
+  if (!setupChecked) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)', color: 'var(--text-2)', fontSize: '0.9rem' }}>
+        Checking setup…
+      </div>
+    )
+  }
+
+  if (setupStatus && !setupStatus.ready) {
+    return <SetupScreen status={setupStatus} onRecheck={checkSetup} />
+  }
 
   return (
     <div className="app-layout">
@@ -99,6 +133,10 @@ export default function App() {
             ? `Updated ${lastRefresh.toLocaleTimeString()}`
             : 'Not refreshed yet'}
         </div>
+
+        {appVersion && (
+          <div className="sidebar-version">v{appVersion}</div>
+        )}
       </aside>
 
       <main className="main-content">

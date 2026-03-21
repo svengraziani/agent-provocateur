@@ -1,4 +1,4 @@
-import type { Repo, DashboardEntry, RepoData, GHLabel, BranchesData, IssueDetail, PRDetail, GameMap, RepoMeta } from './types'
+import type { Repo, DashboardEntry, RepoData, GHLabel, BranchesData, IssueDetail, PRDetail, GameMap, RepoMeta, FeedData, SetupStatus } from './types'
 
 const BASE = '/api'
 
@@ -61,6 +61,12 @@ export const api = {
 
   getBranches: (owner: string, name: string) =>
     request<BranchesData>(`/github/branches/${owner}/${name}`),
+
+  getBranchCompare: (owner: string, repoName: string, branch: string, base: string) =>
+    request<{ ahead: number; behind: number }>(`/github/branch-compare/${owner}/${repoName}/${encodeURIComponent(branch)}?base=${encodeURIComponent(base)}`),
+
+  deleteBranch: (owner: string, name: string, branch: string) =>
+    request<{ ok: boolean }>(`/github/branch/${owner}/${name}/${encodeURIComponent(branch)}`, { method: 'DELETE' }),
 
   getRepoMeta: (owner: string, name: string) =>
     request<RepoMeta>(`/github/meta/${owner}/${name}`),
@@ -200,6 +206,8 @@ export const api = {
     return request<{ repos: { name: string; fullName: string; description: string | null; url: string; isPrivate: boolean }[]; page: number; perPage: number; total: number | null; truncated: boolean; ghAvailable: boolean }>(`/github/user-repos?${qs}`)
   },
 
+  getVersion: () => request<{ version: string }>('/version'),
+
   listMaps: () => request<GameMap[]>('/maps'),
 
   createMap: (params: { name: string; width: number; height: number }) =>
@@ -218,4 +226,8 @@ export const api = {
 
   deleteMap: (id: number) =>
     request<{ ok: boolean }>(`/maps/${id}`, { method: 'DELETE' }),
+
+  getFeed: () => request<FeedData>('/github/feed'),
+
+  getSetupStatus: () => request<SetupStatus>('/setup/status'),
 }

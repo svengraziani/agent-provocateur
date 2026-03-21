@@ -16,6 +16,7 @@ async function gh(args: string[]): Promise<GHResult> {
     const stderr = await new Response(proc.stderr).text()
     return { data: null, error: stderr }
   }
+  if (stdout.trim() === '') return { data: null, error: null }
   try {
     return { data: JSON.parse(stdout), error: null }
   } catch {
@@ -467,6 +468,41 @@ app.get('/branches/:owner/:name', async (c) => {
   return c.json({ branches, defaultBranch })
 })
 
+// GET /api/github/branch-compare/:owner/:name/:branch — ahead/behind vs default branch
+const branchCompareCache = new Map<string, { data: { ahead: number; behind: number }; expiresAt: number }>()
+const BRANCH_COMPARE_TTL_MS = 5 * 60 * 1000 // 5 minutes
+
+app.get('/branch-compare/:owner/:name/:branch', async (c) => {
+  const owner = c.req.param('owner')
+  const name = c.req.param('name')
+  const branch = decodeURIComponent(c.req.param('branch'))
+  const base = c.req.query('base') || 'main'
+  const cacheKey = `${owner}/${name}/${branch}@${base}`
+
+  const cached = branchCompareCache.get(cacheKey)
+  if (cached && cached.expiresAt > Date.now()) {
+    return c.json(cached.data)
+  }
+
+  const result = await gh(['api', `repos/${owner}/${name}/compare/${base}...${branch}`])
+  if (result.error) return c.json({ error: result.error }, 500)
+
+  const data = { ahead: result.data?.ahead_by ?? 0, behind: result.data?.behind_by ?? 0 }
+  branchCompareCache.set(cacheKey, { data, expiresAt: Date.now() + BRANCH_COMPARE_TTL_MS })
+  return c.json(data)
+})
+
+// DELETE /api/github/branch/:owner/:name/:branch — delete a branch
+app.delete('/branch/:owner/:name/:branch', async (c) => {
+  const owner = c.req.param('owner')
+  const name = c.req.param('name')
+  const branch = decodeURIComponent(c.req.param('branch'))
+
+  const result = await gh(['api', `repos/${owner}/${name}/git/refs/heads/${encodeURIComponent(branch)}`, '--method', 'DELETE'])
+  if (result.error) return c.json({ error: result.error }, 500)
+  return c.json({ ok: true })
+})
+
 // POST /api/github/trigger-claude — post @claude comment
 app.post('/trigger-claude', async (c) => {
   const body = await c.req.json()
@@ -832,6 +868,32 @@ app.get('/user-repos', async (c) => {
   const truncated = search ? (result.data || []).length >= 100 : false
 
   return c.json({ repos: repoList, page, perPage, total, truncated, ghAvailable: true })
+})
+
+// GET /api/github/feed — global feed: @mentions via GitHub search API
+app.get('/feed', async (c) => {
+  const result = await gh(['api', 'search/issues?q=mentions%3A%40me+state%3Aopen&per_page=50'])
+
+  if (result.error) {
+    return c.json({ mentions: [], error: result.error })
+  }
+
+  const items: any[] = result.data?.items ?? []
+  const mentions = items.map((item: any) => ({
+    type: item.pull_request ? 'pr' : 'issue',
+    feedCategory: 'mention',
+    number: item.number,
+    title: item.title,
+    url: item.html_url,
+    repo: (item.repository_url ?? '').replace('https://api.github.com/repos/', ''),
+    author: item.user?.login ?? 'unknown',
+    updatedAt: item.updated_at ?? '',
+    labels: (item.labels ?? []).map((l: any) => ({ name: l.name, color: l.color })),
+    isDraft: item.draft ?? false,
+    state: item.state ?? 'open',
+  }))
+
+  return c.json({ mentions })
 })
 
 export default app

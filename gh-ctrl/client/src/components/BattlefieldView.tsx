@@ -1,13 +1,15 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import type { DashboardEntry, GameMap, MapTile } from '../types'
+import { BranchSiloPanel } from './BranchSiloPanel'
 import { api } from '../api'
 import { getBranchState } from './BranchBuilding'
-import { BaseNode } from './BaseNode'
+import { BaseNode, BaseDetailPanel } from './BaseNode'
 import { ActionModal } from './ActionModal'
 import type { ModalState } from './ActionModal'
 import { ConstructDialog } from './ConstructDialog'
 import { CreateBaseDialog } from './CreateBaseDialog'
 import { CloseIcon, RelocateIcon, RefreshIcon } from './Icons'
+import { FeedPanel } from './FeedPanel'
 import { useSound } from '../hooks/useSound'
 import { useAppStore } from '../store'
 
@@ -23,7 +25,7 @@ const COLS = 4
 const ISO_MAP_CENTER_X = 600  // x anchor for the top of the diamond
 const ISO_MAP_OFFSET_Y = 120  // y anchor for the top of the diamond
 const MAP_PADDING = 100
-const ZOOM_MIN = 0.25
+const ZOOM_MIN = 0.05
 const ZOOM_MAX = 2.5
 const ZOOM_FACTOR = 1.15
 
@@ -103,12 +105,10 @@ function BattlefieldMapCanvas({ map }: { map: GameMap }) {
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    const dpr = window.devicePixelRatio || 1
-    canvas.width = canvasW * dpr
-    canvas.height = canvasH * dpr
+    canvas.width = canvasW
+    canvas.height = canvasH
     canvas.style.width = `${canvasW}px`
     canvas.style.height = `${canvasH}px`
-    ctx.scale(dpr, dpr)
 
     ctx.clearRect(0, 0, canvasW, canvasH)
 
@@ -355,6 +355,18 @@ export function BattlefieldView() {
   const [activeMap, setActiveMap] = useState<GameMap | null>(null)
   const [allMaps, setAllMaps] = useState<GameMap[]>([])
   const [showMapSelector, setShowMapSelector] = useState(false)
+  const [showFeedPanel, setShowFeedPanel] = useState(false)
+  const [branchSiloEntry, setBranchSiloEntry] = useState<DashboardEntry | null>(null)
+  const [detailEntry, setDetailEntry] = useState<DashboardEntry | null>(null)
+  const detailPanelRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const el = detailPanelRef.current
+    if (!el) return
+    const stop = (e: WheelEvent) => e.stopPropagation()
+    el.addEventListener('wheel', stop, { passive: true })
+    return () => el.removeEventListener('wheel', stop)
+  }, [detailEntry])
   const containerRef = useRef<HTMLDivElement>(null)
   const zoomRef = useRef(zoom)
   const offsetRef = useRef(offset)
@@ -492,6 +504,7 @@ export function BattlefieldView() {
   }, [isDraggingMap, dragStart, relocatingId, relocatingStart])
 
   const handleWheel = useCallback((e: WheelEvent) => {
+    if ((e.target as HTMLElement).closest('.modal-overlay, .map-dialog-overlay, .silo-panel, .feed-panel, [class*="dialog"]')) return
     e.preventDefault()
     // Use actual deltaY magnitude for smooth trackpad support; clamp to avoid huge jumps
     const clampedDelta = Math.max(-100, Math.min(100, e.deltaY))
@@ -561,6 +574,15 @@ export function BattlefieldView() {
       })
     }
   }, [positions])
+
+  const handleZoomToBase = useCallback((pos: Position) => {
+    const targetZoom = Math.max(1.5, ZOOM_MAX * 0.5)
+    setZoom(targetZoom)
+    setOffset({
+      x: window.innerWidth / 2 - pos.x * targetZoom,
+      y: window.innerHeight / 2 - pos.y * targetZoom,
+    })
+  }, [])
 
   const handleMapMouseUp = useCallback(() => {
     setIsDraggingMap(false)
@@ -663,6 +685,14 @@ export function BattlefieldView() {
             </button>
           )}
           <span className="hud-zoom-sep" />
+          <button
+            className={`hud-btn${showFeedPanel ? ' active' : ''}`}
+            onClick={() => { play('peep'); setShowFeedPanel(v => !v) }}
+            title="Toggle Intel Feed panel"
+          >
+            ◈ FEED
+          </button>
+          <span className="hud-zoom-sep" />
           <button className="hud-btn hud-zoom-btn" onClick={handleZoomOut} disabled={zoom <= ZOOM_MIN} title="Zoom out">−</button>
           <span className="hud-zoom-level" title="Click to reset zoom" onClick={handleZoomReset}>{Math.round(zoom * 100)}%</span>
           <button className="hud-btn hud-zoom-btn" onClick={handleZoomIn} disabled={zoom >= ZOOM_MAX} title="Zoom in">+</button>
@@ -722,6 +752,11 @@ export function BattlefieldView() {
               onRefreshRepo={onRefreshRepo}
               addToast={addToast}
               onModalOpen={(state) => { play('peep'); setModalState(state) }}
+              onBranchSiloClick={(e) => { play('peep'); setBranchSiloEntry(e); setDetailEntry(null) }}
+              onZoomToBase={() => handleZoomToBase(pos)}
+              onBaseDetailOpen={(e) => { play('peep'); setDetailEntry(prev => prev?.repo.id === e.repo.id ? null : e); setBranchSiloEntry(null) }}
+              isSelected={detailEntry?.repo.id === entry.repo.id}
+              isSiloSelected={branchSiloEntry?.repo.id === entry.repo.id}
             />
           )
         })}
@@ -775,6 +810,7 @@ export function BattlefieldView() {
         onSuccess={(msg) => addToast(msg, 'success')}
         onError={(msg) => addToast(msg, 'error')}
         onIssueCreated={handleIssueCreated}
+        onTransition={(newState) => setModalState(newState)}
       />
 
       {/* Construction dialog */}
@@ -808,6 +844,44 @@ export function BattlefieldView() {
           onLoad={handleLoadMap}
           onClose={() => setShowMapSelector(false)}
         />
+      )}
+
+      {/* Intel Feed Panel */}
+      <FeedPanel
+        entries={entries}
+        isOpen={showFeedPanel}
+        onClose={() => setShowFeedPanel(false)}
+      />
+
+      {/* Branch Silo Panel — C&C-style right-side command panel */}
+      <BranchSiloPanel
+        entry={branchSiloEntry}
+        onClose={() => setBranchSiloEntry(null)}
+        addToast={addToast}
+        onModalOpen={(state) => { play('peep'); setModalState(state) }}
+      />
+
+      {/* Base Detail Side Panel — C&C-style right-side info panel */}
+      {detailEntry && (
+        <div ref={detailPanelRef} className="base-detail-side-panel">
+          <div className="base-detail-side-panel-header">
+            <div className="base-detail-side-panel-title-row">
+              <span className="base-detail-side-panel-icon" style={{ color: detailEntry.repo.color }}>&#x25a0;</span>
+              <div>
+                <div className="base-detail-side-panel-title">BASE INTEL</div>
+                <div className="base-detail-side-panel-subtitle">{detailEntry.repo.name}</div>
+              </div>
+            </div>
+            <button className="silo-panel-close" onClick={() => setDetailEntry(null)} title="Close [Esc]">✕</button>
+          </div>
+          <div className="base-detail-side-panel-body">
+            <BaseDetailPanel
+              entry={detailEntry}
+              onClose={() => setDetailEntry(null)}
+              onModalOpen={(state) => { play('peep'); setModalState(state) }}
+            />
+          </div>
+        </div>
       )}
     </div>
   )

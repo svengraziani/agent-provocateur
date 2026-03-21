@@ -2,10 +2,10 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import type { DashboardEntry, GHPR, GHIssue, Branch, WorkflowRun, RepoMeta, BaseDesign } from '../types'
 import { getPROrigin } from '../types'
 import type { ModalState } from './ActionModal'
-import { CloseIcon, LinkIcon, LabelIcon, CommentIcon, RefreshIcon, ExternalLinkIcon, AssigneeIcon } from './Icons'
+import { CloseIcon, LinkIcon, LabelIcon, CommentIcon, RefreshIcon, ExternalLinkIcon, AssigneeIcon, CopyIcon } from './Icons'
 import { api } from '../api'
+import { BranchSilo } from './BranchBuilding'
 import { useAppStore } from '../store'
-import { BranchBuilding, getBranchState } from './BranchBuilding'
 
 // ── Canvas color utilities ────────────────────────────────────────────────────
 
@@ -151,6 +151,11 @@ interface Props {
   onRefreshRepo: (owner: string, name: string) => Promise<void>
   onToast: (message: string, type: 'success' | 'error' | 'info') => void
   onModalOpen: (state: ModalState) => void
+  onBranchSiloClick: (entry: DashboardEntry) => void
+  onZoomToBase: () => void
+  onBaseDetailOpen: (entry: DashboardEntry) => void
+  isSelected?: boolean
+  isSiloSelected?: boolean
 }
 
 const PR_BUILDING_OFFSET_X = 148
@@ -159,15 +164,12 @@ const PR_BUILDING_COL_WIDTH = 80
 const PR_BUILDING_ROW_HEIGHT = 100
 const MAX_PR_BUILDINGS = 8
 
-const BRANCH_BUILDING_OFFSET_X = -10
-const BRANCH_BUILDING_OFFSET_Y = 130
-const BRANCH_BUILDING_COL_WIDTH = 46
-const MAX_BRANCH_BUILDINGS = 10
+const BRANCH_SILO_OFFSET_X = -80
+const BRANCH_SILO_OFFSET_Y = 70
 
-export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, onConstruct, onStartRelocate, onRefreshRepo, onToast, onModalOpen }: Props) {
+export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, onConstruct, onStartRelocate, onRefreshRepo, onToast, onModalOpen, onBranchSiloClick, onZoomToBase, onBaseDetailOpen, isSelected, isSiloSelected }: Props) {
   const { repo, data } = entry
   const { stats } = data
-  const [showDetail, setShowDetail] = useState(false)
   const [scanning, setScanning] = useState(false)
   const [showDesignPicker, setShowDesignPicker] = useState(false)
   const updateRepoDesign = useAppStore((s) => s.updateRepoDesign)
@@ -211,19 +213,18 @@ export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, on
   const handleClick = useCallback((e: React.MouseEvent) => {
     if (isRelocateMode) return
     e.stopPropagation()
-    setShowDetail(v => !v)
-  }, [isRelocateMode])
+    onBaseDetailOpen(entry)
+  }, [isRelocateMode, onBaseDetailOpen, entry])
+
+  const handleDoubleClick = useCallback((e: React.MouseEvent) => {
+    if (isRelocateMode) return
+    e.stopPropagation()
+    onZoomToBase()
+  }, [isRelocateMode, onZoomToBase])
 
   const visiblePRs = data.prs.slice(0, MAX_PR_BUILDINGS)
 
-  // Branch buildings: exclude default branch, sort stale first, cap at MAX_BRANCH_BUILDINGS
-  const nonDefaultBranches = (data.branches ?? []).filter(b => b.name !== (data.defaultBranch ?? 'main'))
-  const sortedBranches = [...nonDefaultBranches].sort((a, b) => {
-    const stateOrder = { 'very-stale': 0, 'stale': 1, 'active': 2 }
-    return stateOrder[getBranchState(a.committedDate)] - stateOrder[getBranchState(b.committedDate)]
-  })
-  const visibleBranches = sortedBranches.slice(0, MAX_BRANCH_BUILDINGS)
-  const extraBranches = sortedBranches.length - visibleBranches.length
+  const hasBranches = (data.branches ?? []).some(b => b.name !== (data.defaultBranch ?? 'main'))
 
   return (
     <>
@@ -246,7 +247,7 @@ export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, on
       })}
 
       <div
-        className={`base-node ${statusClass}${isBeingRelocated ? ' relocating' : ''}${isRelocateMode ? ' relocate-mode' : ''}`}
+        className={`base-node ${statusClass}${isBeingRelocated ? ' relocating' : ''}${isRelocateMode ? ' relocate-mode' : ''}${isSelected ? ' base-selected' : ''}`}
         style={{
           left: position.x,
           top: position.y,
@@ -255,6 +256,7 @@ export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, on
         } as React.CSSProperties}
         onMouseDown={handleMouseDown}
         onClick={handleClick}
+        onDoubleClick={handleDoubleClick}
       >
         {/* Status beacons */}
         <div className="base-beacons">
@@ -361,46 +363,26 @@ export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, on
         </div>
       </div>
 
-      {/* Branch buildings — rendered below base node in a row */}
-      {visibleBranches.map((branch, i) => (
-        <BranchBuilding
-          key={branch.name}
-          branch={branch}
+      {/* Branch Silo — single grouped silo, click opens right-side C&C panel */}
+      {hasBranches && !isRelocateMode && (
+        <BranchSilo
+          branches={data.branches ?? []}
+          defaultBranch={data.defaultBranch ?? 'main'}
           position={{
-            x: position.x + BRANCH_BUILDING_OFFSET_X + i * BRANCH_BUILDING_COL_WIDTH,
-            y: position.y + BRANCH_BUILDING_OFFSET_Y,
+            x: position.x + BRANCH_SILO_OFFSET_X,
+            y: position.y + BRANCH_SILO_OFFSET_Y,
           }}
-          repoFullName={repo.fullName}
+          onClick={() => onBranchSiloClick(entry)}
+          isSelected={isSiloSelected}
         />
-      ))}
-      {extraBranches > 0 && (
-        <div
-          className="branch-overflow-label"
-          style={{
-            left: position.x + BRANCH_BUILDING_OFFSET_X + visibleBranches.length * BRANCH_BUILDING_COL_WIDTH,
-            top: position.y + BRANCH_BUILDING_OFFSET_Y + 10,
-          }}
-        >
-          +{extraBranches}
-        </div>
       )}
 
-      {/* Floating detail panel */}
-      {showDetail && !isRelocateMode && (
-        <BaseDetailPanel
-          entry={entry}
-          position={position}
-          onClose={() => setShowDetail(false)}
-          onModalOpen={onModalOpen}
-        />
-      )}
     </>
   )
 }
 
-function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
+export function BaseDetailPanel({ entry, onClose, onModalOpen }: {
   entry: DashboardEntry
-  position: Position
   onClose: () => void
   onModalOpen: (state: ModalState) => void
 }) {
@@ -411,8 +393,6 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
   const [branches, setBranches] = useState<Branch[]>([])
   const [defaultBranch, setDefaultBranch] = useState('main')
   const [branchesLoading, setBranchesLoading] = useState(false)
-  const panelX = position.x + 145
-  const panelY = position.y
 
   const toggleBranches = async () => {
     if (!showBranches && branches.length === 0) {
@@ -448,7 +428,6 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
   return (
     <div
       className="base-detail-panel"
-      style={{ left: panelX, top: panelY }}
       onClick={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
     >
@@ -468,7 +447,6 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
         >
           + Issue
         </button>
-        <button className="bdp-close" onClick={onClose}><CloseIcon size={12} /></button>
       </div>
 
       <div className="bdp-stats">
@@ -493,6 +471,7 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
               labels={pr.labels}
               assignees={pr.assignees}
               createdAt={pr.createdAt}
+              headRefName={pr.headRefName}
             />
           ))}
           {data.conflicts.length > 4 && <div className="bdp-more">+{data.conflicts.length - 4} more</div>}
@@ -514,6 +493,7 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
               labels={pr.labels}
               assignees={pr.assignees}
               createdAt={pr.createdAt}
+              headRefName={pr.headRefName}
             />
           ))}
           {data.needsReview.length > 4 && <div className="bdp-more">+{data.needsReview.length - 4} more</div>}
@@ -590,6 +570,7 @@ function BaseDetailPanel({ entry, position, onClose, onModalOpen }: {
               labels={pr.labels}
               assignees={pr.assignees}
               createdAt={pr.createdAt}
+              headRefName={pr.headRefName}
             />
           ))}
         </div>
@@ -902,11 +883,31 @@ function PRBuilding({ pr, position, repo, onModalOpen }: {
         <div className="pr-bld-title">{shortTitle}</div>
         {openedDate && <div className="pr-bld-date">{openedDate}</div>}
       </div>
+      {pr.previewUrl && (
+        <a
+          className="pr-bld-netlify"
+          href={pr.previewUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          title={`Open Netlify preview for #${pr.number}`}
+        >
+          <div className="pr-bld-netlify-body">
+            <div className="pr-bld-netlify-antenna" />
+            <div className="pr-bld-netlify-roof" />
+            <div className="pr-bld-netlify-wall">
+              <div className="pr-bld-netlify-window" />
+              <div className="pr-bld-netlify-door" />
+            </div>
+          </div>
+          <div className="pr-bld-netlify-label">▲ LIVE</div>
+        </a>
+      )}
     </div>
   )
 }
 
-function BdpItemRow({ number, title, type, repo, onModalOpen, previewUrl, labels, assignees, isClaudeActive, isUntouched, createdAt, onPR, prLink }: {
+function BdpItemRow({ number, title, type, repo, onModalOpen, previewUrl, labels, assignees, isClaudeActive, isUntouched, createdAt, onPR, prLink, headRefName }: {
   number: number
   title: string
   type: 'pr' | 'issue'
@@ -920,7 +921,18 @@ function BdpItemRow({ number, title, type, repo, onModalOpen, previewUrl, labels
   createdAt?: string
   onPR?: () => void
   prLink?: { head: string; base: string; title: string; body: string }
+  headRefName?: string
 }) {
+  const addToast = useAppStore((s) => s.addToast)
+
+  const copyBranchName = (name: string) => {
+    navigator.clipboard.writeText(name).then(() => {
+      addToast(`Copied: ${name}`, 'success')
+    }).catch(() => {
+      addToast('Failed to copy branch name', 'error')
+    })
+  }
+
   return (
     <div className={`bdp-item${isUntouched ? ' untouched-issue' : ''}`}>
       <div className="bdp-item-left">
@@ -946,6 +958,15 @@ function BdpItemRow({ number, title, type, repo, onModalOpen, previewUrl, labels
         </button>
       </div>
       <div className="bdp-item-right">
+        {headRefName && (
+          <button
+            className="bdp-icon-btn"
+            title={`Copy branch: ${headRefName}`}
+            onClick={() => copyBranchName(headRefName)}
+          >
+            <CopyIcon size={11} />
+          </button>
+        )}
         {createdAt && (
           <span className="bdp-branch-date" title={`Opened ${new Date(createdAt).toLocaleString()}`}>
             {new Date(createdAt).toLocaleDateString()}
