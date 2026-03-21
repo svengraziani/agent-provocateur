@@ -7,7 +7,8 @@ import { BattlefieldView } from './components/BattlefieldView'
 import { MapEditor } from './components/MapEditor'
 import { ToastArea } from './components/Toast'
 import { SetupScreen } from './components/SetupScreen'
-import { api } from './api'
+import { ConnectionSetup } from './components/ConnectionSetup'
+import { api, getServerUrl } from './api'
 import type { SetupStatus } from './types'
 
 export default function App() {
@@ -21,6 +22,19 @@ export default function App() {
   const [appVersion, setAppVersion] = useState<string | null>(null)
   const [setupStatus, setSetupStatus] = useState<SetupStatus | null>(null)
   const [setupChecked, setSetupChecked] = useState(false)
+  const [connectionChecked, setConnectionChecked] = useState(false)
+  const [serverReachable, setServerReachable] = useState(false)
+
+  const checkConnection = useCallback(async () => {
+    try {
+      const base = getServerUrl() ? `${getServerUrl()}/api` : '/api'
+      const res = await fetch(`${base}/health`, { signal: AbortSignal.timeout(5000) })
+      setServerReachable(res.ok)
+    } catch {
+      setServerReachable(false)
+    }
+    setConnectionChecked(true)
+  }, [])
 
   const checkSetup = useCallback(() => {
     api.getSetupStatus().then((s) => {
@@ -33,8 +47,12 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    checkSetup()
-  }, [checkSetup])
+    checkConnection()
+  }, [checkConnection])
+
+  useEffect(() => {
+    if (serverReachable) checkSetup()
+  }, [serverReachable, checkSetup])
 
   useEffect(() => {
     if (!setupStatus?.ready) return
@@ -58,6 +76,24 @@ export default function App() {
     }),
     { prs: 0, issues: 0, conflicts: 0 }
   )
+
+  if (!connectionChecked) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)', color: 'var(--text-2)', fontSize: '0.9rem' }}>
+        Connecting…
+      </div>
+    )
+  }
+
+  if (!serverReachable) {
+    return (
+      <ConnectionSetup
+        onConnected={() => {
+          setServerReachable(true)
+        }}
+      />
+    )
+  }
 
   if (!setupChecked) {
     return (

@@ -10,7 +10,25 @@ import pkg from '../package.json'
 
 const app = new Hono()
 
-app.use('*', cors({ origin: ['http://localhost:5173'] }))
+const configuredOrigins = [
+  'http://localhost:5173',
+  ...(process.env.ALLOWED_ORIGINS?.split(',').map((o) => o.trim()).filter(Boolean) ?? []),
+]
+
+app.use(
+  '*',
+  cors({
+    origin: (origin) => {
+      if (!origin) return '*'
+      if (origin.startsWith('chrome-extension://')) return origin
+      if (configuredOrigins.includes(origin)) return origin
+      return null
+    },
+    allowHeaders: ['Content-Type', 'Authorization'],
+    allowMethods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+    credentials: true,
+  })
+)
 app.use('*', logger())
 
 app.route('/api/repos', reposRouter)
