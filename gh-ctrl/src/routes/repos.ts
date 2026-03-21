@@ -69,7 +69,7 @@ app.patch('/:id', async (c) => {
   if (body.color) updates.color = body.color
   if (body.description !== undefined) updates.description = body.description
   if (body.baseDesign !== undefined) {
-    const VALID_DESIGNS = ['default', 'landing_base', 'api_base']
+    const VALID_DESIGNS = ['default', 'landing_base', 'api_base', 'frontend_base']
     if (!VALID_DESIGNS.includes(body.baseDesign)) {
       return c.json({ error: 'Invalid baseDesign value' }, 400)
     }

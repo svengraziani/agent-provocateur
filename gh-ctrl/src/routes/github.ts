@@ -704,7 +704,7 @@ app.post('/create-repo', async (c) => {
     return c.json({ error: 'visibility must be "public" or "private"' }, 400)
   }
 
-  const VALID_DESIGNS = ['default', 'landing_base', 'api_base']
+  const VALID_DESIGNS = ['default', 'landing_base', 'api_base', 'frontend_base']
   if (baseDesign && !VALID_DESIGNS.includes(baseDesign)) {
     return c.json({ error: 'Invalid baseDesign value' }, 400)
   }

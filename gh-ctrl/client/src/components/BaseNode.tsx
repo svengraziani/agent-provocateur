@@ -112,7 +112,7 @@ function IsoBaseBuilding({ color, design }: { color: string; design: BaseDesign 
       src={cfg.src}
       width="120"
       height="120"
-      style={{ display: 'block', imageRendering: 'pixelated', objectFit: 'contain' }}
+      style={{ display: 'block', imageRendering: 'auto', objectFit: 'contain' }}
       draggable={false}
     />
   )
@@ -297,7 +297,7 @@ export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, on
         </div>
 
         {/* Floating HUD toolbar — appears on hover */}
-        <div className="base-hud">
+        <div className={`base-hud${showDesignPicker ? ' base-hud-pinned' : ''}`}>
           <div className="base-name">{repo.name}</div>
           <div className="base-stats-mini">
             <span className="bsm green" title="Open PRs">▲{stats.openPRs}</span>

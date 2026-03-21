@@ -1,4 +1,4 @@
-export type BaseDesign = 'default' | 'landing_base' | 'api_base'
+export type BaseDesign = 'default' | 'landing_base' | 'api_base' | 'frontend_base'
 
 export interface Repo {
   id: number

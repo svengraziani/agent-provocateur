@@ -1822,7 +1822,8 @@ select.input {
   z-index: 10;
 }
 
-.base-node:hover .base-hud {
+.base-node:hover .base-hud,
+.base-hud.base-hud-pinned {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
   pointer-events: auto;
