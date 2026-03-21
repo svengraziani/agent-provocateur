@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import type { DashboardEntry, GHPR, GHIssue, Branch, WorkflowRun, RepoMeta, BaseDesign } from '../types'
+import { BASE_DESIGNS } from '../constants'
 import { getPROrigin } from '../types'
 import type { ModalState } from './ActionModal'
 import { CloseIcon, LinkIcon, LabelIcon, CommentIcon, RefreshIcon, ExternalLinkIcon, AssigneeIcon } from './Icons'
@@ -90,13 +91,6 @@ function ColorizedBuilding({ src, fallback = src, width, height, color }: Colori
   )
 }
 
-// ── Base design configuration ─────────────────────────────────────────────────
-
-export const BASE_DESIGNS: { id: BaseDesign; label: string; src: string; colorized: boolean }[] = [
-  { id: 'default',      label: 'Standard Kommando', src: '/buildings/kommando_chromakey.png', colorized: true  },
-  { id: 'landing_base', label: 'Landing Base',       src: '/buildings/landing_base.png',       colorized: false },
-  { id: 'api_base',     label: 'API Base',            src: '/buildings/api_base.png',           colorized: false },
-]
 
 // ── Isometric building PNG components ─────────────────────────────────────────
 

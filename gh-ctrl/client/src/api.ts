@@ -1,4 +1,4 @@
-import type { Repo, DashboardEntry, RepoData, GHLabel, BranchesData, IssueDetail, PRDetail, GameMap, RepoMeta } from './types'
+import type { Repo, DashboardEntry, RepoData, GHLabel, BranchesData, IssueDetail, PRDetail, GameMap, RepoMeta, BaseDesign } from './types'
 
 const BASE = '/api'
 
@@ -185,7 +185,7 @@ export const api = {
     name: string
     description?: string
     visibility: 'public' | 'private'
-    baseDesign?: string
+    baseDesign?: BaseDesign
   }) =>
     request<{ ok: boolean; repo: import('./types').Repo }>('/github/create-repo', {
       method: 'POST',
