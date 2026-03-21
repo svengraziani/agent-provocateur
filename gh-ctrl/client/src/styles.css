@@ -2814,6 +2814,61 @@ select.input {
   text-align: center;
 }
 
+/* Create base design selector */
+.create-base-designs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.create-base-design-btn {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px;
+  background: rgba(0, 255, 136, 0.03);
+  border: 1px solid rgba(0, 255, 136, 0.15);
+  color: #39ff14;
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.15s, background 0.15s;
+  min-width: 90px;
+}
+
+.create-base-design-btn:hover {
+  background: rgba(57, 255, 20, 0.06);
+  border-color: rgba(57, 255, 20, 0.3);
+}
+
+.create-base-design-btn.selected {
+  background: rgba(57, 255, 20, 0.08);
+  border-color: rgba(57, 255, 20, 0.6);
+}
+
+.create-base-design-preview {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+.create-base-design-label {
+  font-size: 9px;
+  letter-spacing: 0.5px;
+  text-align: center;
+  opacity: 0.9;
+}
+
+.create-base-design-check {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  font-size: 10px;
+  color: #39ff14;
+}
+
 /* ============================================================
    MAP EDITOR
    ============================================================ */

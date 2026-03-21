@@ -185,6 +185,7 @@ export const api = {
     name: string
     description?: string
     visibility: 'public' | 'private'
+    baseDesign?: string
   }) =>
     request<{ ok: boolean; repo: import('./types').Repo }>('/github/create-repo', {
       method: 'POST',

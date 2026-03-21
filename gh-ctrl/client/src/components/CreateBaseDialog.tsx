@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { api } from '../api'
+import type { BaseDesign } from '../types'
 import { CloseIcon, LockIcon, GlobeIcon } from './Icons'
+import { BASE_DESIGNS } from './BaseNode'
 
 interface Props {
   onClose: () => void
@@ -16,6 +18,7 @@ export function CreateBaseDialog({ onClose, onSuccess, onError }: Props) {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [visibility, setVisibility] = useState<'public' | 'private'>('private')
+  const [baseDesign, setBaseDesign] = useState<BaseDesign>('default')
   const [submitting, setSubmitting] = useState(false)
   const [bootText, setBootText] = useState('')
   const [bootDone, setBootDone] = useState(false)
@@ -47,6 +50,7 @@ export function CreateBaseDialog({ onClose, onSuccess, onError }: Props) {
         name: trimmedName,
         description: description.trim() || undefined,
         visibility,
+        baseDesign,
       })
       onSuccess(`BASE ESTABLISHED: ${result.repo.fullName} (${visibility.toUpperCase()})`)
     } catch (err: any) {
@@ -140,6 +144,24 @@ export function CreateBaseDialog({ onClose, onSuccess, onError }: Props) {
                 <span className="create-base-vis-label">PUBLIC</span>
                 <span className="create-base-vis-desc">Visible to everyone</span>
               </button>
+            </div>
+          </div>
+
+          <div className="construct-field">
+            <label className="construct-label">&#x25b6; BASE DESIGN:</label>
+            <div className="create-base-designs">
+              {BASE_DESIGNS.map((d) => (
+                <button
+                  key={d.id}
+                  type="button"
+                  className={`create-base-design-btn${baseDesign === d.id ? ' selected' : ''}`}
+                  onClick={() => setBaseDesign(d.id)}
+                >
+                  <img src={d.src} className="create-base-design-preview" alt={d.label} />
+                  <span className="create-base-design-label">{d.label}</span>
+                  {baseDesign === d.id && <span className="create-base-design-check">✓</span>}
+                </button>
+              ))}
             </div>
           </div>
 

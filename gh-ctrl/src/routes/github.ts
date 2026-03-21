@@ -658,7 +658,7 @@ app.get('/pr/:owner/:name/:number', async (c) => {
 // POST /api/github/create-repo — create a new GitHub repository and track it
 app.post('/create-repo', async (c) => {
   const body = await c.req.json()
-  const { name, description, visibility } = body
+  const { name, description, visibility, baseDesign } = body
 
   if (!name) {
     return c.json({ error: 'Missing required field: name' }, 400)
@@ -692,6 +692,7 @@ app.post('/create-repo', async (c) => {
       fullName,
       description: description || null,
       color: '#00ff88',
+      baseDesign: baseDesign || null,
     }).returning()
 
     return c.json({ ok: true, repo: result[0] }, 201)
