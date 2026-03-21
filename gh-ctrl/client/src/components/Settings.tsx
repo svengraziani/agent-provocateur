@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import type { Repo } from '../types'
-import { api } from '../api'
+import { api, getServerUrl, setServerUrl } from '../api'
 import { useAppStore } from '../store'
 
 const COLORS = ['#39d353', '#58a6ff', '#f0883e', '#f85149', '#bc8cff', '#ffa657', '#ff7b72', '#79c0ff']
@@ -24,6 +24,31 @@ export function Settings() {
   const updateRepoColor = useAppStore((s) => s.updateRepoColor)
   const [openColorPicker, setOpenColorPicker] = useState<number | null>(null)
   const popoverRef = useRef<HTMLDivElement>(null)
+
+  const [serverUrlInput, setServerUrlInput] = useState(getServerUrl())
+  const [testingConn, setTestingConn] = useState(false)
+  const [connStatus, setConnStatus] = useState<'idle' | 'ok' | 'error'>('idle')
+  const [connError, setConnError] = useState('')
+
+  const handleSaveServerUrl = async () => {
+    setTestingConn(true)
+    setConnStatus('idle')
+    setConnError('')
+    const base = serverUrlInput.trim().replace(/\/$/, '')
+    try {
+      const url = base ? `${base}/api/health` : '/api/health'
+      const res = await fetch(url, { signal: AbortSignal.timeout(5000) })
+      if (!res.ok) throw new Error(`Server responded with ${res.status}`)
+      setServerUrl(base)
+      setConnStatus('ok')
+      addToast('Server URL saved — reload to apply', 'success')
+    } catch (err: any) {
+      setConnError(err.message || 'Could not reach server')
+      setConnStatus('error')
+    } finally {
+      setTestingConn(false)
+    }
+  }
 
   useEffect(() => {
     if (openColorPicker === null) return
@@ -170,6 +195,40 @@ export function Settings() {
     <div className="settings-page">
       <div className="topbar">
         <h1>Repositories</h1>
+      </div>
+
+      <div className="settings-section">
+        <h2>Server Connection</h2>
+        <p style={{ color: 'var(--text-2)', fontSize: '0.85rem', margin: '0 0 0.75rem' }}>
+          Set the server URL when using this app as a PWA or Chrome Extension. Leave blank for Directory mode (same host).
+        </p>
+        <div className="form-row" style={{ alignItems: 'flex-start', flexDirection: 'column', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', width: '100%' }}>
+            <input
+              className="input"
+              type="url"
+              placeholder="http://localhost:3001  (leave blank for local)"
+              value={serverUrlInput}
+              onChange={(e) => { setServerUrlInput(e.target.value); setConnStatus('idle') }}
+              onKeyDown={(e) => e.key === 'Enter' && handleSaveServerUrl()}
+              style={{ flex: 1 }}
+            />
+            <button
+              className="btn btn-primary"
+              onClick={handleSaveServerUrl}
+              disabled={testingConn}
+              style={{ whiteSpace: 'nowrap' }}
+            >
+              {testingConn ? 'Testing…' : 'Save'}
+            </button>
+          </div>
+          {connStatus === 'ok' && (
+            <span style={{ color: 'var(--green)', fontSize: '0.82rem' }}>Connected successfully</span>
+          )}
+          {connStatus === 'error' && (
+            <span className="form-error">{connError}</span>
+          )}
+        </div>
       </div>
 
       <div className="settings-section">

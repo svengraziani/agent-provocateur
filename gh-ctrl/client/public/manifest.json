@@ -1,0 +1,21 @@
+{
+  "name": "Vibe and Conquer",
+  "short_name": "V&C",
+  "description": "Self-hosted GitHub Command Center Dashboard",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#39d353",
+  "icons": [
+    {
+      "src": "/logo-vcga.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/logo-vcga-highres.jpeg",
+      "sizes": "512x512",
+      "type": "image/jpeg"
+    }
+  ]
+}
