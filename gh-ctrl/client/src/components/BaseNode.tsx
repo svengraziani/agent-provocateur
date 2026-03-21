@@ -95,8 +95,8 @@ function ColorizedBuilding({ src, fallback = src, width, height, color }: Colori
 function IsoBaseBuilding({ color }: { color: string }) {
   return (
     <ColorizedBuilding
-      src="/buildings/kommando_chromakey.png"
-      fallback="/buildings/repository_kommando.png"
+      src="/buildings/base.png"
+      fallback="/buildings/base.png"
       width={120}
       height={120}
       color={color}
