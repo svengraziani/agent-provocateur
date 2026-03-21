@@ -77,22 +77,18 @@ export function ConstructDialog({ entry, onClose, onSuccess, onError }: Props) {
     }
   }
 
-  const handleOverlayKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') onClose()
-  }
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', handleKey)
+    return () => document.removeEventListener('keydown', handleKey)
+  }, [onClose])
 
   return (
     <div
-      className="construct-overlay"
-      onClick={onClose}
-      onKeyDown={handleOverlayKeyDown}
+      className="construct-dialog"
       onWheel={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
     >
-      <div
-        className="construct-dialog"
-        onClick={(e) => e.stopPropagation()}
-        onMouseDown={(e) => e.stopPropagation()}
-      >
         {/* Header */}
         <div className="construct-header">
           <div className="construct-title-bar">
@@ -183,7 +179,6 @@ export function ConstructDialog({ entry, onClose, onSuccess, onError }: Props) {
         <div className="construct-footer">
           &#x25a0; BASE: {entry.repo.fullName} &nbsp;·&nbsp; COMMAND CENTER READY
         </div>
-      </div>
     </div>
   )
 }

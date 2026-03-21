@@ -1,4 +1,4 @@
-import type { Repo, DashboardEntry, RepoData, GHLabel, BranchesData, IssueDetail, PRDetail, GameMap, RepoMeta, FeedData, SetupStatus } from './types'
+import type { Repo, DashboardEntry, RepoData, GHLabel, BranchesData, IssueDetail, PRDetail, GameMap, RepoMeta, FeedData, SetupStatus, Building, ClawComMessage } from './types'
 
 export function getServerUrl(): string {
   return localStorage.getItem('serverUrl')?.replace(/\/$/, '') ?? ''
@@ -254,4 +254,30 @@ export const api = {
   getFeed: () => request<FeedData>('/github/feed'),
 
   getSetupStatus: () => request<SetupStatus>('/setup/status'),
+
+  listBuildings: () => request<Building[]>('/buildings'),
+
+  createBuilding: (params: { type: string; name: string; color?: string; posX?: number; posY?: number }) =>
+    request<Building>('/buildings', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    }),
+
+  updateBuilding: (id: number, updates: { name?: string; color?: string; posX?: number; posY?: number; config?: object | string }) =>
+    request<Building>(`/buildings/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(updates),
+    }),
+
+  deleteBuilding: (id: number) =>
+    request<{ ok: boolean }>(`/buildings/${id}`, { method: 'DELETE' }),
+
+  getBuildingMessages: (id: number) =>
+    request<ClawComMessage[]>(`/buildings/${id}/messages`),
+
+  sendBuildingMessage: (id: number, content: string) =>
+    request<ClawComMessage>(`/buildings/${id}/messages`, {
+      method: 'POST',
+      body: JSON.stringify({ content }),
+    }),
 }

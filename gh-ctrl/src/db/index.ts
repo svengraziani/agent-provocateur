@@ -38,4 +38,28 @@ sqlite.exec(`
   )
 `)
 
+sqlite.exec(`
+  CREATE TABLE IF NOT EXISTS buildings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    type TEXT NOT NULL DEFAULT 'clawcom',
+    name TEXT NOT NULL DEFAULT 'ClawCom',
+    color TEXT DEFAULT '#00ff88',
+    pos_x REAL NOT NULL DEFAULT 800,
+    pos_y REAL NOT NULL DEFAULT 400,
+    config TEXT NOT NULL DEFAULT '{}',
+    created_at INTEGER DEFAULT (unixepoch()),
+    updated_at INTEGER DEFAULT (unixepoch())
+  )
+`)
+
+sqlite.exec(`
+  CREATE TABLE IF NOT EXISTS clawcom_messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    building_id INTEGER NOT NULL REFERENCES buildings(id) ON DELETE CASCADE,
+    direction TEXT NOT NULL DEFAULT 'out',
+    content TEXT NOT NULL,
+    created_at INTEGER DEFAULT (unixepoch())
+  )
+`)
+
 export const db = drizzle(sqlite, { schema })

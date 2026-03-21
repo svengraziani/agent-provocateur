@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
-import type { DashboardEntry, GameMap, MapTile } from '../types'
+import type { DashboardEntry, GameMap, MapTile, Building } from '../types'
 import { BranchSiloPanel } from './BranchSiloPanel'
 import { api } from '../api'
 import { getBranchState } from './BranchBuilding'
@@ -12,6 +12,8 @@ import { CloseIcon, RelocateIcon, RefreshIcon } from './Icons'
 import { FeedPanel } from './FeedPanel'
 import { useSound } from '../hooks/useSound'
 import { useAppStore } from '../store'
+import { ClawComBuilding } from './ClawComBuilding'
+import { BuildOptionsMenu } from './BuildOptionsMenu'
 
 interface Position {
   x: number
@@ -333,6 +335,9 @@ export function BattlefieldView() {
   const onRefreshRepo = useAppStore((s) => s.loadSingleRepo)
   const addToast = useAppStore((s) => s.addToast)
   const loadRepos = useAppStore((s) => s.loadRepos)
+  const loadBuildings = useAppStore((s) => s.loadBuildings)
+  const storeBuildings = useAppStore((s) => s.buildings)
+  const updateBuildingPosition = useAppStore((s) => s.updateBuildingPosition)
   const onReposChange = () => { loadRepos(); onRefresh() }
   const [offset, setOffset] = useState<Position>(() => ({
     x: window.innerWidth / 2 - ISO_MAP_CENTER_X,
@@ -359,7 +364,13 @@ export function BattlefieldView() {
   const [showFeedPanel, setShowFeedPanel] = useState(false)
   const [branchSiloEntry, setBranchSiloEntry] = useState<DashboardEntry | null>(null)
   const [detailEntry, setDetailEntry] = useState<DashboardEntry | null>(null)
+  const [selectedBuildingId, setSelectedBuildingId] = useState<number | null>(null)
   const detailPanelRef = useRef<HTMLDivElement>(null)
+  const [showBuildMenu, setShowBuildMenu] = useState(false)
+  // Building positions: keyed by building id, stored in memory for smooth dragging
+  const [buildingPositions, setBuildingPositions] = useState<Record<number, { x: number; y: number }>>({})
+  const [relocatingBuildingId, setRelocatingBuildingId] = useState<number | null>(null)
+  const [relocatingBuildingStart, setRelocatingBuildingStart] = useState<{ mouseX: number; mouseY: number; nodeX: number; nodeY: number } | null>(null)
 
   useEffect(() => {
     const el = detailPanelRef.current
@@ -395,6 +406,30 @@ export function BattlefieldView() {
     }
     prevConflictsRef.current = entries.reduce((sum, e) => sum + e.data.stats.conflicts, 0)
   }, [entries, play])
+
+  // Load buildings on mount
+  useEffect(() => {
+    loadBuildings()
+  }, [loadBuildings])
+
+  // Sync building positions from store (DB) into local state
+  useEffect(() => {
+    setBuildingPositions((prev) => {
+      const next = { ...prev }
+      for (const b of storeBuildings) {
+        if (!next[b.id]) {
+          next[b.id] = { x: b.posX, y: b.posY }
+        }
+      }
+      // Remove positions for deleted buildings
+      for (const id of Object.keys(next).map(Number)) {
+        if (!storeBuildings.find((b) => b.id === id)) {
+          delete next[id]
+        }
+      }
+      return next
+    })
+  }, [storeBuildings])
 
   // Load persisted active map on mount
   useEffect(() => {
@@ -512,8 +547,18 @@ export function BattlefieldView() {
           y: relocatingStart.nodeY + dy,
         },
       }))
+    } else if (relocatingBuildingId !== null && relocatingBuildingStart !== null) {
+      const dx = (e.clientX - relocatingBuildingStart.mouseX) / zoomRef.current
+      const dy = (e.clientY - relocatingBuildingStart.mouseY) / zoomRef.current
+      setBuildingPositions(prev => ({
+        ...prev,
+        [relocatingBuildingId]: {
+          x: relocatingBuildingStart.nodeX + dx,
+          y: relocatingBuildingStart.nodeY + dy,
+        },
+      }))
     }
-  }, [isDraggingMap, dragStart, relocatingId, relocatingStart])
+  }, [isDraggingMap, dragStart, relocatingId, relocatingStart, relocatingBuildingId, relocatingBuildingStart])
 
   const handleWheel = useCallback((e: WheelEvent) => {
     if ((e.target as HTMLElement).closest('.modal-overlay, .map-dialog-overlay, .silo-panel, .feed-panel, [class*="dialog"]')) return
@@ -606,7 +651,15 @@ export function BattlefieldView() {
       setRelocatingId(null)
       setRelocatingStart(null)
     }
-  }, [relocatingId])
+    if (relocatingBuildingId !== null) {
+      const pos = buildingPositions[relocatingBuildingId]
+      if (pos) {
+        updateBuildingPosition(relocatingBuildingId, pos.x, pos.y)
+      }
+      setRelocatingBuildingId(null)
+      setRelocatingBuildingStart(null)
+    }
+  }, [relocatingId, relocatingBuildingId, buildingPositions, updateBuildingPosition])
 
   const handleStartRelocate = useCallback((id: number, mouseX: number, mouseY: number) => {
     const pos = positions[id]
@@ -614,6 +667,13 @@ export function BattlefieldView() {
     setRelocatingId(id)
     setRelocatingStart({ mouseX, mouseY, nodeX: pos.x, nodeY: pos.y })
   }, [positions])
+
+  const handleStartBuildingRelocate = useCallback((id: number, mouseX: number, mouseY: number) => {
+    const pos = buildingPositions[id]
+    if (!pos) return
+    setRelocatingBuildingId(id)
+    setRelocatingBuildingStart({ mouseX, mouseY, nodeX: pos.x, nodeY: pos.y })
+  }, [buildingPositions])
 
   // When an active map is selected, filter to only its assigned repos
   const visibleEntries = activeMapRepoIds === null
@@ -683,6 +743,13 @@ export function BattlefieldView() {
             onClick={() => { play('peep'); setShowCreateBase(true) }}
           >
             &#x2b; NEW BASE
+          </button>
+          <button
+            className="hud-btn"
+            onClick={() => { play('hydraulic'); setShowBuildMenu(true) }}
+            title="Gebäude bauen (ClawCom, etc.)"
+          >
+            &#x25a4; BAU OPTIONEN
           </button>
           <span className="hud-zoom-sep" />
           <button
@@ -769,9 +836,9 @@ export function BattlefieldView() {
               onRefreshRepo={onRefreshRepo}
               addToast={addToast}
               onModalOpen={(state) => { play('peep'); setModalState(state) }}
-              onBranchSiloClick={(e) => { play('peep'); setBranchSiloEntry(e); setDetailEntry(null) }}
+              onBranchSiloClick={(e) => { play('peep'); setBranchSiloEntry(e); setDetailEntry(null); setSelectedBuildingId(null) }}
               onZoomToBase={() => handleZoomToBase(pos)}
-              onBaseDetailOpen={(e) => { play('peep'); setDetailEntry(prev => prev?.repo.id === e.repo.id ? null : e); setBranchSiloEntry(null) }}
+              onBaseDetailOpen={(e) => { play('peep'); setDetailEntry(prev => prev?.repo.id === e.repo.id ? null : e); setBranchSiloEntry(null); setSelectedBuildingId(null) }}
               isSelected={detailEntry?.repo.id === entry.repo.id}
               isSiloSelected={branchSiloEntry?.repo.id === entry.repo.id}
             />
@@ -789,6 +856,25 @@ export function BattlefieldView() {
               <div className="base-node-ghost-label" style={{ color: repo.color }}>{repo.name}</div>
               <div className="base-node-ghost-status spinning-radar">&#x25CF;</div>
             </div>
+          )
+        })}
+
+        {/* Custom buildings (ClawCom, etc.) */}
+        {storeBuildings.map((building) => {
+          const pos = buildingPositions[building.id] ?? { x: building.posX, y: building.posY }
+          return (
+            <ClawComBuilding
+              key={`building-${building.id}`}
+              building={building}
+              position={pos}
+              isRelocateMode={isRelocateMode}
+              isBeingRelocated={relocatingBuildingId === building.id}
+              onStartRelocate={(mouseX, mouseY) => handleStartBuildingRelocate(building.id, mouseX, mouseY)}
+              addToast={addToast}
+              isSelected={selectedBuildingId === building.id}
+              onSelect={() => { play('peep'); setSelectedBuildingId(prev => prev === building.id ? null : building.id); setDetailEntry(null); setBranchSiloEntry(null) }}
+              onDeselect={() => setSelectedBuildingId(null)}
+            />
           )
         })}
       </div>
@@ -868,6 +954,15 @@ export function BattlefieldView() {
           activeMapId={activeMap?.id ?? null}
           onLoad={handleLoadMap}
           onClose={() => setShowMapSelector(false)}
+        />
+      )}
+
+      {/* Build options menu */}
+      {showBuildMenu && (
+        <BuildOptionsMenu
+          onClose={() => setShowBuildMenu(false)}
+          onSuccess={(msg) => addToast(msg, 'success')}
+          onError={(msg) => addToast(msg, 'error')}
         />
       )}
 
