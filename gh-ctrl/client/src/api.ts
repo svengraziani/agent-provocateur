@@ -1,9 +1,25 @@
 import type { Repo, DashboardEntry, RepoData, GHLabel, BranchesData, IssueDetail, PRDetail, GameMap, RepoMeta, FeedData, SetupStatus } from './types'
 
-const BASE = '/api'
+export function getServerUrl(): string {
+  return localStorage.getItem('serverUrl')?.replace(/\/$/, '') ?? ''
+}
+
+export function setServerUrl(url: string): void {
+  const trimmed = url.trim().replace(/\/$/, '')
+  if (trimmed) {
+    localStorage.setItem('serverUrl', trimmed)
+  } else {
+    localStorage.removeItem('serverUrl')
+  }
+}
+
+function getBase(): string {
+  const serverUrl = getServerUrl()
+  return serverUrl ? `${serverUrl}/api` : '/api'
+}
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await fetch(`${getBase()}${path}`, {
     headers: { 'Content-Type': 'application/json' },
     ...options,
   })
@@ -38,7 +54,7 @@ export const api = {
     onEntry: (entry: DashboardEntry) => void,
     onDone: () => void
   ): (() => void) => {
-    const es = new EventSource(`${BASE}/github/dashboard/stream`)
+    const es = new EventSource(`${getBase()}/github/dashboard/stream`)
     es.addEventListener('repo', (e: Event) => {
       onEntry(JSON.parse((e as MessageEvent).data))
     })
