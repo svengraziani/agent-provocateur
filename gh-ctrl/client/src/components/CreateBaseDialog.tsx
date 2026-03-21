@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { api } from '../api'
 import type { BaseDesign } from '../types'
 import { CloseIcon, LockIcon, GlobeIcon } from './Icons'
-import { BASE_DESIGNS } from './BaseNode'
+import { BASE_DESIGNS } from '../constants'
 
 interface Props {
   onClose: () => void

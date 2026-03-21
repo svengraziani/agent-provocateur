@@ -704,6 +704,11 @@ app.post('/create-repo', async (c) => {
     return c.json({ error: 'visibility must be "public" or "private"' }, 400)
   }
 
+  const VALID_DESIGNS = ['default', 'landing_base', 'api_base']
+  if (baseDesign && !VALID_DESIGNS.includes(baseDesign)) {
+    return c.json({ error: 'Invalid baseDesign value' }, 400)
+  }
+
   // Get authenticated user to build fullName
   const userResult = await gh(['api', 'user'])
   if (userResult.error || !userResult.data?.login) {
@@ -728,7 +733,7 @@ app.post('/create-repo', async (c) => {
       fullName,
       description: description || null,
       color: '#00ff88',
-      baseDesign: baseDesign || null,
+      baseDesign: baseDesign || 'default',
     }).returning()
 
     return c.json({ ok: true, repo: result[0] }, 201)
