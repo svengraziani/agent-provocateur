@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core'
+import { sqliteTable, text, integer, real } from 'drizzle-orm/sqlite-core'
 
 export const repos = sqliteTable('repos', {
   id:          integer('id').primaryKey({ autoIncrement: true }),
@@ -25,4 +25,24 @@ export const mapRepos = sqliteTable('map_repos', {
   mapId:     integer('map_id').notNull().references(() => maps.id),
   repoId:    integer('repo_id').notNull().references(() => repos.id),
   createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
+})
+
+export const buildings = sqliteTable('buildings', {
+  id:        integer('id').primaryKey({ autoIncrement: true }),
+  type:      text('type').notNull().default('clawcom'),
+  name:      text('name').notNull().default('ClawCom'),
+  color:     text('color').default('#00ff88'),
+  posX:      real('pos_x').notNull().default(800),
+  posY:      real('pos_y').notNull().default(400),
+  config:    text('config').notNull().default('{}'),
+  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
+})
+
+export const clawcomMessages = sqliteTable('clawcom_messages', {
+  id:         integer('id').primaryKey({ autoIncrement: true }),
+  buildingId: integer('building_id').notNull().references(() => buildings.id),
+  direction:  text('direction').notNull().default('out'),
+  content:    text('content').notNull(),
+  createdAt:  integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
 })
