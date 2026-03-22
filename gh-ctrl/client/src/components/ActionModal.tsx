@@ -13,6 +13,7 @@ export type ModalState =
   | { mode: 'assignee'; fullName: string; owner: string; repoName: string; number: number; type: 'pr' | 'issue'; currentAssignees: string[] }
   | { mode: 'create-pr'; fullName: string; owner: string; repoName: string; head?: string; base?: string; title?: string; prBody?: string; issueNumber?: number }
   | { mode: 'create-issue'; fullName: string; owner: string; repoName: string }
+  | { mode: 'create-issues-batch'; fullName: string; owner: string; repoName: string }
   | { mode: 'issue-detail'; fullName: string; owner: string; repoName: string; number: number; prLink?: { head: string; base: string; title: string; body: string } }
   | { mode: 'pr-detail'; fullName: string; owner: string; repoName: string; number: number }
   | { mode: 'trigger-claude'; fullName: string; number: number; type: 'pr' | 'issue' }
@@ -49,6 +50,9 @@ export function ActionModal({ state, onClose, onSuccess, onError, onIssueCreated
         )}
         {state.mode === 'create-issue' && (
           <CreateIssueForm state={state} onClose={onClose} onSuccess={onSuccess} onError={onError} onIssueCreated={onIssueCreated} />
+        )}
+        {state.mode === 'create-issues-batch' && (
+          <BatchCreateIssuesForm state={state} onClose={onClose} onSuccess={onSuccess} onError={onError} onIssueCreated={onIssueCreated} />
         )}
         {state.mode === 'issue-detail' && (
           <IssueDetailView state={state} onClose={onClose} onError={onError} onTransition={onTransition} />
@@ -549,6 +553,105 @@ function CreateIssueForm({ state, onClose, onSuccess, onError, onIssueCreated }:
           {submitting ? 'Creating...' : 'Create Issue'}
         </button>
       </div>
+    </form>
+  )
+}
+
+function BatchCreateIssuesForm({ state, onClose, onSuccess, onError, onIssueCreated }: {
+  state: Extract<ModalState, { mode: 'create-issues-batch' }>
+  onClose: () => void
+  onSuccess: (msg: string) => void
+  onError: (msg: string) => void
+  onIssueCreated?: (owner: string, repoName: string) => void
+}) {
+  const [text, setText] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [results, setResults] = useState<{ title: string; url?: string; error?: string }[] | null>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  useEffect(() => {
+    textareaRef.current?.focus()
+  }, [])
+
+  const parsedTitles = text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith('-'))
+    .map((line) => line.replace(/^-\s*/, '').trim())
+    .filter((title) => title.length > 0)
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (parsedTitles.length === 0) return
+    setSubmitting(true)
+    try {
+      const res = await api.createIssuesBatch({
+        fullName: state.fullName,
+        issues: parsedTitles.map((title) => ({ title })),
+      })
+      setResults(res.results)
+      const successCount = res.results.filter((r) => !r.error).length
+      if (successCount > 0) {
+        onIssueCreated?.(state.owner, state.repoName)
+        onSuccess(`Created ${successCount} issue${successCount !== 1 ? 's' : ''}`)
+      }
+    } catch (err: any) {
+      onError(`Failed: ${err.message}`)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <div className="modal-title">
+        Batch Create Issues
+        <span className="modal-subtitle">{state.fullName}</span>
+      </div>
+      {!results ? (
+        <>
+          <div className="modal-field">
+            <label className="modal-label">Issue list (one per line, starting with -)</label>
+            <textarea
+              ref={textareaRef}
+              className="input modal-textarea"
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder={"- Fix login bug\n- Add dark mode\n- Update README"}
+              rows={6}
+            />
+          </div>
+          {parsedTitles.length > 0 && (
+            <div className="modal-field">
+              <label className="modal-label">Preview ({parsedTitles.length} issue{parsedTitles.length !== 1 ? 's' : ''})</label>
+              <ul style={{ margin: 0, paddingLeft: '1.2em', fontSize: '0.85em', color: 'var(--text-muted, #aaa)' }}>
+                {parsedTitles.map((t, i) => <li key={i}>{t}</li>)}
+              </ul>
+            </div>
+          )}
+          <div className="modal-actions">
+            <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
+            <button type="submit" className="btn btn-primary" disabled={submitting || parsedTitles.length === 0}>
+              {submitting ? 'Creating...' : `Construct All (${parsedTitles.length})`}
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="modal-field">
+            {results.map((r, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.5em', marginBottom: '0.4em', fontSize: '0.9em' }}>
+                <span>{r.error ? '✗' : '✓'}</span>
+                <span style={{ color: r.error ? 'var(--red, #f55)' : 'var(--green, #5f5)' }}>{r.title}</span>
+                {r.error && <span style={{ color: 'var(--text-muted, #aaa)', fontSize: '0.8em' }}>— {r.error}</span>}
+              </div>
+            ))}
+          </div>
+          <div className="modal-actions">
+            <button type="button" className="btn btn-primary" onClick={onClose}>Done</button>
+          </div>
+        </>
+      )}
     </form>
   )
 }

@@ -178,6 +178,15 @@ export const api = {
       body: JSON.stringify(params),
     }),
 
+  createIssuesBatch: (params: {
+    fullName: string
+    issues: { title: string; issueBody?: string; labels?: string[] }[]
+  }) =>
+    request<{ results: { title: string; url?: string; error?: string }[] }>('/github/create-issues-batch', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    }),
+
   getCollaborators: (owner: string, name: string) =>
     request<{ login: string }[]>(`/github/collaborators/${owner}/${name}`),
 
