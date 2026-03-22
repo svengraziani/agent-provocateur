@@ -39,7 +39,6 @@ export function ClawComChatDialog({ building, onClose, onReconfigure, onError }:
     setSending(true)
     try {
       await api.sendBuildingMessage(building.id, content)
-      // Reload all messages to get any reply
       const updated = await api.getBuildingMessages(building.id)
       setMessages(updated)
     } catch (err: any) {
@@ -75,26 +74,24 @@ export function ClawComChatDialog({ building, onClose, onReconfigure, onError }:
   return (
     <div
       className="map-dialog"
-      style={{ display: 'flex', flexDirection: 'column' }}
       onWheel={(e) => e.stopPropagation()}
     >
         {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <div className="clawcom-chat-header">
           <div>
-            <div className="map-dialog-title" style={{ marginBottom: 2 }}>
+            <div className="map-dialog-title">
               &#x25a0; CLAWCOM — {building.name.toUpperCase()}
             </div>
-            <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>
-              <span style={{ color: 'var(--green-neon)' }}>●</span>&nbsp;
+            <div className="clawcom-chat-status">
+              <span className="clawcom-chat-online-dot">●</span>&nbsp;
               {config.clawType?.toUpperCase() ?? 'CLAW'} @ {config.host}
             </div>
           </div>
-          <div style={{ display: 'flex', gap: 6 }}>
+          <div>
             <button
               className="hud-btn"
               onClick={handleDisconnect}
               title="Verbindung trennen und neu konfigurieren"
-              style={{ fontSize: 10 }}
             >
               ⚙ RESET
             </button>
@@ -102,53 +99,26 @@ export function ClawComChatDialog({ building, onClose, onReconfigure, onError }:
         </div>
 
         {/* Messages */}
-        <div style={{
-          flex: 1,
-          overflowY: 'auto',
-          background: 'var(--bg-darker)',
-          border: '1px solid var(--border)',
-          borderRadius: 4,
-          padding: 12,
-          minHeight: 200,
-          maxHeight: 380,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 8,
-          marginBottom: 12,
-        }}>
+        <div className="clawcom-chat-messages">
           {loading && (
-            <div style={{ color: 'var(--text-dim)', fontSize: 12, textAlign: 'center' }}>
+            <div className="clawcom-chat-status" style={{ textAlign: 'center' }}>
               ◌ Lade Nachrichten...
             </div>
           )}
           {!loading && messages.length === 0 && (
-            <div style={{ color: 'var(--text-dim)', fontSize: 12, textAlign: 'center', marginTop: 'auto', marginBottom: 'auto' }}>
+            <div className="clawcom-chat-status" style={{ textAlign: 'center', margin: 'auto' }}>
               Keine Nachrichten. Sende deinen ersten Befehl an den Claw.
             </div>
           )}
           {messages.map((msg) => (
             <div
               key={msg.id}
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: msg.direction === 'out' ? 'flex-end' : 'flex-start',
-              }}
+              className={`clawcom-chat-msg clawcom-chat-msg--${msg.direction === 'out' ? 'out' : 'in'}`}
             >
-              <div style={{
-                maxWidth: '80%',
-                padding: '6px 10px',
-                borderRadius: 4,
-                fontSize: 12,
-                lineHeight: 1.5,
-                background: msg.direction === 'out' ? 'rgba(0,255,136,0.12)' : 'rgba(255,255,255,0.06)',
-                border: `1px solid ${msg.direction === 'out' ? 'rgba(0,255,136,0.3)' : 'var(--border)'}`,
-                color: msg.direction === 'out' ? 'var(--green-neon)' : 'var(--text)',
-                wordBreak: 'break-word',
-              }}>
+              <div className={`clawcom-chat-bubble clawcom-chat-bubble--${msg.direction === 'out' ? 'out' : 'in'}`}>
                 {msg.content}
               </div>
-              <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 2 }}>
+              <div className="clawcom-chat-msg-meta">
                 {msg.direction === 'out' ? 'Du' : config.clawType ?? 'Claw'} · {formatTime(msg.createdAt)}
               </div>
             </div>
@@ -157,14 +127,13 @@ export function ClawComChatDialog({ building, onClose, onReconfigure, onError }:
         </div>
 
         {/* Input */}
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div className="clawcom-chat-input-row">
           <input
             className="hud-input"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Befehl eingeben... (Enter zum Senden)"
-            style={{ flex: 1 }}
             disabled={sending}
             autoFocus
           />
@@ -173,11 +142,11 @@ export function ClawComChatDialog({ building, onClose, onReconfigure, onError }:
             onClick={handleSend}
             disabled={sending || !input.trim()}
           >
-            {sending ? '◌' : '&#x27a4; SENDEN'}
+            {sending ? '◌' : '➤ SENDEN'}
           </button>
         </div>
 
-        <div className="map-dialog-actions" style={{ marginTop: 12 }}>
+        <div className="map-dialog-actions">
           <button className="hud-btn" onClick={onClose}>SCHLIESSEN</button>
         </div>
     </div>
