@@ -675,6 +675,40 @@ app.post('/create-issue', async (c) => {
   return c.json({ ok: true, url })
 })
 
+// POST /api/github/create-issues-batch — create multiple issues from a list
+app.post('/create-issues-batch', async (c) => {
+  const body = await c.req.json()
+  const { fullName, issues } = body
+
+  if (!fullName || !Array.isArray(issues) || issues.length === 0) {
+    return c.json({ error: 'Missing required fields: fullName, issues' }, 400)
+  }
+
+  const results: { title: string; url?: string; error?: string }[] = []
+
+  for (const issue of issues) {
+    const { title, issueBody, labels } = issue
+    if (!title?.trim()) {
+      results.push({ title: title || '', error: 'Empty title' })
+      continue
+    }
+
+    const args = ['issue', 'create', '--repo', fullName, '--title', title.trim()]
+    if (issueBody) args.push('--body', issueBody)
+    if (labels && labels.length > 0) args.push('--label', labels.join(','))
+
+    const proc = Bun.spawnSync(['gh', ...args], { env: { ...process.env } })
+
+    if (proc.exitCode !== 0) {
+      results.push({ title: title.trim(), error: proc.stderr.toString().trim() || 'Failed to create issue' })
+    } else {
+      results.push({ title: title.trim(), url: proc.stdout.toString().trim() })
+    }
+  }
+
+  return c.json({ results })
+})
+
 // GET /api/github/pr/:owner/:name/:number — fetch PR details
 app.get('/pr/:owner/:name/:number', async (c) => {
   const owner = c.req.param('owner')

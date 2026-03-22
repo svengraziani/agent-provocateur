@@ -395,6 +395,13 @@ export function BaseDetailPanel({ entry, onClose, onModalOpen }: {
         >
           + Issue
         </button>
+        <button
+          className="bdp-action-btn"
+          onClick={() => onModalOpen({ mode: 'create-issues-batch', fullName: repo.fullName, owner: repo.owner, repoName: repo.name })}
+          title="Batch create issues from list"
+        >
+          + Batch
+        </button>
       </div>
 
       <div className="bdp-stats">
