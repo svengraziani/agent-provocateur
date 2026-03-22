@@ -113,6 +113,61 @@ export function RelocateIcon({ size = 12, className, title }: IconProps) {
   )
 }
 
+export function ScanIcon({ size = 12, className, title }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" className={className} aria-hidden={!title} role={title ? 'img' : undefined}>
+      {title && <title>{title}</title>}
+      <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.5" />
+      <circle cx="8" cy="8" r="2.5" stroke="currentColor" strokeWidth="1" opacity="0.5" />
+      <line x1="8" y1="8" x2="12.5" y2="4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <circle cx="8" cy="8" r="1" fill="currentColor" />
+    </svg>
+  )
+}
+
+export function BuildIcon({ size = 12, className, title }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" className={className} aria-hidden={!title} role={title ? 'img' : undefined}>
+      {title && <title>{title}</title>}
+      <path d="M3 13l7-7M11 2l-2 2 3 3 2-2-1-1-1 1-1-1 1-1-1-1z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M3 13l-1 1 1 1 1-1-1-1z" fill="currentColor" />
+      <path d="M9 5l2 2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+export function MapIcon({ size = 12, className, title }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" className={className} aria-hidden={!title} role={title ? 'img' : undefined}>
+      {title && <title>{title}</title>}
+      <path d="M1 3.5l4-1.5 6 2 4-2v10l-4 2-6-2-4 1.5V3.5z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+      <line x1="5" y1="2" x2="5" y2="13" stroke="currentColor" strokeWidth="1" opacity="0.5" strokeDasharray="2 1.5" />
+      <line x1="11" y1="3.5" x2="11" y2="14" stroke="currentColor" strokeWidth="1" opacity="0.5" strokeDasharray="2 1.5" />
+    </svg>
+  )
+}
+
+export function FeedIcon({ size = 12, className, title }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" className={className} aria-hidden={!title} role={title ? 'img' : undefined}>
+      {title && <title>{title}</title>}
+      <line x1="2" y1="4" x2="14" y2="4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <line x1="2" y1="8" x2="14" y2="8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <line x1="2" y1="12" x2="9" y2="12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+export function PlusIcon({ size = 12, className, title }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg" className={className} aria-hidden={!title} role={title ? 'img' : undefined}>
+      {title && <title>{title}</title>}
+      <line x1="6" y1="1" x2="6" y2="11" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <line x1="1" y1="6" x2="11" y2="6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  )
+}
+
 export function AssigneeIcon({ size = 12, className, title }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" className={className} aria-hidden={!title} role={title ? 'img' : undefined}>

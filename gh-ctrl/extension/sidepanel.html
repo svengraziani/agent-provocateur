@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vibe and Conquer</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      background: #0a0a0a;
+      overflow: hidden;
+    }
+
+    #app-frame {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+
+    #offline {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: #39d353;
+      font-family: monospace;
+      text-align: center;
+      gap: 16px;
+      padding: 24px;
+    }
+
+    #offline h2 {
+      font-size: 1.2rem;
+    }
+
+    #offline p {
+      color: #666;
+      font-size: 0.85rem;
+      line-height: 1.6;
+    }
+
+    #offline code {
+      background: #1a1a1a;
+      padding: 8px 16px;
+      border-radius: 4px;
+      color: #39d353;
+      font-size: 0.9rem;
+    }
+
+    #retry-btn {
+      margin-top: 8px;
+      background: #39d353;
+      color: #0a0a0a;
+      border: none;
+      padding: 8px 20px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <iframe
+    id="app-frame"
+    src="http://localhost:5173"
+    allow="clipboard-read; clipboard-write"
+  ></iframe>
+
+  <div id="offline">
+    <h2>⚡ Server nicht erreichbar</h2>
+    <p>Starte zuerst den lokalen Dev-Server:</p>
+    <code>cd gh-ctrl && bun run dev</code>
+    <p>Dann unter <strong>http://localhost:5173</strong> erreichbar.</p>
+    <button id="retry-btn" onclick="retryConnection()">Erneut versuchen</button>
+  </div>
+
+  <script src="sidepanel.js"></script>
+</body>
+</html>

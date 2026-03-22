@@ -661,7 +661,8 @@ a:hover { text-decoration: underline; }
   align-items: center;
 }
 
-.input {
+.input,
+.hud-input {
   background: var(--bg-3);
   border: 1px solid var(--border);
   color: var(--text);
@@ -674,11 +675,19 @@ a:hover { text-decoration: underline; }
   transition: border-color 0.15s;
 }
 
-.input:focus {
+.hud-input {
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 3px;
+}
+
+.input:focus,
+.hud-input:focus {
   border-color: var(--green);
 }
 
-.input::placeholder {
+.input::placeholder,
+.hud-input::placeholder {
   color: var(--text-3);
 }
 
@@ -1536,35 +1545,47 @@ select.input {
   left: 0;
   right: 0;
   z-index: 10;
-  background: linear-gradient(180deg, rgba(5, 8, 9, 0.95) 80%, transparent);
-  padding: 8px 20px 12px;
-  border-bottom: 1px solid rgba(57, 255, 20, 0.25);
+  background: linear-gradient(180deg, rgba(5, 8, 9, 0.97) 85%, transparent);
+  padding: 5px 12px 6px;
+  border-bottom: 1px solid rgba(57, 255, 20, 0.2);
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 12px;
   font-family: var(--font-mono);
 }
 
 .hud-brand {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 2px;
   color: var(--crt-green);
   text-shadow: 0 0 8px var(--crt-green);
   flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .hud-controls {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 6px;
   flex: 1;
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+
+.hud-label {
+  display: inline;
 }
 
 .hud-stat {
-  font-size: 11px;
+  font-size: 10px;
   color: var(--text-2);
   letter-spacing: 1px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .hud-alert {
@@ -1577,27 +1598,43 @@ select.input {
   text-shadow: 0 0 6px #56d0f5;
 }
 
+@keyframes hud-btn-press {
+  0%   { box-shadow: 0 0 0 rgba(57, 255, 20, 0); }
+  40%  { box-shadow: 0 0 14px rgba(57, 255, 20, 0.8); }
+  100% { box-shadow: 0 0 4px rgba(57, 255, 20, 0.2); }
+}
+
 .hud-btn {
   background: transparent;
-  border: 1px solid rgba(57, 255, 20, 0.4);
+  border: 1px solid rgba(57, 255, 20, 0.35);
   color: var(--crt-green);
   font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 1px;
-  padding: 4px 10px;
+  font-size: 9px;
+  letter-spacing: 0.8px;
+  padding: 3px 8px;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: background 0.12s, border-color 0.12s, box-shadow 0.12s, transform 0.08s;
   text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .hud-btn:hover {
-  background: rgba(57, 255, 20, 0.1);
+  background: rgba(57, 255, 20, 0.08);
   border-color: var(--crt-green);
-  box-shadow: 0 0 8px rgba(57, 255, 20, 0.3);
+  box-shadow: 0 0 8px rgba(57, 255, 20, 0.25);
+}
+
+.hud-btn:active:not(:disabled) {
+  transform: scale(0.91);
+  animation: hud-btn-press 0.3s ease-out forwards;
 }
 
 .hud-btn:disabled {
-  opacity: 0.4;
+  opacity: 0.35;
   cursor: not-allowed;
 }
 
@@ -1607,31 +1644,85 @@ select.input {
   color: var(--crt-red);
 }
 
+.hud-btn.active:hover {
+  background: rgba(248, 81, 73, 0.22);
+  box-shadow: 0 0 8px rgba(248, 81, 73, 0.3);
+}
+
+.hud-btn-icon {
+  padding: 3px 5px;
+}
+
 .hud-zoom-sep {
   width: 1px;
-  height: 14px;
-  background: rgba(57, 255, 20, 0.25);
-  margin: 0 4px;
+  height: 12px;
+  background: rgba(57, 255, 20, 0.2);
+  flex-shrink: 0;
 }
 
 .hud-zoom-btn {
-  padding: 2px 7px;
-  font-size: 14px;
+  padding: 2px 6px;
+  font-size: 13px;
   line-height: 1;
 }
 
 .hud-zoom-level {
-  font-size: 10px;
+  font-size: 9px;
   color: var(--text-2);
-  min-width: 34px;
+  min-width: 30px;
   text-align: center;
   cursor: pointer;
   user-select: none;
   letter-spacing: 0.5px;
+  flex-shrink: 0;
 }
 
 .hud-zoom-level:hover {
   color: var(--crt-green);
+}
+
+/* Placement mode ghost */
+.placement-ghost {
+  position: fixed;
+  pointer-events: none;
+  z-index: 100;
+  transform: translate(-50%, -50%);
+  width: 96px;
+  height: 96px;
+  filter: drop-shadow(0 0 16px rgba(57, 255, 20, 0.7)) brightness(1.2);
+  opacity: 0.75;
+  animation: ghost-pulse 1s ease-in-out infinite alternate;
+}
+
+.placement-ghost img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+@keyframes ghost-pulse {
+  from { filter: drop-shadow(0 0 10px rgba(57, 255, 20, 0.5)) brightness(1.1); opacity: 0.65; }
+  to   { filter: drop-shadow(0 0 22px rgba(57, 255, 20, 0.9)) brightness(1.3); opacity: 0.85; }
+}
+
+/* Placement mode banner */
+.battlefield-placement-banner {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(5, 20, 10, 0.92);
+  border: 1px solid var(--crt-green);
+  color: var(--crt-green);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 1px;
+  padding: 8px 20px;
+  text-shadow: 0 0 6px var(--crt-green);
+  box-shadow: 0 0 16px rgba(57, 255, 20, 0.2);
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 20;
 }
 
 /* Relocate mode banner */
@@ -2698,6 +2789,279 @@ select.input {
   border: 1px solid rgba(57, 255, 20, 0.4);
   background: rgba(57, 255, 20, 0.04);
   pointer-events: none;
+}
+
+/* ══════════════════════════════════════════════════════════
+   CNC Sidebar — Build Options (C&C style)
+   ══════════════════════════════════════════════════════════ */
+
+.cnc-sidebar {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 220px;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(180deg, #081410 0%, #040c08 100%);
+  border-left: 2px solid rgba(57, 255, 20, 0.25);
+  box-shadow: -6px 0 32px rgba(0, 0, 0, 0.85);
+  font-family: var(--font-mono);
+  overflow: hidden;
+  animation: cnc-slide-in 0.18s ease-out;
+}
+
+@keyframes cnc-slide-in {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+.cnc-sidebar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 9px 10px 8px;
+  border-bottom: 1px solid rgba(57, 255, 20, 0.2);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--crt-green);
+  text-shadow: 0 0 8px var(--crt-green);
+  flex-shrink: 0;
+  background: rgba(57, 255, 20, 0.03);
+}
+
+.cnc-close-btn {
+  background: none;
+  border: none;
+  color: var(--text-3);
+  cursor: pointer;
+  padding: 2px 4px;
+  display: flex;
+  align-items: center;
+  transition: color 0.12s;
+}
+
+.cnc-close-btn:hover {
+  color: var(--crt-red);
+}
+
+/* Preview / config area */
+.cnc-preview {
+  padding: 10px;
+  border-bottom: 1px solid rgba(57, 255, 20, 0.12);
+  flex-shrink: 0;
+  min-height: 130px;
+  display: flex;
+  flex-direction: column;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.cnc-preview-img {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  display: block;
+  margin: 0 auto 6px;
+  filter: drop-shadow(0 0 8px rgba(57, 255, 20, 0.35));
+}
+
+.cnc-preview-name {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--crt-green);
+  text-align: center;
+  letter-spacing: 1px;
+  margin-bottom: 6px;
+  text-shadow: 0 0 6px var(--crt-green);
+}
+
+.cnc-preview-desc {
+  font-size: 9px;
+  color: var(--text-dim);
+  line-height: 1.55;
+  margin-bottom: 10px;
+}
+
+.cnc-preview-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: var(--text-3);
+  text-align: center;
+  line-height: 1.6;
+  letter-spacing: 1px;
+  opacity: 0.5;
+}
+
+.cnc-field {
+  margin-bottom: 7px;
+}
+
+.cnc-field label {
+  display: block;
+  font-size: 8px;
+  color: var(--text-3);
+  letter-spacing: 1.5px;
+  margin-bottom: 3px;
+}
+
+.cnc-input {
+  width: 100%;
+  font-size: 10px;
+  padding: 3px 6px;
+}
+
+.cnc-color-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cnc-color-row input[type="color"] {
+  width: 28px;
+  height: 22px;
+  border: 1px solid rgba(57, 255, 20, 0.3);
+  background: none;
+  cursor: pointer;
+  padding: 1px;
+}
+
+.cnc-color-row span {
+  font-size: 9px;
+  color: var(--text-dim);
+  letter-spacing: 0.5px;
+}
+
+/* Building grid */
+.cnc-grid {
+  flex: 1;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+  padding: 2px;
+  background: #030a05;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(57, 255, 20, 0.2) transparent;
+}
+
+.cnc-card {
+  background: linear-gradient(180deg, #0c1c10 0%, #07100a 100%);
+  border: 1px solid rgba(57, 255, 20, 0.12);
+  cursor: pointer;
+  transition: border-color 0.1s, background 0.1s, transform 0.07s;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.cnc-card:hover {
+  border-color: rgba(57, 255, 20, 0.45);
+  background: linear-gradient(180deg, #142418 0%, #0c1810 100%);
+}
+
+.cnc-card:active {
+  transform: scale(0.96);
+}
+
+.cnc-card.selected {
+  border-color: var(--crt-green);
+  background: linear-gradient(180deg, #1c3020 0%, #122018 100%);
+  box-shadow: inset 0 0 10px rgba(57, 255, 20, 0.07), 0 0 10px rgba(57, 255, 20, 0.18);
+}
+
+.cnc-card-img-wrap {
+  position: relative;
+  aspect-ratio: 1;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.cnc-card-img-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  padding: 8px;
+  filter: brightness(0.85);
+  transition: filter 0.12s;
+}
+
+.cnc-card:hover .cnc-card-img-wrap img,
+.cnc-card.selected .cnc-card-img-wrap img {
+  filter: brightness(1.1) drop-shadow(0 0 5px rgba(57, 255, 20, 0.4));
+}
+
+.cnc-ready {
+  position: absolute;
+  top: 4px;
+  left: 0;
+  background: var(--crt-green);
+  color: #030a05;
+  font-size: 7px;
+  font-weight: 900;
+  letter-spacing: 1.5px;
+  padding: 1px 5px;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+}
+
+.cnc-card-label {
+  font-size: 8px;
+  font-weight: 700;
+  color: var(--text-3);
+  text-align: center;
+  padding: 3px 4px 4px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  background: rgba(0, 0, 0, 0.25);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: color 0.1s;
+}
+
+.cnc-card.selected .cnc-card-label {
+  color: var(--crt-green);
+}
+
+/* Footer */
+.cnc-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 7px 8px;
+  border-top: 1px solid rgba(57, 255, 20, 0.18);
+  flex-shrink: 0;
+  background: rgba(57, 255, 20, 0.02);
+  gap: 6px;
+}
+
+/* Responsive: narrower on small screens */
+@media (max-width: 768px) {
+  .cnc-sidebar {
+    width: 180px;
+  }
+}
+
+@media (max-width: 480px) {
+  .cnc-sidebar {
+    width: 160px;
+  }
+
+  .cnc-preview {
+    min-height: 100px;
+    padding: 8px;
+  }
+
+  .cnc-preview-img {
+    width: 52px;
+    height: 52px;
+  }
 }
 
 /* ---- Construction Dialog ---- */
@@ -4619,4 +4983,145 @@ select.input {
 .silo-panel-pr-badge:hover {
   background: rgba(88, 166, 255, 0.1);
   border-color: var(--blue);
+}
+
+/* ══════════════════════════════════════════════════════════
+   Responsive — Tablet / Chrome Side Panel (≤ 768px)
+   ══════════════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+  :root {
+    --sidebar-width: 52px;
+  }
+
+  /* Sidebar: icon-only strip */
+  .sidebar {
+    padding: 10px 0;
+    gap: 8px;
+    align-items: center;
+    overflow: hidden;
+  }
+
+  /* Logo: small centered icon */
+  .sidebar-logo {
+    padding: 4px 0;
+  }
+
+  .sidebar-logo-img {
+    width: 36px;
+    height: 36px;
+  }
+
+  /* Nav: icon-only, centered, tooltip via title */
+  .sidebar-nav {
+    gap: 2px;
+    width: 100%;
+  }
+
+  .nav-btn {
+    justify-content: center;
+    padding: 10px 0;
+    font-size: 14px;
+    letter-spacing: 0;
+  }
+
+  .nav-label {
+    display: none;
+  }
+
+  .nav-icon {
+    font-size: 16px;
+  }
+
+  /* Hide secondary sidebar elements */
+  .sidebar-stats,
+  .sidebar-status,
+  .sidebar-version {
+    display: none;
+  }
+
+  /* Main content gets full remaining width */
+  .main-content {
+    min-width: 0;
+    overflow-x: hidden;
+  }
+
+  /* Dashboard cards: single column */
+  .cards-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Topbar: compact */
+  .topbar {
+    padding: 8px 12px;
+    gap: 8px;
+  }
+
+  .topbar h1 {
+    font-size: 0.9rem;
+  }
+
+  /* Repo cards: tighter padding */
+  .repo-card {
+    padding: 12px;
+  }
+
+  /* Battlefield HUD: icon-only at tablet */
+  .battlefield-hud {
+    gap: 6px;
+    padding: 4px 8px 5px;
+  }
+
+  .hud-label {
+    display: none;
+  }
+
+  .hud-brand {
+    font-size: 9px;
+    letter-spacing: 1px;
+  }
+
+  .hud-btn {
+    padding: 3px 6px;
+  }
+
+  .hud-stat {
+    font-size: 9px;
+    gap: 1px;
+  }
+
+  /* Settings page */
+  .settings-page {
+    padding: 12px;
+  }
+}
+
+/* ── Very narrow (≤ 480px, actual side panel) ── */
+@media (max-width: 480px) {
+  .topbar h1 {
+    font-size: 0.8rem;
+  }
+
+  .repo-card-header {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .repo-card-name {
+    font-size: 0.85rem;
+  }
+
+  /* HUD: hide brand entirely, only show controls */
+  .hud-brand {
+    display: none;
+  }
+
+  .battlefield-hud {
+    padding: 3px 6px 4px;
+    gap: 4px;
+  }
+
+  .hud-zoom-sep {
+    display: none;
+  }
 }
