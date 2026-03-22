@@ -4,67 +4,168 @@
 
 # Vibe and Conquer
 
+**Your self-hosted GitHub Command Center** — monitor every repo, visualize team activity on an RTS-style battlefield, and command Claude AI directly from the UI.
+
 ![Demo](docs/demo_presentation.gif)
 
-A GitHub Command Center for teams who want full visibility into their repositories — PRs, issues, conflicts, and AI-assisted workflows — all in one place.
+---
 
-## What is this?
+## Key Workflows
 
-**Vibe and Conquer** (`gh-ctrl`) is a self-hosted dashboard that aggregates GitHub activity across multiple repositories. It gives you a real-time overview of open pull requests, issues, merge conflicts, review statuses, and Claude AI-labeled tasks — so your team always knows what needs attention.
+### Monitor at a Glance
 
-## Features
+Never lose track of what's happening across your repositories. The dashboard surfaces open PRs, issues, merge conflicts, review decisions, and running GitHub Actions — all in one place, updated in real time via SSE streaming.
 
-### Dashboard
-- Monitor all your tracked repos at a glance: open PRs, issues, merge conflicts, review decisions, draft PRs, and running GitHub Actions
-- Real-time data streamed via SSE — repos load as soon as they're ready
 - Conflict warnings surface prominently when merge conflicts are detected
-- Configurable auto-refresh interval (30s – 30 min)
+- Draft PRs, stale branches, and AI-labeled tasks are all visible at a glance
+- Configurable auto-refresh (30s – 30 min) keeps the view current
 
-### Battlefield View
-- A retro RTS-style tactical map — each repository is a "base" rendered on an infinite isometric canvas
-- Pan (drag), zoom (scroll/pinch), and freely reposition bases — positions persist in localStorage
-- HUD shows live stats: active bases, conflicts, running processes, and stale branches
-- Minimap for quick navigation across the battlefield
-- Load custom tile maps created in the Map Editor as your battlefield terrain
-- **Relocate Mode** — drag and drop bases to rearrange your battlefield
-- **Intel Feed Panel** — side panel showing your GitHub @mentions, open issues, and open PRs across all repos
+### Visualize the Battlefield
+
+Each repository becomes a **base** on an infinite isometric RTS-style map. Pan, zoom, and reposition bases freely — your battlefield layout persists. The HUD shows live stats across the entire fleet: active bases, running conflicts, workflow runs, and stale branches.
+
+- Minimap for quick navigation across large multi-repo setups
+- Load custom terrain created in the built-in Map Editor
 - Sound effects on scan complete and conflict detection
 
+### Command with Claude (ClawCom)
+
+Trigger Claude AI on any issue or PR with a single click, without leaving the dashboard. The **Construct Dialog** lets you post comments, assign labels, and kick off AI workflows directly from a repo's base node.
+
+<!-- Add ClawCom gif here once recorded: docs/clawcom_demo.gif -->
+> **ClawCom gif coming soon** — recording in progress.
+
+- One-click `@claude` trigger on any issue or PR
+- AI-labeled issues (`claude`, `ai`, `ai-fix`, `ai-feature`) surface in a dedicated section
+- Claude-generated branches auto-link back to their source issues
+- "Create a PR" links from Claude comments become one-click buttons in the UI
+
+### Organize & Track
+
+The **Intel Feed Panel** pulls your GitHub @mentions, open issues, and open PRs across all tracked repos into a single sidebar — so nothing falls through the cracks.
+
+- Netlify deploy-preview URLs surface automatically in PR cards
+- Voice input for hands-free issue and PR creation
+- Repo metadata at a glance: stars, forks, languages, top contributors, and a 26-week commit activity sparkline
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+- [Bun](https://bun.sh) installed
+- [GitHub CLI](https://cli.github.com) installed and authenticated (`gh auth login`)
+
+### Install & Run
+
+```bash
+cd gh-ctrl
+bun install
+cd client && bun install && cd ..
+bun run dev
+```
+
+This starts both the backend (port `3001`) and the Vite dev server (port `5173`) concurrently.
+
+### Production
+
+```bash
+cd gh-ctrl
+bun run build   # builds the React client
+bun run start   # serves everything on port 3001
+```
+
+---
+
+## Docker
+
+The easiest way to run Vibe and Conquer without installing Bun or the GitHub CLI locally.
+
+**Prerequisites:** [Docker](https://docs.docker.com/get-docker/) with Compose v2 + a GitHub [personal access token](https://github.com/settings/tokens) with `repo` and `read:org` scopes.
+
+```bash
+cp .env.example .env
+# Edit .env and set: GH_TOKEN=ghp_...
+```
+
+**Production** — builds the frontend into the image, serves everything on one port:
+
+```bash
+docker compose --profile prod up --build
+# App at http://localhost:3001
+```
+
+**Development** — live reload with Vite HMR:
+
+```bash
+docker compose --profile dev up --build
+# Frontend: http://localhost:5173  |  API: http://localhost:3001
+```
+
+The SQLite database is stored in a named Docker volume (`gh-ctrl-data`) and persists across restarts.
+
+---
+
+## GitHub Actions Workflows
+
+Three Claude-powered workflows run automatically on your repositories:
+
+| Workflow | Trigger | What it does |
+|----------|---------|--------------|
+| **`claude.yml`** | `@claude` mention in any issue or PR comment | Interactive AI assistant — answers questions, implements code, opens PRs |
+| **`claude-code-review.yml`** | PR opened or synchronized | Automated code review with inline feedback |
+| **`claude-conflict-resolver.yml`** | Merge conflict detected | Automatically resolves conflicts and pushes a fix |
+
+These workflows are the backbone of **ClawCom** — the dashboard's AI command layer. Every triggered run is visible in the UI, linked back to the issue or PR that spawned it.
+
+---
+
+<details>
+<summary><strong>Full Feature Reference</strong></summary>
+
+### Dashboard
+- Real-time SSE streaming — repos load as soon as they're ready
+- Conflict warnings, draft PRs, running actions, stale branches
+- Configurable auto-refresh (30s – 30 min)
+
+### Battlefield View
+- Infinite isometric canvas — pan, zoom, reposition bases freely
+- HUD: active bases, conflicts, running processes, stale branches
+- Minimap, sound effects, Relocate Mode (drag & drop bases)
+- Intel Feed Panel: @mentions, open issues, open PRs across all repos
+
 ### Base Nodes (per-repo)
-- Per-repository cards showing: open PRs, issues, conflicts, AI-labeled issues, running actions, and stale branches
-- Open PR list with review status, draft status, and Netlify preview URLs
-- Open issue list with labels and assignees
-- Branch staleness visualization — see which branches haven't been updated recently
-- Repo metadata popup: stars, forks, watchers, languages, topics, top contributors, and 26-week commit activity sparkline
-- **Construct Dialog** — trigger Claude AI on issues, post comments, add/remove labels, assign users, and create PRs directly from the UI
-- Inline actions: trigger `@claude` on any issue or PR with a single click
+- Open PRs with review status, draft status, and Netlify preview URLs
+- Open issues with labels and assignees
+- Branch staleness visualization
+- Repo metadata popup: stars, forks, watchers, languages, topics, top contributors, 26-week commit sparkline
+- Construct Dialog: trigger Claude, post comments, add/remove labels, assign users, create PRs
 
 ### Map Editor
-- Create custom isometric tile maps to use as battlefield backgrounds
-- Adjustable map dimensions (up to 80×80 tiles)
+- Create isometric tile maps (up to 80×80 tiles) for battlefield backgrounds
 - Tile color painting with multi-select and flood fill
-- Save, load, and delete named maps; mini-preview thumbnails in the map selector
+- Save, load, delete named maps with mini-preview thumbnails
 
 ### Repository Management
-- Browse and search your GitHub repos (owned, collaborator, and org repos) and add them with one click
-- Manual `owner/repo` entry as a fallback
+- Browse and search owned, collaborator, and org repos — add with one click
+- Manual `owner/repo` entry as fallback
 - Customizable per-repo color (preset palette + custom hex picker)
-- Create new GitHub repos directly from the dashboard and auto-track them
+- Create new GitHub repos directly from the dashboard
 
 ### Claude AI Integration
-- Automatically surfaces issues labeled `claude`, `ai`, `ai-fix`, or `ai-feature` in a dedicated section
-- Detects Claude-generated branches (`claude/issue-*`) and links them back to their source issues
-- Parses Claude's "Create a PR" comment links and surfaces them as one-click PR creation
-- Shows which Claude workflows are actively running per repo
-
-### GitHub Actions Support
-- Tracks running, queued, and waiting workflow runs per repository
-- Links running Claude workflows back to the issue they were triggered from
+- Surfaces `claude`, `ai`, `ai-fix`, `ai-feature` labeled issues in a dedicated section
+- Detects `claude/issue-*` branches and links them to source issues
+- Parses Claude's "Create a PR" links into one-click buttons
+- Shows active Claude workflow runs per repo
 
 ### Other
-- **Netlify Preview URLs** — pulls deploy-preview URLs into PR cards automatically
-- **Voice Input** — hands-free issue and PR creation via browser speech recognition
-- **Toast notifications** for all actions (success, error, info)
+- Voice input for hands-free issue and PR creation
+- Toast notifications for all actions
+
+</details>
+
+---
 
 ## Tech Stack
 
@@ -76,80 +177,6 @@ A GitHub Command Center for teams who want full visibility into their repositori
 | Database | SQLite + [Drizzle ORM](https://orm.drizzle.team) |
 | GitHub API | GitHub CLI (`gh`) |
 | State Management | [Zustand](https://github.com/pmndrs/zustand) |
-
-## Getting Started
-
-### Prerequisites
-
-- [Bun](https://bun.sh) installed
-- [GitHub CLI](https://cli.github.com) installed and authenticated (`gh auth login`)
-
-### Installation
-
-```bash
-cd gh-ctrl
-bun install
-cd client && bun install && cd ..
-```
-
-### Development
-
-```bash
-cd gh-ctrl
-bun run dev
-```
-
-This starts both the backend server (port `3001`) and the Vite dev server (port `5173`) concurrently.
-
-### Production
-
-```bash
-cd gh-ctrl
-bun run build   # builds the React client
-bun run start   # serves everything on port 3001
-```
-
-## Docker
-
-The easiest way to run Vibe and Conquer without installing Bun or the GitHub CLI locally.
-
-### Prerequisites
-
-- [Docker](https://docs.docker.com/get-docker/) with Compose v2
-- A GitHub [personal access token](https://github.com/settings/tokens) with `repo` and `read:org` scopes
-
-### Setup
-
-```bash
-cp .env.example .env
-# Edit .env and set your token:
-# GH_TOKEN=ghp_...
-```
-
-### Production
-
-Builds the frontend into the image and serves everything from a single port.
-
-```bash
-docker compose --profile prod up --build
-```
-
-App available at `http://localhost:3001`. The SQLite database is stored in a named Docker volume (`gh-ctrl-data`) and persists across restarts.
-
-### Development
-
-Mounts the source from your host for live reload — Vite HMR on port 5173, Bun `--watch` on port 3001.
-
-```bash
-docker compose --profile dev up --build
-```
-
-| URL | Purpose |
-|-----|---------|
-| `http://localhost:5173` | Frontend (Vite, with HMR) |
-| `http://localhost:3001` | Backend API |
-
-`--build` is only needed when the Dockerfile changes (e.g. after a dependency update). Normal dev sessions can omit it.
 
 ## Project Structure
 
@@ -182,11 +209,7 @@ vibe-and-conquer/
                 └── RepoCard.tsx      # Repo card for the dashboard grid
 ```
 
-## GitHub Actions Workflows
-
-- **claude.yml** — Interactive Claude assistant (responds to `@claude` mentions in issues and PRs)
-- **claude-code-review.yml** — Automated PR code review on open/sync
-- **claude-conflict-resolver.yml** — Automatic merge conflict detection and resolution
+---
 
 ## Star History
 
