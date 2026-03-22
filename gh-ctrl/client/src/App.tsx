@@ -120,25 +120,25 @@ export default function App() {
             end
             className={({ isActive }) => `nav-btn${isActive ? ' active' : ''}`}
           >
-            &#x25a0; Dashboard
+            <span className="nav-icon">&#x25a0;</span><span className="nav-label"> Dashboard</span>
           </NavLink>
           <NavLink
             to="/battlefield"
             className={({ isActive }) => `nav-btn${isActive ? ' active' : ''}`}
           >
-            &#x25a0; Battlefield
+            <span className="nav-icon">&#x25a0;</span><span className="nav-label"> Battlefield</span>
           </NavLink>
           <NavLink
             to="/map-editor"
             className={({ isActive }) => `nav-btn${isActive ? ' active' : ''}`}
           >
-            &#x25a6; Map Editor
+            <span className="nav-icon">&#x25a6;</span><span className="nav-label"> Map Editor</span>
           </NavLink>
           <NavLink
             to="/settings"
             className={({ isActive }) => `nav-btn${isActive ? ' active' : ''}`}
           >
-            &#x2699; Repositories
+            <span className="nav-icon">&#x2699;</span><span className="nav-label"> Repositories</span>
           </NavLink>
         </nav>
 

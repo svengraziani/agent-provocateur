@@ -8,12 +8,13 @@ import { ActionModal } from './ActionModal'
 import type { ModalState } from './ActionModal'
 import { ConstructDialog } from './ConstructDialog'
 import { CreateBaseDialog } from './CreateBaseDialog'
-import { CloseIcon, RelocateIcon, RefreshIcon } from './Icons'
+import { CloseIcon, RelocateIcon, ScanIcon, BuildIcon, MapIcon, FeedIcon, PlusIcon } from './Icons'
 import { FeedPanel } from './FeedPanel'
 import { useSound } from '../hooks/useSound'
 import { useAppStore } from '../store'
 import { ClawComBuilding } from './ClawComBuilding'
 import { BuildOptionsMenu } from './BuildOptionsMenu'
+import type { PlacementParams } from './BuildOptionsMenu'
 
 interface Position {
   x: number
@@ -367,6 +368,8 @@ export function BattlefieldView() {
   const [selectedBuildingId, setSelectedBuildingId] = useState<number | null>(null)
   const detailPanelRef = useRef<HTMLDivElement>(null)
   const [showBuildMenu, setShowBuildMenu] = useState(false)
+  const [placementMode, setPlacementMode] = useState<PlacementParams | null>(null)
+  const [ghostScreenPos, setGhostScreenPos] = useState<Position>({ x: 0, y: 0 })
   // Building positions: keyed by building id, stored in memory for smooth dragging
   const [buildingPositions, setBuildingPositions] = useState<Record<number, { x: number; y: number }>>({})
   const [relocatingBuildingId, setRelocatingBuildingId] = useState<number | null>(null)
@@ -528,13 +531,36 @@ export function BattlefieldView() {
   }, [loading, entries, positions])
 
   const handleMapMouseDown = useCallback((e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest('.cnc-sidebar')) return
+    if (placementMode) return  // handled in handleMapClick
     if ((e.target as HTMLElement).closest('.base-node')) return
     if (isRelocateMode) return
     setIsDraggingMap(true)
     setDragStart({ x: e.clientX - offset.x, y: e.clientY - offset.y })
-  }, [offset, isRelocateMode])
+  }, [offset, isRelocateMode, placementMode])
+
+  const handleMapClick = useCallback(async (e: React.MouseEvent) => {
+    if (!placementMode) return
+    if ((e.target as HTMLElement).closest('.cnc-sidebar')) return
+    const rect = containerRef.current?.getBoundingClientRect()
+    if (!rect) return
+    const mapX = (e.clientX - rect.left - offsetRef.current.x) / zoomRef.current
+    const mapY = (e.clientY - rect.top - offsetRef.current.y) / zoomRef.current
+    try {
+      await api.createBuilding({ type: placementMode.type, name: placementMode.name, color: placementMode.color, posX: mapX, posY: mapY })
+      await loadBuildings()
+      addToast(`${placementMode.name} platziert!`, 'success')
+    } catch (err: any) {
+      addToast(`Bau fehlgeschlagen: ${err.message}`, 'error')
+    }
+    setPlacementMode(null)
+  }, [placementMode, loadBuildings, addToast])
 
   const handleMapMouseMove = useCallback((e: React.MouseEvent) => {
+    if (placementMode) {
+      setGhostScreenPos({ x: e.clientX, y: e.clientY })
+      return
+    }
     if (isDraggingMap) {
       setOffset({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y })
     } else if (relocatingId !== null && relocatingStart !== null) {
@@ -585,6 +611,13 @@ export function BattlefieldView() {
     el.addEventListener('wheel', handleWheel, { passive: false })
     return () => el.removeEventListener('wheel', handleWheel)
   }, [handleWheel])
+
+  useEffect(() => {
+    if (!placementMode) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setPlacementMode(null) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [placementMode])
 
   const handleZoomIn = useCallback(() => {
     setZoom(prev => {
@@ -703,53 +736,69 @@ export function BattlefieldView() {
       onMouseMove={handleMapMouseMove}
       onMouseUp={handleMapMouseUp}
       onMouseLeave={handleMapMouseUp}
+      onClick={handleMapClick}
       ref={containerRef}
-      style={{ cursor: isDraggingMap ? 'grabbing' : (isRelocateMode ? 'crosshair' : 'grab') }}
+      style={{ cursor: placementMode ? 'crosshair' : isDraggingMap ? 'grabbing' : (isRelocateMode ? 'crosshair' : 'grab') }}
     >
       {/* Scanlines — fixed to viewport */}
       <div className="battlefield-scanlines" />
 
       {/* HUD */}
       <div className="battlefield-hud">
-        <div className="hud-brand">&#x25a0; C&amp;C GITAGENTS — TACTICAL COMMAND</div>
+        <div className="hud-brand">
+          &#x25a0;<span className="hud-label"> C&amp;C GITAGENTS</span>
+        </div>
         <div className="hud-controls">
-          <span className="hud-stat">BASES: <strong>{visibleEntries.length}</strong>{activeMapRepoIds !== null && entries.length !== visibleEntries.length && <span style={{ opacity: 0.6, fontSize: 10 }}> /{entries.length}</span>}</span>
+          <span className="hud-stat" title={`${visibleEntries.length} bases`}>
+            &#x25a6; <strong>{visibleEntries.length}</strong>
+            {activeMapRepoIds !== null && entries.length !== visibleEntries.length && <span style={{ opacity: 0.5, fontSize: 9 }}>/{entries.length}</span>}
+            <span className="hud-label"> BASES</span>
+          </span>
           {totalConflicts > 0 && (
-            <span className="hud-stat hud-alert blink">&#x26a0; CONFLICTS: <strong>{totalConflicts}</strong></span>
+            <span className="hud-stat hud-alert blink" title={`${totalConflicts} merge conflicts`}>
+              &#x26a0; <strong>{totalConflicts}</strong><span className="hud-label"> CONFLICTS</span>
+            </span>
           )}
           {totalRunningActions > 0 && (
-            <span className="hud-stat hud-actions" title="Running GitHub Actions across all bases"><span className="spinning-process">&#x2699;</span> PROCESSES: <strong>{totalRunningActions}</strong></span>
+            <span className="hud-stat hud-actions" title="Running GitHub Actions across all bases">
+              <span className="spinning-process">&#x2699;</span> <strong>{totalRunningActions}</strong>
+            </span>
           )}
           {staleBranchStats.total > 0 && (
             <span className="hud-stat hud-stale-branches" title={`${staleBranchStats.total} stale branch(es) across ${staleBranchStats.repos} repo(s)`}>
-              &#x2387; STALE: <strong>{staleBranchStats.total}</strong>
+              &#x2387; <strong>{staleBranchStats.total}</strong><span className="hud-label"> STALE</span>
             </span>
           )}
           <button
             className="hud-btn"
             onClick={() => { play('peep'); onRefresh() }}
             disabled={loading}
+            title="Scan all bases"
           >
-            {loading ? '◌ SCANNING...' : <><RefreshIcon size={12} /> SCAN</>}
+            {loading ? <span className="spinning-process">&#x2699;</span> : <ScanIcon size={11} />}
+            <span className="hud-label"> {loading ? 'SCANNING' : 'SCAN'}</span>
           </button>
           <button
             className={`hud-btn${isRelocateMode ? ' active' : ''}`}
             onClick={() => { play('hydraulic'); setIsRelocateMode(v => !v); setRelocatingId(null); setRelocatingStart(null) }}
+            title={isRelocateMode ? 'Cancel relocate' : 'Relocate a base'}
           >
-            {isRelocateMode ? <><CloseIcon size={10} /> CANCEL RELOCATE</> : <><RelocateIcon size={12} /> RELOCATE BASE</>}
+            {isRelocateMode ? <CloseIcon size={10} /> : <RelocateIcon size={11} />}
+            <span className="hud-label"> {isRelocateMode ? 'CANCEL' : 'RELOCATE'}</span>
           </button>
           <button
             className="hud-btn hud-btn-new-base"
             onClick={() => { play('peep'); setShowCreateBase(true) }}
+            title="Create new base"
           >
-            &#x2b; NEW BASE
+            <PlusIcon size={10} /><span className="hud-label"> NEW BASE</span>
           </button>
           <button
             className="hud-btn"
             onClick={() => { play('hydraulic'); setShowBuildMenu(true) }}
-            title="Gebäude bauen (ClawCom, etc.)"
+            title="Bau Optionen (ClawCom, etc.)"
           >
-            &#x25a4; BAU OPTIONEN
+            <BuildIcon size={11} /><span className="hud-label"> BUILD</span>
           </button>
           <span className="hud-zoom-sep" />
           <button
@@ -757,24 +806,24 @@ export function BattlefieldView() {
             onClick={() => setShowMapSelector(true)}
             title="Load a map from the Map Editor"
           >
-            &#x25a6; {activeMap ? activeMap.name : 'LOAD MAP'}
+            <MapIcon size={11} /><span className="hud-label"> {activeMap ? activeMap.name : 'MAP'}</span>
           </button>
           {activeMap && (
             <button
-              className="hud-btn"
+              className="hud-btn hud-btn-icon"
               onClick={handleClearMap}
               title="Clear loaded map"
             >
-              &#x2715; MAP
+              <CloseIcon size={9} />
             </button>
           )}
           <span className="hud-zoom-sep" />
           <button
             className={`hud-btn${showFeedPanel ? ' active' : ''}`}
             onClick={() => { play('peep'); setShowFeedPanel(v => !v) }}
-            title="Toggle Intel Feed panel"
+            title="Toggle Intel Feed"
           >
-            ◈ FEED
+            <FeedIcon size={11} /><span className="hud-label"> FEED</span>
           </button>
           <span className="hud-zoom-sep" />
           <button className="hud-btn hud-zoom-btn" onClick={handleZoomOut} disabled={zoom <= ZOOM_MIN} title="Zoom out">−</button>
@@ -961,9 +1010,27 @@ export function BattlefieldView() {
       {showBuildMenu && (
         <BuildOptionsMenu
           onClose={() => setShowBuildMenu(false)}
-          onSuccess={(msg) => addToast(msg, 'success')}
-          onError={(msg) => addToast(msg, 'error')}
+          onStartPlacement={(params) => {
+            setShowBuildMenu(false)
+            setPlacementMode(params)
+            setGhostScreenPos({ x: window.innerWidth / 2, y: window.innerHeight / 2 })
+          }}
         />
+      )}
+
+      {/* Placement mode: ghost + banner */}
+      {placementMode && (
+        <>
+          <div
+            className="placement-ghost"
+            style={{ left: ghostScreenPos.x, top: ghostScreenPos.y }}
+          >
+            <img src={placementMode.buildImage} alt={placementMode.name} />
+          </div>
+          <div className="battlefield-placement-banner">
+            &#x2295; PLATZIERUNGSMODUS — Klicke auf die Karte um <strong>{placementMode.name}</strong> zu setzen &nbsp;·&nbsp; ESC zum Abbrechen
+          </div>
+        </>
       )}
 
       {/* Intel Feed Panel */}
