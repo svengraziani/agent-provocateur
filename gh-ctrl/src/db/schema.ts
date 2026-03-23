@@ -78,3 +78,13 @@ export const placedBadges = sqliteTable('placed_badges', {
   createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
 })
+
+export const deadlineTimers = sqliteTable('deadline_timers', {
+  id:          integer('id').primaryKey({ autoIncrement: true }),
+  name:        text('name').notNull(),
+  description: text('description').default(''),
+  deadline:    text('deadline').notNull(), // ISO 8601 date-time string
+  color:       text('color').default('#ff4444'),
+  createdAt:   integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
+  updatedAt:   integer('updated_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
+})

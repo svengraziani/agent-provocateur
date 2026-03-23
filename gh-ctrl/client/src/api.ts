@@ -1,4 +1,4 @@
-import type { Repo, DashboardEntry, RepoData, GHLabel, BranchesData, IssueDetail, PRDetail, GameMap, RepoMeta, FeedData, SetupStatus, Building, ClawComMessage, Badge, PlacedBadge, HealthcheckResult } from './types'
+import type { Repo, DashboardEntry, RepoData, GHLabel, BranchesData, IssueDetail, PRDetail, GameMap, RepoMeta, FeedData, SetupStatus, Building, ClawComMessage, Badge, PlacedBadge, HealthcheckResult, DeadlineTimer } from './types'
 
 export function getServerUrl(): string {
   return localStorage.getItem('serverUrl')?.replace(/\/$/, '') ?? ''
@@ -336,4 +336,21 @@ export const api = {
 
   removePlacedBadge: (id: number) =>
     request<{ ok: boolean }>(`/badges/placed/${id}`, { method: 'DELETE' }),
+
+  listTimers: () => request<DeadlineTimer[]>('/timers'),
+
+  createTimer: (params: { name: string; deadline: string; description?: string; color?: string }) =>
+    request<DeadlineTimer>('/timers', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    }),
+
+  updateTimer: (id: number, updates: { name?: string; deadline?: string; description?: string; color?: string }) =>
+    request<DeadlineTimer>(`/timers/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(updates),
+    }),
+
+  deleteTimer: (id: number) =>
+    request<{ ok: boolean }>(`/timers/${id}`, { method: 'DELETE' }),
 }

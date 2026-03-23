@@ -18,6 +18,7 @@ import { BuildOptionsMenu } from './BuildOptionsMenu'
 import type { PlacementParams } from './BuildOptionsMenu'
 import { BadgeMarker } from './BadgeMarker'
 import { BadgeLibraryDialog } from './BadgeLibraryDialog'
+import { DeadlineTimers } from './DeadlineTimers'
 
 interface Position {
   x: number
@@ -384,6 +385,7 @@ export function BattlefieldView() {
   const [relocatingBuildingId, setRelocatingBuildingId] = useState<number | null>(null)
   const [relocatingBuildingStart, setRelocatingBuildingStart] = useState<{ mouseX: number; mouseY: number; nodeX: number; nodeY: number } | null>(null)
   const [showBadgeLibrary, setShowBadgeLibrary] = useState(false)
+  const [showTimers, setShowTimers] = useState(false)
   const [placingBadge, setPlacingBadge] = useState<Badge | null>(null)
   const [badgePositions, setBadgePositions] = useState<Record<number, { x: number; y: number }>>({})
   const [relocatingBadgeId, setRelocatingBadgeId] = useState<number | null>(null)
@@ -955,6 +957,13 @@ export function BattlefieldView() {
           >
             <FeedIcon size={11} /><span className="hud-label"> FEED</span>
           </button>
+          <button
+            className={`hud-btn${showTimers ? ' active' : ''}`}
+            onClick={() => { play('peep'); setShowTimers(v => !v) }}
+            title="Mission Timers — Deadline countdown for all maps"
+          >
+            ⏱<span className="hud-label"> TIMERS</span>
+          </button>
           <span className="hud-zoom-sep" />
           <button className="hud-btn hud-zoom-btn" onClick={handleZoomOut} disabled={zoom <= ZOOM_MIN} title="Zoom out">−</button>
           <span className="hud-zoom-level" title="Click to reset zoom" onClick={handleZoomReset}>{Math.round(zoom * 100)}%</span>
@@ -1234,6 +1243,12 @@ export function BattlefieldView() {
         entries={visibleEntries}
         isOpen={showFeedPanel}
         onClose={() => setShowFeedPanel(false)}
+      />
+
+      {/* Deadline Mission Timers Panel */}
+      <DeadlineTimers
+        isOpen={showTimers}
+        onClose={() => setShowTimers(false)}
       />
 
       {/* Branch Silo Panel — C&C-style right-side command panel */}
