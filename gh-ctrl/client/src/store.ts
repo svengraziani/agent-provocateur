@@ -53,6 +53,7 @@ interface AppStore {
   loadBadges: () => Promise<void>
   loadPlacedBadges: () => Promise<void>
   uploadBadge: (file: File, name: string) => Promise<Badge>
+  renameBadge: (id: number, name: string) => Promise<void>
   deleteBadge: (id: number) => Promise<void>
   placeBadge: (params: { badgeId: number; posX: number; posY: number; scale?: number; label?: string; mapId?: number | null }) => Promise<PlacedBadge>
   updatePlacedBadgePosition: (id: number, posX: number, posY: number) => Promise<void>
@@ -241,6 +242,16 @@ export const useAppStore = create<AppStore>((set, get) => ({
       return badge
     } catch (err: any) {
       get().addToast(`Failed to upload badge: ${err.message}`, 'error')
+      throw err
+    }
+  },
+
+  renameBadge: async (id: number, name: string) => {
+    try {
+      const updated = await api.renameBadge(id, name)
+      set((state) => ({ badges: state.badges.map((b) => b.id === id ? updated : b) }))
+    } catch (err: any) {
+      get().addToast(`Failed to rename badge: ${err.message}`, 'error')
       throw err
     }
   },

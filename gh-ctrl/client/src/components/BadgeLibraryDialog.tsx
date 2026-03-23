@@ -14,12 +14,25 @@ export function BadgeLibraryDialog({ onClose, onSelectForPlacement, serverUrl }:
   const deleteBadge = useAppStore((s) => s.deleteBadge)
   const addToast = useAppStore((s) => s.addToast)
 
+  const renameBadge = useAppStore((s) => s.renameBadge)
+
   const [activeTab, setActiveTab] = useState<'library' | 'upload'>('library')
   const [uploading, setUploading] = useState(false)
   const [uploadName, setUploadName] = useState('')
   const [dragOver, setDragOver] = useState(false)
   const [pendingFile, setPendingFile] = useState<File | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [renamingId, setRenamingId] = useState<number | null>(null)
+  const [renameValue, setRenameValue] = useState('')
+
+  async function handleRenameSubmit(id: number) {
+    if (!renameValue.trim()) return
+    try {
+      await renameBadge(id, renameValue.trim())
+      addToast('Badge renamed', 'success')
+    } catch { /* toast shown by store */ }
+    setRenamingId(null)
+  }
 
   function getBadgeUrl(badge: Badge) {
     return `${serverUrl}/uploads/badges/${badge.filename}`
@@ -137,17 +150,37 @@ export function BadgeLibraryDialog({ onClose, onSelectForPlacement, serverUrl }:
                       alt={badge.name}
                       style={{ width: 48, height: 48, objectFit: 'contain' }}
                     />
-                    <div style={{
-                      fontSize: 10,
-                      color: 'var(--green-neon)',
-                      textAlign: 'center',
-                      maxWidth: '100%',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}>
-                      {badge.name}
-                    </div>
+                    {renamingId === badge.id ? (
+                      <input
+                        autoFocus
+                        className="hud-input"
+                        style={{ fontSize: 10, width: '100%', textAlign: 'center' }}
+                        value={renameValue}
+                        onChange={(e) => setRenameValue(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') { e.stopPropagation(); handleRenameSubmit(badge.id) }
+                          if (e.key === 'Escape') { e.stopPropagation(); setRenamingId(null) }
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        onBlur={() => setRenamingId(null)}
+                      />
+                    ) : (
+                      <div style={{
+                        fontSize: 10,
+                        color: 'var(--green-neon)',
+                        textAlign: 'center',
+                        maxWidth: '100%',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        cursor: 'text',
+                      }}
+                        title="Click to rename"
+                        onClick={(e) => { e.stopPropagation(); setRenamingId(badge.id); setRenameValue(badge.name) }}
+                      >
+                        {badge.name}
+                      </div>
+                    )}
                     <button
                       className="hud-btn"
                       style={{ fontSize: 9, padding: '1px 6px', color: '#ff6b6b' }}
