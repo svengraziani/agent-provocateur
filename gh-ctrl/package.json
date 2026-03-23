@@ -8,6 +8,9 @@
     "dev:client": "cd client && bun run dev",
     "build": "cd client && bun run build",
     "start": "bun src/index.ts",
+    "test": "DATABASE_URL=:memory: bun test src/__tests__/**/*.test.ts",
+    "test:e2e": "bunx playwright test",
+    "test:e2e:ui": "bunx playwright test --ui",
     "version:patch": "node scripts/bump-version.js patch",
     "version:minor": "node scripts/bump-version.js minor",
     "version:major": "node scripts/bump-version.js major"
@@ -22,6 +25,7 @@
   },
   "devDependencies": {
     "drizzle-kit": "^0.22.0",
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "@playwright/test": "^1.45.0"
   }
 }

@@ -2,7 +2,7 @@ import { drizzle } from 'drizzle-orm/bun-sqlite'
 import { Database } from 'bun:sqlite'
 import * as schema from './schema'
 
-const sqlite = new Database('./data/github-dashboard.db')
+const sqlite = new Database(process.env.DATABASE_URL || './data/github-dashboard.db')
 sqlite.exec('PRAGMA journal_mode = WAL;')
 sqlite.exec(`
   CREATE TABLE IF NOT EXISTS repos (
