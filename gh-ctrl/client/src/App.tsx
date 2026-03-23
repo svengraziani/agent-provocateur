@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Routes, Route, NavLink } from 'react-router-dom'
 import { useAppStore } from './store'
-import { Dashboard } from './components/Dashboard'
 import { Settings } from './components/Settings'
 import { BattlefieldView } from './components/BattlefieldView'
 import { MapEditor } from './components/MapEditor'
@@ -120,12 +119,6 @@ export default function App() {
             end
             className={({ isActive }) => `nav-btn${isActive ? ' active' : ''}`}
           >
-            <span className="nav-icon">&#x25a0;</span><span className="nav-label"> Dashboard</span>
-          </NavLink>
-          <NavLink
-            to="/battlefield"
-            className={({ isActive }) => `nav-btn${isActive ? ' active' : ''}`}
-          >
             <span className="nav-icon">&#x25a0;</span><span className="nav-label"> Battlefield</span>
           </NavLink>
           <NavLink
@@ -177,8 +170,7 @@ export default function App() {
 
       <main className="main-content">
         <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/battlefield" element={<BattlefieldView />} />
+          <Route path="/" element={<BattlefieldView />} />
           <Route path="/map-editor" element={<MapEditor />} />
           <Route path="/settings" element={<Settings />} />
         </Routes>
