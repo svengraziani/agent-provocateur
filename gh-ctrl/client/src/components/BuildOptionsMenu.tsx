@@ -18,6 +18,14 @@ const AVAILABLE_BUILDINGS: BuildingDef[] = [
     buildImage: '/buildings/build_clawcom.png',
     defaultColor: '#00ff88',
   },
+  {
+    type: 'new-base',
+    name: 'New Base',
+    description:
+      'Etabliere ein neues GitHub-Repository direkt vom Schlachtfeld. Konfiguriere Namen, Beschreibung und Sichtbarkeit — das neue Hauptquartier erscheint sofort in deiner Kommandozentrale.',
+    buildImage: '/buildings/build_clawcom.png',
+    defaultColor: '#00ff88',
+  },
 ]
 
 export interface PlacementParams {
@@ -25,6 +33,8 @@ export interface PlacementParams {
   name: string
   color: string
   buildImage: string
+  repoDescription?: string
+  repoVisibility?: 'public' | 'private'
 }
 
 interface BuildOptionsMenuProps {
@@ -32,24 +42,38 @@ interface BuildOptionsMenuProps {
   onStartPlacement: (params: PlacementParams) => void
 }
 
+const REPO_NAME_RE = /^[a-zA-Z0-9._-]+$/
+
 export function BuildOptionsMenu({ onClose, onStartPlacement }: BuildOptionsMenuProps) {
   const [selected, setSelected] = useState<BuildingDef | null>(null)
   const [buildName, setBuildName] = useState('')
   const [color, setColor] = useState('#00ff88')
+  const [repoDescription, setRepoDescription] = useState('')
+  const [repoVisibility, setRepoVisibility] = useState<'public' | 'private'>('private')
 
   function selectBuilding(b: BuildingDef) {
     setSelected(b)
-    setBuildName(b.name)
+    setBuildName(b.type === 'new-base' ? '' : b.name)
     setColor(b.defaultColor)
+    setRepoDescription('')
+    setRepoVisibility('private')
   }
 
+  const isNewBase = selected?.type === 'new-base'
+  const repoNameValid = !isNewBase || REPO_NAME_RE.test(buildName.trim())
+  const canSubmit = !!selected && (!isNewBase || (buildName.trim().length > 0 && repoNameValid))
+
   function handlePlatzieren() {
-    if (!selected) return
+    if (!selected || !canSubmit) return
     onStartPlacement({
       type: selected.type,
       name: buildName.trim() || selected.name,
       color,
       buildImage: selected.buildImage,
+      ...(isNewBase && {
+        repoDescription: repoDescription.trim() || undefined,
+        repoVisibility,
+      }),
     })
   }
 
@@ -71,26 +95,72 @@ export function BuildOptionsMenu({ onClose, onStartPlacement }: BuildOptionsMenu
             <img className="cnc-preview-img" src={selected.buildImage} alt={selected.name} />
             <div className="cnc-preview-name">{selected.name}</div>
             <div className="cnc-preview-desc">{selected.description}</div>
-            <div className="cnc-field">
-              <label>BEZEICHNUNG</label>
-              <input
-                className="hud-input cnc-input"
-                value={buildName}
-                onChange={(e) => setBuildName(e.target.value)}
-                placeholder={selected.name}
-              />
-            </div>
-            <div className="cnc-field">
-              <label>FARBE</label>
-              <div className="cnc-color-row">
-                <input
-                  type="color"
-                  value={color}
-                  onChange={(e) => setColor(e.target.value)}
-                />
-                <span>{color.toUpperCase()}</span>
-              </div>
-            </div>
+            {isNewBase ? (
+              <>
+                <div className="cnc-field">
+                  <label>BASE DESIGNATION</label>
+                  <input
+                    className="hud-input cnc-input"
+                    value={buildName}
+                    onChange={(e) => setBuildName(e.target.value)}
+                    placeholder="my-new-repo"
+                    style={buildName.trim() && !repoNameValid ? { borderColor: '#ff4444' } : undefined}
+                  />
+                  {buildName.trim() && !repoNameValid && (
+                    <div style={{ color: '#ff4444', fontSize: 10, marginTop: 2 }}>
+                      Only letters, numbers, hyphens, dots and underscores
+                    </div>
+                  )}
+                </div>
+                <div className="cnc-field">
+                  <label>INTEL BRIEF</label>
+                  <input
+                    className="hud-input cnc-input"
+                    value={repoDescription}
+                    onChange={(e) => setRepoDescription(e.target.value)}
+                    placeholder="Optional description"
+                  />
+                </div>
+                <div className="cnc-field">
+                  <label>CLEARANCE LEVEL</label>
+                  <div className="cnc-color-row">
+                    <button
+                      className={`hud-btn${repoVisibility === 'private' ? ' active' : ''}`}
+                      style={{ fontSize: 10 }}
+                      onClick={() => setRepoVisibility('private')}
+                    >PRIVATE</button>
+                    <button
+                      className={`hud-btn${repoVisibility === 'public' ? ' active' : ''}`}
+                      style={{ fontSize: 10 }}
+                      onClick={() => setRepoVisibility('public')}
+                    >PUBLIC</button>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="cnc-field">
+                  <label>BEZEICHNUNG</label>
+                  <input
+                    className="hud-input cnc-input"
+                    value={buildName}
+                    onChange={(e) => setBuildName(e.target.value)}
+                    placeholder={selected.name}
+                  />
+                </div>
+                <div className="cnc-field">
+                  <label>FARBE</label>
+                  <div className="cnc-color-row">
+                    <input
+                      type="color"
+                      value={color}
+                      onChange={(e) => setColor(e.target.value)}
+                    />
+                    <span>{color.toUpperCase()}</span>
+                  </div>
+                </div>
+              </>
+            )}
           </>
         ) : (
           <div className="cnc-preview-empty">
@@ -127,10 +197,10 @@ export function BuildOptionsMenu({ onClose, onStartPlacement }: BuildOptionsMenu
         <button
           className="hud-btn hud-btn-new-base"
           onClick={handlePlatzieren}
-          disabled={!selected}
-          title={!selected ? 'Kein Gebäude ausgewählt' : 'Auf Karte platzieren'}
+          disabled={!canSubmit}
+          title={!selected ? 'Kein Gebäude ausgewählt' : isNewBase ? 'Repository erstellen' : 'Auf Karte platzieren'}
         >
-          <PlusIcon size={9} /> PLATZIEREN
+          <PlusIcon size={9} /> {isNewBase ? 'ERSTELLEN' : 'PLATZIEREN'}
         </button>
       </div>
 
