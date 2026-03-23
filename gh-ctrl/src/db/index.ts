@@ -62,4 +62,29 @@ sqlite.exec(`
   )
 `)
 
+sqlite.exec(`
+  CREATE TABLE IF NOT EXISTS badges (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    filename TEXT NOT NULL,
+    original_filename TEXT NOT NULL,
+    mime_type TEXT NOT NULL,
+    created_at INTEGER DEFAULT (unixepoch())
+  )
+`)
+
+sqlite.exec(`
+  CREATE TABLE IF NOT EXISTS placed_badges (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    badge_id INTEGER NOT NULL REFERENCES badges(id) ON DELETE CASCADE,
+    label TEXT DEFAULT '',
+    pos_x REAL NOT NULL DEFAULT 0,
+    pos_y REAL NOT NULL DEFAULT 0,
+    scale REAL NOT NULL DEFAULT 1.0,
+    map_id INTEGER REFERENCES maps(id) ON DELETE SET NULL,
+    created_at INTEGER DEFAULT (unixepoch()),
+    updated_at INTEGER DEFAULT (unixepoch())
+  )
+`)
+
 export const db = drizzle(sqlite, { schema })

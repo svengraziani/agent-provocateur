@@ -245,3 +245,25 @@ export interface GameMap {
   updatedAt: string | number | null
   assignedRepos?: Repo[]
 }
+
+export interface Badge {
+  id: number
+  name: string
+  filename: string
+  originalFilename: string
+  mimeType: string
+  createdAt: string | number | null
+}
+
+export interface PlacedBadge {
+  id: number
+  badgeId: number
+  badge?: Badge
+  label: string
+  posX: number
+  posY: number
+  scale: number
+  mapId: number | null
+  createdAt: string | number | null
+  updatedAt: string | number | null
+}
