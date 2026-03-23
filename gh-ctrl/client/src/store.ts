@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Repo, DashboardEntry, RepoData, GameMap, Building } from './types'
+import type { Repo, DashboardEntry, RepoData, GameMap, Building, Badge, PlacedBadge } from './types'
 import { api } from './api'
 
 type ToastType = 'success' | 'error' | 'info'
@@ -30,6 +30,8 @@ interface AppStore {
   toasts: Toast[]
   maps: GameMap[]
   buildings: Building[]
+  badges: Badge[]
+  placedBadges: PlacedBadge[]
 
   // Toast
   addToast: (message: string, type?: ToastType) => void
@@ -48,6 +50,15 @@ interface AppStore {
   updateBuildingPosition: (id: number, posX: number, posY: number) => Promise<void>
   updateBuildingColor: (id: number, color: string) => Promise<void>
   deleteBuilding: (id: number) => Promise<void>
+  loadBadges: () => Promise<void>
+  loadPlacedBadges: () => Promise<void>
+  uploadBadge: (file: File, name: string) => Promise<Badge>
+  deleteBadge: (id: number) => Promise<void>
+  placeBadge: (params: { badgeId: number; posX: number; posY: number; scale?: number; label?: string; mapId?: number | null }) => Promise<PlacedBadge>
+  updatePlacedBadgePosition: (id: number, posX: number, posY: number) => Promise<void>
+  updatePlacedBadgeScale: (id: number, scale: number) => Promise<void>
+  updatePlacedBadgeLabel: (id: number, label: string) => Promise<void>
+  removePlacedBadge: (id: number) => Promise<void>
 }
 
 export const useAppStore = create<AppStore>((set, get) => ({
@@ -59,6 +70,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
   toasts: [],
   maps: [],
   buildings: [],
+  badges: [],
+  placedBadges: [],
 
   addToast: (message, type = 'info') => {
     const id = nextToastId++
@@ -199,6 +212,104 @@ export const useAppStore = create<AppStore>((set, get) => ({
       }))
     } catch (err: any) {
       get().addToast(`Failed to delete building: ${err.message}`, 'error')
+      throw err
+    }
+  },
+
+  loadBadges: async () => {
+    try {
+      const data = await api.listBadges()
+      set({ badges: data })
+    } catch (err: any) {
+      get().addToast(`Failed to load badges: ${err.message}`, 'error')
+    }
+  },
+
+  loadPlacedBadges: async () => {
+    try {
+      const data = await api.listPlacedBadges()
+      set({ placedBadges: data })
+    } catch (err: any) {
+      get().addToast(`Failed to load placed badges: ${err.message}`, 'error')
+    }
+  },
+
+  uploadBadge: async (file: File, name: string) => {
+    try {
+      const badge = await api.uploadBadge(file, name)
+      set((state) => ({ badges: [...state.badges, badge] }))
+      return badge
+    } catch (err: any) {
+      get().addToast(`Failed to upload badge: ${err.message}`, 'error')
+      throw err
+    }
+  },
+
+  deleteBadge: async (id: number) => {
+    try {
+      await api.deleteBadge(id)
+      set((state) => ({
+        badges: state.badges.filter((b) => b.id !== id),
+        placedBadges: state.placedBadges.filter((pb) => pb.badgeId !== id),
+      }))
+    } catch (err: any) {
+      get().addToast(`Failed to delete badge: ${err.message}`, 'error')
+      throw err
+    }
+  },
+
+  placeBadge: async (params) => {
+    try {
+      const placed = await api.placeBadge(params)
+      set((state) => ({ placedBadges: [...state.placedBadges, placed] }))
+      return placed
+    } catch (err: any) {
+      get().addToast(`Failed to place badge: ${err.message}`, 'error')
+      throw err
+    }
+  },
+
+  updatePlacedBadgePosition: async (id: number, posX: number, posY: number) => {
+    try {
+      const updated = await api.updatePlacedBadge(id, { posX, posY })
+      set((state) => ({
+        placedBadges: state.placedBadges.map((pb) => pb.id === id ? { ...pb, posX: updated.posX, posY: updated.posY } : pb),
+      }))
+    } catch (err: any) {
+      get().addToast(`Failed to update badge position: ${err.message}`, 'error')
+    }
+  },
+
+  updatePlacedBadgeScale: async (id: number, scale: number) => {
+    try {
+      const updated = await api.updatePlacedBadge(id, { scale })
+      set((state) => ({
+        placedBadges: state.placedBadges.map((pb) => pb.id === id ? { ...pb, scale: updated.scale } : pb),
+      }))
+    } catch (err: any) {
+      get().addToast(`Failed to update badge scale: ${err.message}`, 'error')
+    }
+  },
+
+  updatePlacedBadgeLabel: async (id: number, label: string) => {
+    try {
+      const updated = await api.updatePlacedBadge(id, { label })
+      set((state) => ({
+        placedBadges: state.placedBadges.map((pb) => pb.id === id ? { ...pb, label: updated.label } : pb),
+      }))
+    } catch (err: any) {
+      get().addToast(`Failed to update badge label: ${err.message}`, 'error')
+    }
+  },
+
+  removePlacedBadge: async (id: number) => {
+    try {
+      await api.removePlacedBadge(id)
+      set((state) => ({
+        placedBadges: state.placedBadges.filter((pb) => pb.id !== id),
+      }))
+    } catch (err: any) {
+      get().addToast(`Failed to remove badge: ${err.message}`, 'error')
       throw err
     }
   },
