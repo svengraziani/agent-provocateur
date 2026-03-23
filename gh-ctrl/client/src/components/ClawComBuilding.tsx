@@ -90,6 +90,30 @@ export function ClawComBuilding({
 
   const colorizedSrc = useColorizedImage('/buildings/clawcom.png', currentBuilding.color ?? '#00ff88')
 
+  // Idle animations: [src, durationMs]
+  const IDLE_ANIMS: [string, number][] = [
+    ['/buildings/idle_1_4s_clawcom.gif', 4000],
+    ['/buildings/idle_2_4s_clawcom.gif', 4000],
+  ]
+  const [idleAnimSrc, setIdleAnimSrc] = useState<string | null>(null)
+
+  useEffect(() => {
+    let timeout: ReturnType<typeof setTimeout>
+    function scheduleNext() {
+      const delay = 8000 + Math.random() * 12000 // 8–20s
+      timeout = setTimeout(() => {
+        const [src, duration] = IDLE_ANIMS[Math.floor(Math.random() * IDLE_ANIMS.length)]
+        setIdleAnimSrc(src)
+        timeout = setTimeout(() => {
+          setIdleAnimSrc(null)
+          scheduleNext()
+        }, duration)
+      }, delay)
+    }
+    scheduleNext()
+    return () => clearTimeout(timeout)
+  }, [])
+
   // Sync building prop changes (e.g., after store update)
   useEffect(() => {
     setCurrentBuilding(building)
@@ -187,7 +211,14 @@ export function ClawComBuilding({
       >
         {/* Building image */}
         <div className="clawcom-img-wrap" style={{ position: 'relative' }}>
-          {colorizedSrc ? (
+          {idleAnimSrc ? (
+            <img
+              src={idleAnimSrc}
+              alt={currentBuilding.name}
+              style={{ width: 100, height: 100, objectFit: 'contain' }}
+              draggable={false}
+            />
+          ) : colorizedSrc ? (
             <img
               src={colorizedSrc}
               alt={currentBuilding.name}

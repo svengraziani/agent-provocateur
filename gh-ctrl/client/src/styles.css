@@ -2618,6 +2618,33 @@ select.input {
   animation: blink 2s ease-in-out infinite;
 }
 
+/* Construction animation — shown after placing a building */
+.building-construct-anim {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 10;
+}
+
+.building-construct-anim img {
+  width: 128px;
+  height: 128px;
+  object-fit: contain;
+}
+
+/* Base variant: matches BaseNode positioning (top-left, no centering) */
+.building-construct-anim--base {
+  transform: none;
+  width: 140px;
+  display: flex;
+  justify-content: center;
+}
+
+.building-construct-anim--base img {
+  width: 140px;
+  height: 140px;
+}
+
 /* ClawCom building */
 .clawcom-img-wrap {
   position: relative;
