@@ -1,4 +1,4 @@
-import type { Repo, DashboardEntry, RepoData, GHLabel, BranchesData, IssueDetail, PRDetail, GameMap, RepoMeta, FeedData, SetupStatus, Building, ClawComMessage } from './types'
+import type { Repo, DashboardEntry, RepoData, GHLabel, BranchesData, IssueDetail, PRDetail, GameMap, RepoMeta, FeedData, SetupStatus, Building, ClawComMessage, Badge, PlacedBadge } from './types'
 
 export function getServerUrl(): string {
   return localStorage.getItem('serverUrl')?.replace(/\/$/, '') ?? ''
@@ -289,4 +289,42 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ content }),
     }),
+
+  uploadBadge: (file: File, name: string): Promise<Badge> => {
+    const serverUrl = getServerUrl()
+    const base = serverUrl ? `${serverUrl}/api` : '/api'
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('name', name)
+    return fetch(`${base}/badges/upload`, { method: 'POST', body: formData })
+      .then(async (res) => {
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: res.statusText }))
+          throw new Error(err.error || res.statusText)
+        }
+        return res.json()
+      })
+  },
+
+  listBadges: () => request<Badge[]>('/badges'),
+
+  deleteBadge: (id: number) =>
+    request<{ ok: boolean }>(`/badges/${id}`, { method: 'DELETE' }),
+
+  listPlacedBadges: () => request<PlacedBadge[]>('/badges/placed'),
+
+  placeBadge: (params: { badgeId: number; posX: number; posY: number; scale?: number; label?: string; mapId?: number | null }) =>
+    request<PlacedBadge>('/badges/placed', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    }),
+
+  updatePlacedBadge: (id: number, updates: { posX?: number; posY?: number; scale?: number; label?: string }) =>
+    request<PlacedBadge>(`/badges/placed/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(updates),
+    }),
+
+  removePlacedBadge: (id: number) =>
+    request<{ ok: boolean }>(`/badges/placed/${id}`, { method: 'DELETE' }),
 }

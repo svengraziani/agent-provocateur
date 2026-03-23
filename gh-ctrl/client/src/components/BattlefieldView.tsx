@@ -1,7 +1,8 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
-import type { DashboardEntry, GameMap, MapTile, Building } from '../types'
+import type { DashboardEntry, GameMap, MapTile, Building, Badge } from '../types'
 import { BranchSiloPanel } from './BranchSiloPanel'
 import { api } from '../api'
+import { getServerUrl } from '../api'
 import { getBranchState } from './BranchBuilding'
 import { BaseNode, BaseDetailPanel } from './BaseNode'
 import { ActionModal } from './ActionModal'
@@ -14,6 +15,8 @@ import { useAppStore } from '../store'
 import { ClawComBuilding } from './ClawComBuilding'
 import { BuildOptionsMenu } from './BuildOptionsMenu'
 import type { PlacementParams } from './BuildOptionsMenu'
+import { BadgeMarker } from './BadgeMarker'
+import { BadgeLibraryDialog } from './BadgeLibraryDialog'
 
 interface Position {
   x: number
@@ -338,6 +341,11 @@ export function BattlefieldView() {
   const loadBuildings = useAppStore((s) => s.loadBuildings)
   const storeBuildings = useAppStore((s) => s.buildings)
   const updateBuildingPosition = useAppStore((s) => s.updateBuildingPosition)
+  const loadBadges = useAppStore((s) => s.loadBadges)
+  const loadPlacedBadges = useAppStore((s) => s.loadPlacedBadges)
+  const placedBadges = useAppStore((s) => s.placedBadges)
+  const storePlaceBadge = useAppStore((s) => s.placeBadge)
+  const updatePlacedBadgePosition = useAppStore((s) => s.updatePlacedBadgePosition)
   const onReposChange = () => { loadRepos(); onRefresh() }
   const [offset, setOffset] = useState<Position>(() => ({
     x: window.innerWidth / 2 - ISO_MAP_CENTER_X,
@@ -372,6 +380,11 @@ export function BattlefieldView() {
   const [buildingPositions, setBuildingPositions] = useState<Record<number, { x: number; y: number }>>({})
   const [relocatingBuildingId, setRelocatingBuildingId] = useState<number | null>(null)
   const [relocatingBuildingStart, setRelocatingBuildingStart] = useState<{ mouseX: number; mouseY: number; nodeX: number; nodeY: number } | null>(null)
+  const [showBadgeLibrary, setShowBadgeLibrary] = useState(false)
+  const [placingBadge, setPlacingBadge] = useState<Badge | null>(null)
+  const [badgePositions, setBadgePositions] = useState<Record<number, { x: number; y: number }>>({})
+  const [relocatingBadgeId, setRelocatingBadgeId] = useState<number | null>(null)
+  const [relocatingBadgeStart, setRelocatingBadgeStart] = useState<{ mouseX: number; mouseY: number; nodeX: number; nodeY: number } | null>(null)
 
   useEffect(() => {
     const el = detailPanelRef.current
@@ -412,6 +425,30 @@ export function BattlefieldView() {
   useEffect(() => {
     loadBuildings()
   }, [loadBuildings])
+
+  // Load badges on mount
+  useEffect(() => {
+    loadBadges()
+    loadPlacedBadges()
+  }, [loadBadges, loadPlacedBadges])
+
+  // Sync placed badge positions from store into local state
+  useEffect(() => {
+    setBadgePositions((prev) => {
+      const next = { ...prev }
+      for (const pb of placedBadges) {
+        if (!next[pb.id]) {
+          next[pb.id] = { x: pb.posX, y: pb.posY }
+        }
+      }
+      for (const id of Object.keys(next).map(Number)) {
+        if (!placedBadges.find((pb) => pb.id === id)) {
+          delete next[id]
+        }
+      }
+      return next
+    })
+  }, [placedBadges])
 
   // Sync building positions from store (DB) into local state
   useEffect(() => {
@@ -531,19 +568,32 @@ export function BattlefieldView() {
   const handleMapMouseDown = useCallback((e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('.cnc-sidebar')) return
     if (placementMode) return  // handled in handleMapClick
+    if (placingBadge) return  // handled in handleMapClick
     if ((e.target as HTMLElement).closest('.base-node')) return
     if (isRelocateMode) return
     setIsDraggingMap(true)
     setDragStart({ x: e.clientX - offset.x, y: e.clientY - offset.y })
-  }, [offset, isRelocateMode, placementMode])
+  }, [offset, isRelocateMode, placementMode, placingBadge])
 
   const handleMapClick = useCallback(async (e: React.MouseEvent) => {
-    if (!placementMode) return
     if ((e.target as HTMLElement).closest('.cnc-sidebar')) return
     const rect = containerRef.current?.getBoundingClientRect()
     if (!rect) return
     const mapX = (e.clientX - rect.left - offsetRef.current.x) / zoomRef.current
     const mapY = (e.clientY - rect.top - offsetRef.current.y) / zoomRef.current
+
+    if (placingBadge) {
+      try {
+        await storePlaceBadge({ badgeId: placingBadge.id, posX: mapX, posY: mapY })
+        addToast(`Badge "${placingBadge.name}" placed!`, 'success')
+      } catch (err: any) {
+        addToast(`Failed to place badge: ${err.message}`, 'error')
+      }
+      setPlacingBadge(null)
+      return
+    }
+
+    if (!placementMode) return
     try {
       await api.createBuilding({ type: placementMode.type, name: placementMode.name, color: placementMode.color, posX: mapX, posY: mapY })
       await loadBuildings()
@@ -552,7 +602,7 @@ export function BattlefieldView() {
       addToast(`Bau fehlgeschlagen: ${err.message}`, 'error')
     }
     setPlacementMode(null)
-  }, [placementMode, loadBuildings, addToast])
+  }, [placementMode, placingBadge, loadBuildings, addToast, storePlaceBadge])
 
   const handleMapMouseMove = useCallback((e: React.MouseEvent) => {
     if (placementMode) {
@@ -581,8 +631,18 @@ export function BattlefieldView() {
           y: relocatingBuildingStart.nodeY + dy,
         },
       }))
+    } else if (relocatingBadgeId !== null && relocatingBadgeStart !== null) {
+      const dx = (e.clientX - relocatingBadgeStart.mouseX) / zoomRef.current
+      const dy = (e.clientY - relocatingBadgeStart.mouseY) / zoomRef.current
+      setBadgePositions(prev => ({
+        ...prev,
+        [relocatingBadgeId]: {
+          x: relocatingBadgeStart.nodeX + dx,
+          y: relocatingBadgeStart.nodeY + dy,
+        },
+      }))
     }
-  }, [isDraggingMap, dragStart, relocatingId, relocatingStart, relocatingBuildingId, relocatingBuildingStart])
+  }, [isDraggingMap, dragStart, relocatingId, relocatingStart, relocatingBuildingId, relocatingBuildingStart, relocatingBadgeId, relocatingBadgeStart])
 
   const handleWheel = useCallback((e: WheelEvent) => {
     if ((e.target as HTMLElement).closest('.modal-overlay, .map-dialog-overlay, .silo-panel, .feed-panel, [class*="dialog"]')) return
@@ -611,11 +671,16 @@ export function BattlefieldView() {
   }, [handleWheel])
 
   useEffect(() => {
-    if (!placementMode) return
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setPlacementMode(null) }
+    if (!placementMode && !placingBadge) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setPlacementMode(null)
+        setPlacingBadge(null)
+      }
+    }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [placementMode])
+  }, [placementMode, placingBadge])
 
   const handleZoomIn = useCallback(() => {
     setZoom(prev => {
@@ -690,7 +755,15 @@ export function BattlefieldView() {
       setRelocatingBuildingId(null)
       setRelocatingBuildingStart(null)
     }
-  }, [relocatingId, relocatingBuildingId, buildingPositions, updateBuildingPosition])
+    if (relocatingBadgeId !== null) {
+      const pos = badgePositions[relocatingBadgeId]
+      if (pos) {
+        updatePlacedBadgePosition(relocatingBadgeId, pos.x, pos.y)
+      }
+      setRelocatingBadgeId(null)
+      setRelocatingBadgeStart(null)
+    }
+  }, [relocatingId, relocatingBuildingId, buildingPositions, updateBuildingPosition, relocatingBadgeId, badgePositions, updatePlacedBadgePosition])
 
   const handleStartRelocate = useCallback((id: number, mouseX: number, mouseY: number) => {
     const pos = positions[id]
@@ -705,6 +778,13 @@ export function BattlefieldView() {
     setRelocatingBuildingId(id)
     setRelocatingBuildingStart({ mouseX, mouseY, nodeX: pos.x, nodeY: pos.y })
   }, [buildingPositions])
+
+  const handleStartBadgeRelocate = useCallback((id: number, mouseX: number, mouseY: number) => {
+    const pos = badgePositions[id]
+    if (!pos) return
+    setRelocatingBadgeId(id)
+    setRelocatingBadgeStart({ mouseX, mouseY, nodeX: pos.x, nodeY: pos.y })
+  }, [badgePositions])
 
   // When an active map is selected, filter to only its assigned repos
   const visibleEntries = activeMapRepoIds === null
@@ -736,7 +816,7 @@ export function BattlefieldView() {
       onMouseLeave={handleMapMouseUp}
       onClick={handleMapClick}
       ref={containerRef}
-      style={{ cursor: placementMode ? 'crosshair' : isDraggingMap ? 'grabbing' : (isRelocateMode ? 'crosshair' : 'grab') }}
+      style={{ cursor: (placementMode || placingBadge) ? 'crosshair' : isDraggingMap ? 'grabbing' : (isRelocateMode ? 'crosshair' : 'grab') }}
     >
       {/* Scanlines — fixed to viewport */}
       <div className="battlefield-scanlines" />
@@ -790,6 +870,13 @@ export function BattlefieldView() {
             title="Bau Optionen (ClawCom, etc.)"
           >
             <BuildIcon size={11} /><span className="hud-label"> BUILD</span>
+          </button>
+          <button
+            className={`hud-btn${showBadgeLibrary ? ' active' : ''}`}
+            onClick={() => { play('peep'); setShowBadgeLibrary(true) }}
+            title="Badge Library — place custom markers on the battlefield"
+          >
+            ◈<span className="hud-label"> BADGES</span>
           </button>
           <span className="hud-zoom-sep" />
           <button
@@ -917,6 +1004,23 @@ export function BattlefieldView() {
             />
           )
         })}
+
+        {/* Custom badge markers */}
+        {placedBadges.map((pb) => {
+          const pos = badgePositions[pb.id] ?? { x: pb.posX, y: pb.posY }
+          return (
+            <BadgeMarker
+              key={`badge-${pb.id}`}
+              placedBadge={pb}
+              position={pos}
+              isRelocateMode={isRelocateMode}
+              isBeingRelocated={relocatingBadgeId === pb.id}
+              onStartRelocate={(mouseX, mouseY) => handleStartBadgeRelocate(pb.id, mouseX, mouseY)}
+              addToast={addToast}
+              serverUrl={getServerUrl()}
+            />
+          )
+        })}
       </div>
 
       {/* Minimap */}
@@ -1010,6 +1114,25 @@ export function BattlefieldView() {
             }
           }}
         />
+      )}
+
+      {/* Badge library dialog */}
+      {showBadgeLibrary && (
+        <BadgeLibraryDialog
+          onClose={() => setShowBadgeLibrary(false)}
+          onSelectForPlacement={(badge) => {
+            setPlacingBadge(badge)
+            setShowBadgeLibrary(false)
+          }}
+          serverUrl={getServerUrl()}
+        />
+      )}
+
+      {/* Badge placement banner */}
+      {placingBadge && (
+        <div className="battlefield-placement-banner">
+          ◈ BADGE MODE — Click on the battlefield to place <strong>{placingBadge.name}</strong> &nbsp;·&nbsp; ESC to cancel
+        </div>
       )}
 
       {/* Placement mode: ghost + banner */}
