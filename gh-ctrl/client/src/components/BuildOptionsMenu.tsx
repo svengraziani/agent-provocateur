@@ -20,10 +20,10 @@ const AVAILABLE_BUILDINGS: BuildingDef[] = [
   },
   {
     type: 'new-base',
-    name: 'New Base',
+    name: 'Repository',
     description:
       'Etabliere ein neues GitHub-Repository direkt vom Schlachtfeld. Konfiguriere Namen, Beschreibung und Sichtbarkeit — das neue Hauptquartier erscheint sofort in deiner Kommandozentrale.',
-    buildImage: '/buildings/build_clawcom.png',
+    buildImage: '/buildings/build_base.png',
     defaultColor: '#00ff88',
   },
 ]
@@ -35,11 +35,12 @@ export interface PlacementParams {
   buildImage: string
   repoDescription?: string
   repoVisibility?: 'public' | 'private'
+  repoId?: number
 }
 
 interface BuildOptionsMenuProps {
   onClose: () => void
-  onStartPlacement: (params: PlacementParams) => void
+  onStartPlacement: (params: PlacementParams) => Promise<void>
 }
 
 const REPO_NAME_RE = /^[a-zA-Z0-9._-]+$/
@@ -50,6 +51,7 @@ export function BuildOptionsMenu({ onClose, onStartPlacement }: BuildOptionsMenu
   const [color, setColor] = useState('#00ff88')
   const [repoDescription, setRepoDescription] = useState('')
   const [repoVisibility, setRepoVisibility] = useState<'public' | 'private'>('private')
+  const [creating, setCreating] = useState(false)
 
   function selectBuilding(b: BuildingDef) {
     setSelected(b)
@@ -63,18 +65,23 @@ export function BuildOptionsMenu({ onClose, onStartPlacement }: BuildOptionsMenu
   const repoNameValid = !isNewBase || REPO_NAME_RE.test(buildName.trim())
   const canSubmit = !!selected && (!isNewBase || (buildName.trim().length > 0 && repoNameValid))
 
-  function handlePlatzieren() {
-    if (!selected || !canSubmit) return
-    onStartPlacement({
-      type: selected.type,
-      name: buildName.trim() || selected.name,
-      color,
-      buildImage: selected.buildImage,
-      ...(isNewBase && {
-        repoDescription: repoDescription.trim() || undefined,
-        repoVisibility,
-      }),
-    })
+  async function handlePlatzieren() {
+    if (!selected || !canSubmit || creating) return
+    setCreating(true)
+    try {
+      await onStartPlacement({
+        type: selected.type,
+        name: buildName.trim() || selected.name,
+        color,
+        buildImage: selected.buildImage,
+        ...(isNewBase && {
+          repoDescription: repoDescription.trim() || undefined,
+          repoVisibility,
+        }),
+      })
+    } finally {
+      setCreating(false)
+    }
   }
 
   return (
@@ -191,16 +198,19 @@ export function BuildOptionsMenu({ onClose, onStartPlacement }: BuildOptionsMenu
 
       {/* Footer */}
       <div className="cnc-footer">
-        <button className="hud-btn" onClick={onClose}>
+        <button className="hud-btn" onClick={onClose} disabled={creating}>
           <CloseIcon size={9} /> ABBRECHEN
         </button>
         <button
           className="hud-btn hud-btn-new-base"
           onClick={handlePlatzieren}
-          disabled={!canSubmit}
+          disabled={!canSubmit || creating}
           title={!selected ? 'Kein Gebäude ausgewählt' : isNewBase ? 'Repository erstellen' : 'Auf Karte platzieren'}
         >
-          <PlusIcon size={9} /> {isNewBase ? 'ERSTELLEN' : 'PLATZIEREN'}
+          {creating
+            ? <><span className="cnc-spinner" /> WIRD ERSTELLT...</>
+            : <><PlusIcon size={9} /> {isNewBase ? 'ERSTELLEN' : 'PLATZIEREN'}</>
+          }
         </button>
       </div>
 

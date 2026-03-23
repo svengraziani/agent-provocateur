@@ -3041,6 +3041,22 @@ select.input {
   gap: 6px;
 }
 
+.cnc-spinner {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border: 1.5px solid rgba(57, 255, 20, 0.3);
+  border-top-color: var(--crt-green);
+  border-radius: 50%;
+  animation: cnc-spin 0.7s linear infinite;
+  vertical-align: middle;
+  margin-right: 4px;
+}
+
+@keyframes cnc-spin {
+  to { transform: rotate(360deg); }
+}
+
 /* Responsive: narrower on small screens */
 @media (max-width: 768px) {
   .cnc-sidebar {

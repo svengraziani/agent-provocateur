@@ -544,15 +544,38 @@ export function BattlefieldView() {
     if (!rect) return
     const mapX = (e.clientX - rect.left - offsetRef.current.x) / zoomRef.current
     const mapY = (e.clientY - rect.top - offsetRef.current.y) / zoomRef.current
-    try {
-      await api.createBuilding({ type: placementMode.type, name: placementMode.name, color: placementMode.color, posX: mapX, posY: mapY })
-      await loadBuildings()
-      addToast(`${placementMode.name} platziert!`, 'success')
-    } catch (err: any) {
-      addToast(`Bau fehlgeschlagen: ${err.message}`, 'error')
+    if (placementMode.repoId !== undefined) {
+      const repoId = placementMode.repoId
+      // Save position first
+      setPositions((prev) => {
+        const next = { ...prev, [repoId]: { x: mapX, y: mapY } }
+        savePositions(next)
+        return next
+      })
+      // Assign to active map so it becomes visible on the battlefield
+      if (activeMap) {
+        try {
+          await api.assignRepoToMap(activeMap.id, repoId)
+          const mapRepos = await api.getMapRepos(activeMap.id)
+          setActiveMapRepoIds(new Set(mapRepos.map((r) => r.id)))
+        } catch {
+          // map assignment failed — repo still placed, just not filtered to active map
+        }
+      }
+      addToast(`${placementMode.name} auf der Karte platziert!`, 'success')
+      loadRepos()
+      onRefresh()
+    } else {
+      try {
+        await api.createBuilding({ type: placementMode.type, name: placementMode.name, color: placementMode.color, posX: mapX, posY: mapY })
+        await loadBuildings()
+        addToast(`${placementMode.name} platziert!`, 'success')
+      } catch (err: any) {
+        addToast(`Bau fehlgeschlagen: ${err.message}`, 'error')
+      }
     }
     setPlacementMode(null)
-  }, [placementMode, loadBuildings, addToast])
+  }, [placementMode, loadBuildings, addToast, loadRepos, onRefresh, activeMap])
 
   const handleMapMouseMove = useCallback((e: React.MouseEvent) => {
     if (placementMode) {
@@ -615,6 +638,14 @@ export function BattlefieldView() {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setPlacementMode(null) }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
+  }, [placementMode])
+
+  // Track mouse globally during placement so ghost follows everywhere
+  useEffect(() => {
+    if (!placementMode) return
+    const onMove = (e: MouseEvent) => setGhostScreenPos({ x: e.clientX, y: e.clientY })
+    window.addEventListener('mousemove', onMove)
+    return () => window.removeEventListener('mousemove', onMove)
   }, [placementMode])
 
   const handleZoomIn = useCallback(() => {
@@ -992,14 +1023,14 @@ export function BattlefieldView() {
             if (params.type === 'new-base') {
               setShowBuildMenu(false)
               try {
-                await api.createRepo({
+                const result = await api.createRepo({
                   name: params.name,
                   description: params.repoDescription,
                   visibility: params.repoVisibility ?? 'private',
                 })
-                addToast(`Base "${params.name}" established!`, 'success')
-                loadRepos()
-                onRefresh()
+                addToast(`Base "${params.name}" established! Wähle einen Platz auf der Karte.`, 'success')
+                setPlacementMode({ ...params, repoId: result.repo.id })
+                setGhostScreenPos({ x: window.innerWidth / 2, y: window.innerHeight / 2 })
               } catch (err) {
                 addToast(err instanceof Error ? err.message : 'Failed to create repository', 'error')
               }
