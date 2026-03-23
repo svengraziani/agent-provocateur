@@ -7,7 +7,16 @@ import githubRouter from './routes/github'
 import mapsRouter from './routes/maps'
 import setupRouter from './routes/setup'
 import buildingsRouter from './routes/buildings'
+import badgesRouter from './routes/badges'
 import pkg from '../package.json'
+import { existsSync, mkdirSync } from 'node:fs'
+import { join } from 'node:path'
+
+// Ensure uploads directory exists on startup
+const uploadsDir = join(process.cwd(), 'uploads', 'badges')
+if (!existsSync(uploadsDir)) {
+  mkdirSync(uploadsDir, { recursive: true })
+}
 
 const app = new Hono()
 
@@ -37,9 +46,13 @@ app.route('/api/github', githubRouter)
 app.route('/api/maps', mapsRouter)
 app.route('/api/setup', setupRouter)
 app.route('/api/buildings', buildingsRouter)
+app.route('/api/badges', badgesRouter)
 
 app.get('/api/health', (c) => c.json({ ok: true }))
 app.get('/api/version', (c) => c.json({ version: pkg.version }))
+
+// Serve uploaded badge images
+app.use('/uploads/*', serveStatic({ root: './' }))
 
 // Serve built React in production
 app.use('*', serveStatic({ root: './client/dist' }))

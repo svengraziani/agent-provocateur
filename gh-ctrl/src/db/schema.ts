@@ -46,3 +46,24 @@ export const clawcomMessages = sqliteTable('clawcom_messages', {
   content:    text('content').notNull(),
   createdAt:  integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
 })
+
+export const badges = sqliteTable('badges', {
+  id:               integer('id').primaryKey({ autoIncrement: true }),
+  name:             text('name').notNull(),
+  filename:         text('filename').notNull(),
+  originalFilename: text('original_filename').notNull(),
+  mimeType:         text('mime_type').notNull(),
+  createdAt:        integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
+})
+
+export const placedBadges = sqliteTable('placed_badges', {
+  id:        integer('id').primaryKey({ autoIncrement: true }),
+  badgeId:   integer('badge_id').notNull().references(() => badges.id, { onDelete: 'cascade' }),
+  label:     text('label').default(''),
+  posX:      real('pos_x').notNull().default(0),
+  posY:      real('pos_y').notNull().default(0),
+  scale:     real('scale').notNull().default(1.0),
+  mapId:     integer('map_id').references(() => maps.id, { onDelete: 'set null' }),
+  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
+})
