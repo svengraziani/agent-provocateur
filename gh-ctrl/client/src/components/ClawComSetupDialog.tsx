@@ -67,29 +67,26 @@ export function ClawComSetupDialog({ building, onClose, onConfigured, onError }:
     >
         <div className="map-dialog-title">&#x25a0; {building.name.toUpperCase()} — SETUP</div>
 
-        <div style={{ display: 'flex', gap: 20, marginBottom: 20, alignItems: 'flex-start' }}>
+        <div className="clawcom-setup-body">
           <img
             src="/buildings/clawcom.png"
             alt="ClawCom"
-            style={{ width: 96, height: 96, objectFit: 'contain', flexShrink: 0 }}
+            className="clawcom-setup-preview-img"
           />
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 16, lineHeight: 1.5 }}>
+          <div className="clawcom-setup-form">
+            <div className="clawcom-setup-desc">
               Konfiguriere die Verbindung zu einem Openclaw oder Nanoclaw. Nach der Einrichtung
               kannst du Befehle über das integrierte Chatfenster senden und empfangen.
             </div>
 
-            <div style={{ marginBottom: 14 }}>
-              <label style={{ display: 'block', fontSize: 11, color: 'var(--text-dim)', marginBottom: 6 }}>
-                CLAW TYP
-              </label>
-              <div style={{ display: 'flex', gap: 8 }}>
+            <div className="clawcom-setup-group">
+              <label className="clawcom-setup-group-label">Claw Typ</label>
+              <div className="clawcom-setup-row">
                 {(['openclaw', 'nanoclaw'] as const).map((t) => (
                   <button
                     key={t}
                     className={`hud-btn${clawType === t ? ' active' : ''}`}
                     onClick={() => setClawType(t)}
-                    style={{ flex: 1 }}
                   >
                     {t === 'openclaw' ? '⚙ OPENCLAW' : '⬡ NANOCLAW'}
                   </button>
@@ -97,17 +94,14 @@ export function ClawComSetupDialog({ building, onClose, onConfigured, onError }:
               </div>
             </div>
 
-            <div style={{ marginBottom: 14 }}>
-              <label style={{ display: 'block', fontSize: 11, color: 'var(--text-dim)', marginBottom: 4 }}>
-                HOST URL
-              </label>
-              <div style={{ display: 'flex', gap: 8 }}>
+            <div className="clawcom-setup-group">
+              <label className="clawcom-setup-group-label">Host URL</label>
+              <div className="clawcom-setup-row">
                 <input
                   className="hud-input"
                   value={host}
                   onChange={(e) => setHost(e.target.value)}
                   placeholder="http://192.168.1.100:8080"
-                  style={{ flex: 1 }}
                 />
                 <button
                   className="hud-btn"
@@ -119,11 +113,7 @@ export function ClawComSetupDialog({ building, onClose, onConfigured, onError }:
                 </button>
               </div>
               {testResult && (
-                <div style={{
-                  marginTop: 6,
-                  fontSize: 11,
-                  color: testResult.startsWith('✓') ? 'var(--green-neon)' : '#ff6b6b',
-                }}>
+                <div className={`clawcom-test-result ${testResult.startsWith('✓') ? 'clawcom-test-result--ok' : 'clawcom-test-result--err'}`}>
                   {testResult}
                 </div>
               )}
@@ -138,7 +128,7 @@ export function ClawComSetupDialog({ building, onClose, onConfigured, onError }:
             onClick={handleSave}
             disabled={saving}
           >
-            {saving ? '◌ SPEICHERN...' : '&#x2713; KONFIGURIEREN'}
+            {saving ? '◌ SPEICHERN...' : '✓ KONFIGURIEREN'}
           </button>
         </div>
     </div>

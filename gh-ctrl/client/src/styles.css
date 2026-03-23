@@ -2797,11 +2797,11 @@ select.input {
 
 .cnc-sidebar {
   position: fixed;
-  top: 0;
+  top: 56px;
   right: 0;
-  bottom: 0;
+  height: calc(100vh - 56px);
   width: 220px;
-  z-index: 50;
+  z-index: 200;
   display: flex;
   flex-direction: column;
   background: linear-gradient(180deg, #081410 0%, #040c08 100%);
@@ -3062,6 +3062,15 @@ select.input {
     width: 52px;
     height: 52px;
   }
+}
+
+/* ---- Construct Overlay (backdrop for centered construct dialogs) ---- */
+.construct-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(2px);
+  z-index: 99;
 }
 
 /* ---- Construction Dialog ---- */
@@ -3651,7 +3660,7 @@ select.input {
   position: fixed;
   top: 56px;
   right: 0;
-  width: 420px;
+  width: 460px;
   max-width: 100vw;
   height: calc(100vh - 56px);
   overflow-y: auto;
@@ -4349,18 +4358,19 @@ select.input {
 /* ── FeedPanel ──────────────────────────────────────────────────────────────── */
 
 .feed-panel {
-  position: absolute;
+  position: fixed;
   top: 56px;
   right: 0;
   width: 340px;
   height: calc(100vh - 56px);
-  background: rgba(5, 8, 9, 0.97);
-  border-left: 1px solid rgba(57, 255, 20, 0.3);
+  background: rgba(4, 7, 8, 0.98);
+  border-left: 2px solid rgba(57, 255, 20, 0.4);
   display: flex;
   flex-direction: column;
   z-index: 20;
   font-family: var(--font-mono);
-  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.6);
+  box-shadow: -8px 0 32px rgba(0, 0, 0, 0.8);
+  animation: silo-panel-in 0.18s ease-out;
 }
 
 .feed-panel-header {
@@ -4664,6 +4674,154 @@ select.input {
 .branch-silo-active.branch-silo-selected .branch-silo-tower  { outline-color: #00d4ff; }
 .branch-silo-stale.branch-silo-selected .branch-silo-tower   { outline-color: var(--crt-amber); }
 .branch-silo-very-stale.branch-silo-selected .branch-silo-tower { outline-color: var(--crt-red); }
+
+/* ── ClawCom Setup Dialog ── */
+
+.clawcom-setup-body {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 20px;
+  align-items: flex-start;
+}
+
+.clawcom-setup-preview-img {
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.clawcom-setup-form {
+  flex: 1;
+}
+
+.clawcom-setup-desc {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+.clawcom-setup-group {
+  margin-bottom: 14px;
+}
+
+.clawcom-setup-group-label {
+  display: block;
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.clawcom-setup-row {
+  display: flex;
+  gap: 8px;
+}
+
+.clawcom-setup-row .hud-btn,
+.clawcom-setup-row .hud-input {
+  flex: 1;
+}
+
+.clawcom-test-result {
+  margin-top: 6px;
+  font-size: 11px;
+}
+
+.clawcom-test-result--ok {
+  color: var(--green-neon, var(--crt-green));
+}
+
+.clawcom-test-result--err {
+  color: #ff6b6b;
+}
+
+/* ── ClawCom Chat Dialog ── */
+
+.clawcom-chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.clawcom-chat-status {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+
+.clawcom-chat-online-dot {
+  color: var(--green-neon, var(--crt-green));
+}
+
+.clawcom-chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  background: var(--bg-darker, rgba(4, 7, 8, 0.95));
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 12px;
+  min-height: 200px;
+  max-height: 380px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(57, 255, 20, 0.2) transparent;
+}
+
+.clawcom-chat-msg {
+  display: flex;
+  flex-direction: column;
+}
+
+.clawcom-chat-msg--out {
+  align-items: flex-end;
+}
+
+.clawcom-chat-msg--in {
+  align-items: flex-start;
+}
+
+.clawcom-chat-bubble {
+  max-width: 80%;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.clawcom-chat-bubble--out {
+  background: rgba(0, 255, 136, 0.12);
+  border: 1px solid rgba(0, 255, 136, 0.3);
+  color: var(--green-neon, var(--crt-green));
+}
+
+.clawcom-chat-bubble--in {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.clawcom-chat-msg-meta {
+  font-size: 10px;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+
+.clawcom-chat-input-row {
+  display: flex;
+  gap: 8px;
+}
+
+.clawcom-chat-input-row .hud-input {
+  flex: 1;
+}
 
 /* ── Branch Silo Panel (C&C-style right-side command panel) ── */
 
