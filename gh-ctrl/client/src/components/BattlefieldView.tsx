@@ -1053,13 +1053,16 @@ export function BattlefieldView() {
         {storeBuildings.map((building) => {
           const pos = buildingPositions[building.id] ?? { x: building.posX, y: building.posY }
           if (constructingBuildingIds.has(building.id)) {
+            const constructGif = building.type === 'healthcheck'
+              ? '/buildings/construct_4s_healthcheck.gif'
+              : '/buildings/construct_3s_clawcom.gif'
             return (
               <div
                 key={`building-${building.id}`}
                 className="building-construct-anim"
                 style={{ left: pos.x, top: pos.y }}
               >
-                <img src="/buildings/construct_3s_clawcom.gif" alt="constructing..." />
+                <img src={constructGif} alt="constructing..." />
               </div>
             )
           }
