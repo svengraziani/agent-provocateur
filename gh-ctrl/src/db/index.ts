@@ -74,6 +74,19 @@ sqlite.exec(`
 `)
 
 sqlite.exec(`
+  CREATE TABLE IF NOT EXISTS healthcheck_results (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    building_id INTEGER NOT NULL REFERENCES buildings(id) ON DELETE CASCADE,
+    url TEXT NOT NULL,
+    ok INTEGER NOT NULL DEFAULT 0,
+    status_code INTEGER,
+    response_time_ms INTEGER,
+    error TEXT,
+    checked_at INTEGER DEFAULT (unixepoch())
+  )
+`)
+
+sqlite.exec(`
   CREATE TABLE IF NOT EXISTS placed_badges (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     badge_id INTEGER NOT NULL REFERENCES badges(id) ON DELETE CASCADE,

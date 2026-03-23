@@ -215,6 +215,28 @@ export interface ClawComConfig {
   configured: boolean
 }
 
+export interface HealthcheckEndpoint {
+  url: string
+  label: string
+}
+
+export interface HealthcheckConfig {
+  endpoints: HealthcheckEndpoint[]
+  intervalMs: number
+  configured: boolean
+}
+
+export interface HealthcheckResult {
+  id: number
+  buildingId: number
+  url: string
+  ok: number
+  statusCode: number | null
+  responseTimeMs: number | null
+  error: string | null
+  checkedAt: string | number | null
+}
+
 export interface Building {
   id: number
   type: string

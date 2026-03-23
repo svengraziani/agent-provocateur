@@ -19,6 +19,14 @@ const AVAILABLE_BUILDINGS: BuildingDef[] = [
     defaultColor: '#00ff88',
   },
   {
+    type: 'healthcheck',
+    name: 'Healthcheck',
+    description:
+      'Überwache einen oder mehrere HTTP-Endpunkte und visualisiere deren Verfügbarkeit direkt auf dem Schlachtfeld. Konfiguriere Ping-Intervalle und Labels für jeden Endpunkt — das Gebäude leuchtet grün bei OK, rot bei Ausfall.',
+    buildImage: '/buildings/healthcheck.png',
+    defaultColor: '#00FF00',
+  },
+  {
     type: 'new-base',
     name: 'Repository',
     description:
