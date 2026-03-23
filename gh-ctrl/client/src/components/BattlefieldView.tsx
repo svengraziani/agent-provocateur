@@ -373,6 +373,8 @@ export function BattlefieldView() {
   const [branchSiloEntry, setBranchSiloEntry] = useState<DashboardEntry | null>(null)
   const [detailEntry, setDetailEntry] = useState<DashboardEntry | null>(null)
   const [selectedBuildingId, setSelectedBuildingId] = useState<number | null>(null)
+  const [constructingBuildingIds, setConstructingBuildingIds] = useState<Set<number>>(new Set())
+  const [constructingRepoIds, setConstructingRepoIds] = useState<Set<number>>(new Set())
   const detailPanelRef = useRef<HTMLDivElement>(null)
   const [showBuildMenu, setShowBuildMenu] = useState(false)
   const [placementMode, setPlacementMode] = useState<PlacementParams | null>(null)
@@ -613,13 +615,31 @@ export function BattlefieldView() {
           // map assignment failed — repo still placed, just not filtered to active map
         }
       }
+      // Show construction animation for 4s, then reveal actual base
+      setConstructingRepoIds((prev) => new Set(prev).add(repoId))
+      setTimeout(() => {
+        setConstructingRepoIds((prev) => {
+          const next = new Set(prev)
+          next.delete(repoId)
+          return next
+        })
+      }, 4000)
       addToast(`${placementMode.name} auf der Karte platziert!`, 'success')
       loadRepos()
       onRefresh()
     } else {
       try {
-        await api.createBuilding({ type: placementMode.type, name: placementMode.name, color: placementMode.color, posX: mapX, posY: mapY })
+        const newBuilding = await api.createBuilding({ type: placementMode.type, name: placementMode.name, color: placementMode.color, posX: mapX, posY: mapY })
         await loadBuildings()
+        // Show construction animation for 3s, then reveal actual building
+        setConstructingBuildingIds((prev) => new Set(prev).add(newBuilding.id))
+        setTimeout(() => {
+          setConstructingBuildingIds((prev) => {
+            const next = new Set(prev)
+            next.delete(newBuilding.id)
+            return next
+          })
+        }, 3000)
         addToast(`${placementMode.name} platziert!`, 'success')
       } catch (err: any) {
         addToast(`Bau fehlgeschlagen: ${err.message}`, 'error')
@@ -983,6 +1003,17 @@ export function BattlefieldView() {
 
         {visibleEntries.map((entry) => {
           const pos = positions[entry.repo.id] ?? { x: 0, y: 0 }
+          if (constructingRepoIds.has(entry.repo.id)) {
+            return (
+              <div
+                key={entry.repo.id}
+                className="building-construct-anim building-construct-anim--base"
+                style={{ left: pos.x, top: pos.y }}
+              >
+                <img src="/buildings/construct_4s_base.gif" alt="constructing..." />
+              </div>
+            )
+          }
           return (
             <BaseNode
               key={entry.repo.id}
@@ -1021,6 +1052,17 @@ export function BattlefieldView() {
         {/* Custom buildings (ClawCom, Healthcheck, etc.) */}
         {storeBuildings.map((building) => {
           const pos = buildingPositions[building.id] ?? { x: building.posX, y: building.posY }
+          if (constructingBuildingIds.has(building.id)) {
+            return (
+              <div
+                key={`building-${building.id}`}
+                className="building-construct-anim"
+                style={{ left: pos.x, top: pos.y }}
+              >
+                <img src="/buildings/construct_3s_clawcom.gif" alt="constructing..." />
+              </div>
+            )
+          }
           const commonProps = {
             key: `building-${building.id}`,
             building,
