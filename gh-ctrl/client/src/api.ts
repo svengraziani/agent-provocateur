@@ -308,6 +308,9 @@ export const api = {
 
   listBadges: () => request<Badge[]>('/badges'),
 
+  renameBadge: (id: number, name: string) =>
+    request<Badge>(`/badges/${id}`, { method: 'PATCH', body: JSON.stringify({ name }) }),
+
   deleteBadge: (id: number) =>
     request<{ ok: boolean }>(`/badges/${id}`, { method: 'DELETE' }),
 

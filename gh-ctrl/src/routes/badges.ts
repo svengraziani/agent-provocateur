@@ -50,6 +50,16 @@ app.get('/', async (c) => {
   return c.json(all)
 })
 
+// PATCH /:id — rename badge
+app.patch('/:id', async (c) => {
+  const id = Number(c.req.param('id'))
+  const { name } = await c.req.json()
+  if (!name?.trim()) return c.json({ error: 'Name is required' }, 400)
+  const result = await db.update(badges).set({ name: name.trim() }).where(eq(badges.id, id)).returning()
+  if (result.length === 0) return c.json({ error: 'Badge not found' }, 404)
+  return c.json(result[0])
+})
+
 // DELETE /:id — delete badge + file from disk
 app.delete('/:id', async (c) => {
   const id = Number(c.req.param('id'))
