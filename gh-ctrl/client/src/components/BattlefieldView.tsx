@@ -13,6 +13,7 @@ import { FeedPanel } from './FeedPanel'
 import { useSound } from '../hooks/useSound'
 import { useAppStore } from '../store'
 import { ClawComBuilding } from './ClawComBuilding'
+import { HealthcheckBuilding } from './HealthcheckBuilding'
 import { BuildOptionsMenu } from './BuildOptionsMenu'
 import type { PlacementParams } from './BuildOptionsMenu'
 import { BadgeMarker } from './BadgeMarker'
@@ -1017,23 +1018,25 @@ export function BattlefieldView() {
           )
         })}
 
-        {/* Custom buildings (ClawCom, etc.) */}
+        {/* Custom buildings (ClawCom, Healthcheck, etc.) */}
         {storeBuildings.map((building) => {
           const pos = buildingPositions[building.id] ?? { x: building.posX, y: building.posY }
-          return (
-            <ClawComBuilding
-              key={`building-${building.id}`}
-              building={building}
-              position={pos}
-              isRelocateMode={isRelocateMode}
-              isBeingRelocated={relocatingBuildingId === building.id}
-              onStartRelocate={(mouseX, mouseY) => handleStartBuildingRelocate(building.id, mouseX, mouseY)}
-              addToast={addToast}
-              isSelected={selectedBuildingId === building.id}
-              onSelect={() => { play('peep'); setSelectedBuildingId(prev => prev === building.id ? null : building.id); setDetailEntry(null); setBranchSiloEntry(null) }}
-              onDeselect={() => setSelectedBuildingId(null)}
-            />
-          )
+          const commonProps = {
+            key: `building-${building.id}`,
+            building,
+            position: pos,
+            isRelocateMode,
+            isBeingRelocated: relocatingBuildingId === building.id,
+            onStartRelocate: (mouseX: number, mouseY: number) => handleStartBuildingRelocate(building.id, mouseX, mouseY),
+            addToast,
+            isSelected: selectedBuildingId === building.id,
+            onSelect: () => { play('peep'); setSelectedBuildingId(prev => prev === building.id ? null : building.id); setDetailEntry(null); setBranchSiloEntry(null) },
+            onDeselect: () => setSelectedBuildingId(null),
+          }
+          if (building.type === 'healthcheck') {
+            return <HealthcheckBuilding {...commonProps} />
+          }
+          return <ClawComBuilding {...commonProps} />
         })}
 
         {/* Custom badge markers */}

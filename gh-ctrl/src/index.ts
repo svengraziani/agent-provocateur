@@ -11,6 +11,7 @@ import badgesRouter from './routes/badges'
 import pkg from '../package.json'
 import { existsSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
+import { initHealthcheckService } from './healthcheck-service'
 
 // Ensure uploads directory exists on startup
 const uploadsDir = join(process.cwd(), 'uploads', 'badges')
@@ -57,5 +58,8 @@ app.use('/uploads/*', serveStatic({ root: './' }))
 // Serve built React in production
 app.use('*', serveStatic({ root: './client/dist' }))
 app.get('*', serveStatic({ path: './client/dist/index.html' }))
+
+// Initialize background services
+initHealthcheckService().catch((err) => console.error('[healthcheck-service] init error:', err))
 
 export default { port: 3001, hostname: '0.0.0.0', fetch: app.fetch }

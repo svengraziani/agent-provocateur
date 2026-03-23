@@ -56,6 +56,17 @@ export const badges = sqliteTable('badges', {
   createdAt:        integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
 })
 
+export const healthcheckResults = sqliteTable('healthcheck_results', {
+  id:             integer('id').primaryKey({ autoIncrement: true }),
+  buildingId:     integer('building_id').notNull().references(() => buildings.id),
+  url:            text('url').notNull(),
+  ok:             integer('ok').notNull().default(0),
+  statusCode:     integer('status_code'),
+  responseTimeMs: integer('response_time_ms'),
+  error:          text('error'),
+  checkedAt:      integer('checked_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
+})
+
 export const placedBadges = sqliteTable('placed_badges', {
   id:        integer('id').primaryKey({ autoIncrement: true }),
   badgeId:   integer('badge_id').notNull().references(() => badges.id, { onDelete: 'cascade' }),

@@ -1,4 +1,4 @@
-import type { Repo, DashboardEntry, RepoData, GHLabel, BranchesData, IssueDetail, PRDetail, GameMap, RepoMeta, FeedData, SetupStatus, Building, ClawComMessage, Badge, PlacedBadge } from './types'
+import type { Repo, DashboardEntry, RepoData, GHLabel, BranchesData, IssueDetail, PRDetail, GameMap, RepoMeta, FeedData, SetupStatus, Building, ClawComMessage, Badge, PlacedBadge, HealthcheckResult } from './types'
 
 export function getServerUrl(): string {
   return localStorage.getItem('serverUrl')?.replace(/\/$/, '') ?? ''
@@ -289,6 +289,12 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ content }),
     }),
+
+  getBuildingHealthcheck: (id: number) =>
+    request<HealthcheckResult[]>(`/buildings/${id}/healthcheck`),
+
+  triggerBuildingHealthcheck: (id: number) =>
+    request<{ ok: boolean }>(`/buildings/${id}/healthcheck/trigger`, { method: 'POST' }),
 
   uploadBadge: (file: File, name: string): Promise<Badge> => {
     const serverUrl = getServerUrl()
