@@ -7,8 +7,7 @@ import { BaseNode, BaseDetailPanel } from './BaseNode'
 import { ActionModal } from './ActionModal'
 import type { ModalState } from './ActionModal'
 import { ConstructDialog } from './ConstructDialog'
-import { CreateBaseDialog } from './CreateBaseDialog'
-import { CloseIcon, RelocateIcon, ScanIcon, BuildIcon, MapIcon, FeedIcon, PlusIcon } from './Icons'
+import { CloseIcon, RelocateIcon, ScanIcon, BuildIcon, MapIcon, FeedIcon } from './Icons'
 import { FeedPanel } from './FeedPanel'
 import { useSound } from '../hooks/useSound'
 import { useAppStore } from '../store'
@@ -356,7 +355,6 @@ export function BattlefieldView() {
   const [relocatingStart, setRelocatingStart] = useState<{ mouseX: number; mouseY: number; nodeX: number; nodeY: number } | null>(null)
   const [constructTarget, setConstructTarget] = useState<DashboardEntry | null>(null)
   const [isRelocateMode, setIsRelocateMode] = useState(false)
-  const [showCreateBase, setShowCreateBase] = useState(false)
   const [modalState, setModalState] = useState<ModalState>(null)
   const [activeMap, setActiveMap] = useState<GameMap | null>(null)
   const [allMaps, setAllMaps] = useState<GameMap[]>([])
@@ -787,13 +785,6 @@ export function BattlefieldView() {
             <span className="hud-label"> {isRelocateMode ? 'CANCEL' : 'RELOCATE'}</span>
           </button>
           <button
-            className="hud-btn hud-btn-new-base"
-            onClick={() => { play('peep'); setShowCreateBase(true) }}
-            title="Create new base"
-          >
-            <PlusIcon size={10} /><span className="hud-label"> NEW BASE</span>
-          </button>
-          <button
             className="hud-btn"
             onClick={() => { play('hydraulic'); setShowBuildMenu(true) }}
             title="Bau Optionen (ClawCom, etc.)"
@@ -983,19 +974,6 @@ export function BattlefieldView() {
         />
       )}
 
-      {/* Create new base dialog */}
-      {showCreateBase && (
-        <CreateBaseDialog
-          onClose={() => setShowCreateBase(false)}
-          onSuccess={(msg) => {
-            addToast(msg, 'success')
-            setShowCreateBase(false)
-            onReposChange()
-          }}
-          onError={(msg) => addToast(msg, 'error')}
-        />
-      )}
-
       {/* Map selector dialog */}
       {showMapSelector && (
         <LoadBattlefieldMapDialog
@@ -1010,10 +988,26 @@ export function BattlefieldView() {
       {showBuildMenu && (
         <BuildOptionsMenu
           onClose={() => setShowBuildMenu(false)}
-          onStartPlacement={(params) => {
-            setShowBuildMenu(false)
-            setPlacementMode(params)
-            setGhostScreenPos({ x: window.innerWidth / 2, y: window.innerHeight / 2 })
+          onStartPlacement={async (params) => {
+            if (params.type === 'new-base') {
+              setShowBuildMenu(false)
+              try {
+                await api.createRepo({
+                  name: params.name,
+                  description: params.repoDescription,
+                  visibility: params.repoVisibility ?? 'private',
+                })
+                addToast(`Base "${params.name}" established!`, 'success')
+                loadRepos()
+                onRefresh()
+              } catch (err) {
+                addToast(err instanceof Error ? err.message : 'Failed to create repository', 'error')
+              }
+            } else {
+              setShowBuildMenu(false)
+              setPlacementMode(params)
+              setGhostScreenPos({ x: window.innerWidth / 2, y: window.innerHeight / 2 })
+            }
           }}
         />
       )}
