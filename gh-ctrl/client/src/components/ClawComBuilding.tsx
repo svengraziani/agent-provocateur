@@ -94,6 +94,10 @@ export function ClawComBuilding({
   const IDLE_ANIMS: [string, number][] = [
     ['/buildings/idle_1_4s_clawcom.gif', 4000],
     ['/buildings/idle_2_4s_clawcom.gif', 4000],
+    ['/buildings/idle_3_4s_clawcom.gif', 4000],
+    ['/buildings/idle_4_4s_clawcom.gif', 4000],
+    ['/buildings/idle_5_10s_clawcom.gif', 10000],
+    ['/buildings/idle_6_4s_clawcom.gif', 4000],
   ]
   const [idleAnimSrc, setIdleAnimSrc] = useState<string | null>(null)
 
