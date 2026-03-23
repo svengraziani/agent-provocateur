@@ -414,7 +414,7 @@ export function BaseDetailPanel({ entry, onClose, onModalOpen }: {
       {data.conflicts.length > 0 && (
         <div className="bdp-section">
           <div className="bdp-section-title conflict">&#x26a0; CONFLICTS</div>
-          {data.conflicts.slice(0, 4).map((pr: GHPR) => (
+          {data.conflicts.map((pr: GHPR) => (
             <BdpItemRow
               key={pr.number}
               number={pr.number}
@@ -429,14 +429,13 @@ export function BaseDetailPanel({ entry, onClose, onModalOpen }: {
               headRefName={pr.headRefName}
             />
           ))}
-          {data.conflicts.length > 4 && <div className="bdp-more">+{data.conflicts.length - 4} more</div>}
         </div>
       )}
 
       {data.needsReview.length > 0 && (
         <div className="bdp-section">
           <div className="bdp-section-title review">&#x25cf; NEEDS REVIEW</div>
-          {data.needsReview.slice(0, 4).map((pr: GHPR) => (
+          {data.needsReview.map((pr: GHPR) => (
             <BdpItemRow
               key={pr.number}
               number={pr.number}
@@ -451,14 +450,13 @@ export function BaseDetailPanel({ entry, onClose, onModalOpen }: {
               headRefName={pr.headRefName}
             />
           ))}
-          {data.needsReview.length > 4 && <div className="bdp-more">+{data.needsReview.length - 4} more</div>}
         </div>
       )}
 
       {data.claudeIssues.length > 0 && (
         <div className="bdp-section">
           <div className="bdp-section-title claude">&#x2605; CLAUDE ISSUES</div>
-          {data.claudeIssues.slice(0, 4).map((issue: GHIssue) => {
+          {data.claudeIssues.map((issue: GHIssue) => {
             const isActive = activeClaudeSet.has(issue.number)
             const prLink = !isActive ? (data.claudeIssuePRLinks ?? {})[issue.number] : undefined
             return (
@@ -477,7 +475,6 @@ export function BaseDetailPanel({ entry, onClose, onModalOpen }: {
               />
             )
           })}
-          {data.claudeIssues.length > 4 && <div className="bdp-more">+{data.claudeIssues.length - 4} more</div>}
         </div>
       )}
 
@@ -513,7 +510,7 @@ export function BaseDetailPanel({ entry, onClose, onModalOpen }: {
           <button className="bdp-toggle" onClick={() => setShowAllPRs((v) => !v)}>
             <span>{showAllPRs ? '▾' : '▸'}</span> All PRs ({remainingPRs.length})
           </button>
-          {showAllPRs && remainingPRs.slice(0, 5).map((pr: GHPR) => (
+          {showAllPRs && remainingPRs.map((pr: GHPR) => (
             <BdpItemRow
               key={pr.number}
               number={pr.number}
@@ -536,7 +533,7 @@ export function BaseDetailPanel({ entry, onClose, onModalOpen }: {
           <button className="bdp-toggle" onClick={() => setShowAllIssues((v) => !v)}>
             <span>{showAllIssues ? '▾' : '▸'}</span> All Issues ({remainingIssues.length}) <span className="untouched-count-badge" title="Issues with no @claude interaction">● {remainingIssues.length} untouched</span>
           </button>
-          {showAllIssues && remainingIssues.slice(0, 5).map((issue: GHIssue) => {
+          {showAllIssues && remainingIssues.map((issue: GHIssue) => {
             const isActive = activeClaudeSet.has(issue.number)
             const prLink = !isActive ? (data.claudeIssuePRLinks ?? {})[issue.number] : undefined
             return (
@@ -568,7 +565,7 @@ export function BaseDetailPanel({ entry, onClose, onModalOpen }: {
           branches.length === 0 ? (
             <div className="bdp-more">No branches found</div>
           ) : (
-            branches.slice(0, 8).map((branch) => (
+            branches.map((branch) => (
               <div key={branch.name} className="bdp-item">
                 <div className="bdp-item-left">
                   <span className="branch-icon">⎇</span>
