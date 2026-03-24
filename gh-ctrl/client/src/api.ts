@@ -377,4 +377,10 @@ export const api = {
 
   syncMail: (buildingId: number) =>
     request<{ ok: boolean }>(`/buildings/${buildingId}/mail/sync`, { method: 'POST' }),
+
+  testMailConnection: (params: { imapHost: string; imapPort: number; username: string; password: string }) =>
+    request<{ ok: boolean; error?: string }>('/buildings/mail/test-connection', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    }),
 }

@@ -170,7 +170,7 @@ export function BattlefieldMapLayer({
           const constructGif = building.type === 'healthcheck'
             ? '/buildings/construct_4s_healthcheck.gif'
             : building.type === 'mailbox'
-              ? '/buildings/construct_4s_mailbox.gif'
+              ? '/buildings/construction_4s_snailbox.gif'
               : '/buildings/construct_3s_clawcom.gif'
           return (
             <div

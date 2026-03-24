@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Eye, EyeOff } from 'lucide-react'
 import { api } from '../api'
 import { useAppStore } from '../store'
 import type { Building, MailboxConfig } from '../types'
@@ -32,8 +33,35 @@ export function MailboxSetupDialog({ building, onClose, onConfigured, onError }:
   const [folder, setFolder]           = useState(existingConfig.folder ?? 'INBOX')
   const [pollIntervalMs, setPoll]     = useState(existingConfig.pollIntervalMs ?? 5 * 60_000)
   const [saving, setSaving]           = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [testState, setTestState]     = useState<'idle' | 'testing' | 'ok' | 'error'>('idle')
+  const [testError, setTestError]     = useState('')
 
   const canSave = imapHost.trim() && smtpHost.trim() && username.trim() && password.trim()
+  const canTest = imapHost.trim() && username.trim() && password.trim()
+
+  async function handleTestConnection() {
+    if (!canTest || testState === 'testing') return
+    setTestState('testing')
+    setTestError('')
+    try {
+      const res = await api.testMailConnection({
+        imapHost: imapHost.trim(),
+        imapPort: Number(imapPort) || 993,
+        username:  username.trim(),
+        password,
+      })
+      if (res.ok) {
+        setTestState('ok')
+      } else {
+        setTestState('error')
+        setTestError(res.error ?? 'Verbindung fehlgeschlagen')
+      }
+    } catch (err: any) {
+      setTestState('error')
+      setTestError(err.message)
+    }
+  }
 
   async function handleSave() {
     if (!canSave || saving) return
@@ -131,14 +159,28 @@ export function MailboxSetupDialog({ building, onClose, onConfigured, onError }:
               placeholder="user@example.com"
               style={{ width: '100%', marginBottom: 4 }}
             />
-            <input
-              className="hud-input"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Passwort"
-              style={{ width: '100%' }}
-            />
+            <div style={{ position: 'relative', width: '100%' }}>
+              <input
+                className="hud-input"
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Passwort"
+                style={{ width: '100%', paddingRight: 28, boxSizing: 'border-box' }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                style={{
+                  position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)',
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  color: 'var(--text-dim)', fontSize: 13, padding: '0 2px', lineHeight: 1,
+                }}
+                title={showPassword ? 'Passwort verbergen' : 'Passwort anzeigen'}
+              >
+                {showPassword ? <Eye size={13} /> : <EyeOff size={13} />}
+              </button>
+            </div>
           </div>
 
           {/* Folder + Poll interval */}
@@ -171,15 +213,34 @@ export function MailboxSetupDialog({ building, onClose, onConfigured, onError }:
         </div>
       </div>
 
-      <div className="map-dialog-actions">
-        <button className="hud-btn" onClick={onClose}>ABBRECHEN</button>
-        <button
-          className="hud-btn hud-btn-new-base"
-          onClick={handleSave}
-          disabled={!canSave || saving}
-        >
-          {saving ? '◌ SPEICHERN...' : '✓ KONFIGURIEREN'}
-        </button>
+      <div className="map-dialog-actions" style={{ flexDirection: 'column', gap: 6 }}>
+        {testState === 'ok' && (
+          <div style={{ fontSize: 10, color: 'var(--green-neon)', textAlign: 'center' }}>
+            ✓ IMAP-Verbindung erfolgreich
+          </div>
+        )}
+        {testState === 'error' && (
+          <div style={{ fontSize: 10, color: '#ff6b6b', textAlign: 'center' }}>
+            ✕ {testError}
+          </div>
+        )}
+        <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+          <button className="hud-btn" onClick={onClose}>ABBRECHEN</button>
+          <button
+            className="hud-btn"
+            onClick={handleTestConnection}
+            disabled={!canTest || testState === 'testing'}
+          >
+            {testState === 'testing' ? '◌ TESTE...' : '⚡ TEST'}
+          </button>
+          <button
+            className="hud-btn hud-btn-new-base"
+            onClick={handleSave}
+            disabled={!canSave || saving}
+          >
+            {saving ? '◌ SPEICHERN...' : '✓ KONFIGURIEREN'}
+          </button>
+        </div>
       </div>
     </div>
   )

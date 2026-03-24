@@ -9,6 +9,7 @@ import {
   sendMailboxEmail,
   getMailMessages,
   getUnreadCount,
+  testImapConnection,
   type MailboxConfig,
 } from '../mailbox-service'
 
@@ -197,6 +198,22 @@ app.post('/:id/messages', async (c) => {
 })
 
 // ── Mailbox routes ────────────────────────────────────────────────────────────
+
+// POST /mail/test-connection — test IMAP credentials without saving
+app.post('/mail/test-connection', async (c) => {
+  const body = await c.req.json()
+  const { imapHost, imapPort, username, password } = body
+  if (!imapHost || !username || !password) {
+    return c.json({ ok: false, error: 'imapHost, username and password required' }, 400)
+  }
+  const result = await testImapConnection({
+    imapHost: String(imapHost),
+    imapPort: Number(imapPort) || 993,
+    username:  String(username),
+    password:  String(password),
+  })
+  return c.json(result)
+})
 
 // GET /:id/mail — list messages for a mailbox building
 app.get('/:id/mail', async (c) => {
