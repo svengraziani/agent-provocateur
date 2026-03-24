@@ -98,6 +98,23 @@ export function HealthcheckBuilding({
 
   const colorizedSrc = useColorizedImage('/buildings/healthcheck.png', currentBuilding.color ?? '#00FF00')
 
+  const [idleAnimSrc, setIdleAnimSrc] = useState<string | null>(null)
+  useEffect(() => {
+    let timeout: ReturnType<typeof setTimeout>
+    function scheduleNext() {
+      const delay = 8000 + Math.random() * 12000
+      timeout = setTimeout(() => {
+        setIdleAnimSrc('/buildings/idle_1_4s_healthcheck.gif')
+        timeout = setTimeout(() => {
+          setIdleAnimSrc(null)
+          scheduleNext()
+        }, 4000)
+      }, delay)
+    }
+    scheduleNext()
+    return () => clearTimeout(timeout)
+  }, [])
+
   useEffect(() => {
     setCurrentBuilding(building)
   }, [building])
@@ -194,7 +211,14 @@ export function HealthcheckBuilding({
       >
         {/* Building image */}
         <div className="clawcom-img-wrap" style={{ position: 'relative' }}>
-          {colorizedSrc ? (
+          {idleAnimSrc ? (
+            <img
+              src={idleAnimSrc}
+              alt={currentBuilding.name}
+              style={{ width: 100, height: 100, objectFit: 'contain' }}
+              draggable={false}
+            />
+          ) : colorizedSrc ? (
             <img
               src={colorizedSrc}
               alt={currentBuilding.name}
