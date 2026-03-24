@@ -100,4 +100,16 @@ sqlite.exec(`
   )
 `)
 
+sqlite.exec(`
+  CREATE TABLE IF NOT EXISTS deadline_timers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    description TEXT DEFAULT '',
+    deadline TEXT NOT NULL,
+    color TEXT DEFAULT '#ff4444',
+    created_at INTEGER DEFAULT (unixepoch()),
+    updated_at INTEGER DEFAULT (unixepoch())
+  )
+`)
+
 export const db = drizzle(sqlite, { schema })
