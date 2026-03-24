@@ -16,29 +16,49 @@
 
 Never lose track of what's happening across your repositories. The dashboard surfaces open PRs, issues, merge conflicts, review decisions, and running GitHub Actions — all in one place, updated in real time via SSE streaming.
 
-- Conflict warnings surface prominently when merge conflicts are detected
-- Draft PRs, stale branches, and AI-labeled tasks are all visible at a glance
+- Repos load as soon as they're ready (parallel SSE streaming, not sequential)
+- Conflict warnings, Draft PRs, stale branches, and AI-labeled issues surface prominently
+- Running GitHub Actions visible per repo
 - Configurable auto-refresh (30s – 30 min) keeps the view current
 
 ### Visualize the Battlefield
 
-Each repository becomes a **base** on an infinite isometric RTS-style map. Pan, zoom, and reposition bases freely — your battlefield layout persists. The HUD shows live stats across the entire fleet: active bases, running conflicts, workflow runs, and stale branches.
+Each repository becomes a **base** on an infinite isometric RTS-style map. Pan (drag), zoom (scroll wheel), and reposition bases freely — your battlefield layout persists. The HUD shows live stats across the entire fleet: active bases, conflicts, workflow runs, and stale branches.
 
 - Minimap for quick navigation across large multi-repo setups
-- Load custom terrain created in the built-in Map Editor
-- Sound effects on scan complete and conflict detection
+- Relocate Mode: drag & drop to reposition Bases and Badges
+- Sound effects on scan, conflict detection, and refresh
+- Intel Feed Panel: sidebar with @mentions, open Issues, and open PRs
+- Custom terrain via the built-in Map Editor
 
 ### Command with Claude (ClawCom)
 
-Trigger Claude AI on any issue or PR with a single click, without leaving the dashboard. The **Construct Dialog** lets you post comments, assign labels, and kick off AI workflows directly from a repo's base node.
-
-<!-- Add ClawCom gif here once recorded: docs/clawcom_demo.gif -->
-> **ClawCom gif coming soon** — recording in progress.
+Trigger Claude AI on any issue or PR with a single click, without leaving the dashboard. The **Construct Dialog** lets you post comments, assign labels, and kick off AI workflows directly from a repo's base node. The **ClawCom Building** is your AI communications hub on the battlefield.
 
 - One-click `@claude` trigger on any issue or PR
 - AI-labeled issues (`claude`, `ai`, `ai-fix`, `ai-feature`) surface in a dedicated section
-- Claude-generated branches auto-link back to their source issues
+- `claude/issue-*` branches auto-link back to their source issues
 - "Create a PR" links from Claude comments become one-click buttons in the UI
+- Connect to OpenClaw or NanoClaw via URL — chat interface directly in the dashboard
+
+### Buildings: Healthcheck Monitoring
+
+The **Healthcheck Building** turns your battlefield into a live infrastructure monitor. Configure HTTP endpoints, set polling intervals, and watch status update in real time.
+
+- Configure multiple HTTP endpoints per building (URL + label)
+- Automatic polling with configurable intervals (30s to 1h)
+- Displays status (ok/fail), HTTP status code, and response time
+- Manual trigger button for on-demand checks
+- Visual status indicator: green / orange / red / grey
+
+### Badges & Map Markers
+
+Place custom image markers anywhere on your battlefield to annotate your infrastructure, mark team territories, or highlight important repos.
+
+- Upload any image as a badge (max 5MB, all image formats supported)
+- Place badges on the battlefield with position, scale (slider), and label
+- Relocate Mode: reposition badges via drag & drop
+- Badge Library: rename, delete, and re-upload badges
 
 ### Organize & Track
 
@@ -52,35 +72,9 @@ The **Intel Feed Panel** pulls your GitHub @mentions, open issues, and open PRs 
 
 ## Getting Started
 
-### Prerequisites
+### Option 1: Docker (Recommended)
 
-- [Bun](https://bun.sh) installed
-- [GitHub CLI](https://cli.github.com) installed and authenticated (`gh auth login`)
-
-### Install & Run
-
-```bash
-cd gh-ctrl
-bun install
-cd client && bun install && cd ..
-bun run dev
-```
-
-This starts both the backend (port `3001`) and the Vite dev server (port `5173`) concurrently.
-
-### Production
-
-```bash
-cd gh-ctrl
-bun run build   # builds the React client
-bun run start   # serves everything on port 3001
-```
-
----
-
-## Docker
-
-The easiest way to run Vibe and Conquer without installing Bun or the GitHub CLI locally.
+The easiest way to run Vibe and Conquer — no Bun or GitHub CLI installation needed locally.
 
 **Prerequisites:** [Docker](https://docs.docker.com/get-docker/) with Compose v2 + a GitHub [personal access token](https://github.com/settings/tokens) with `repo` and `read:org` scopes.
 
@@ -105,6 +99,25 @@ docker compose --profile dev up --build
 
 The SQLite database is stored in a named Docker volume (`gh-ctrl-data`) and persists across restarts.
 
+### Option 2: Local
+
+**Prerequisites:** [Bun](https://bun.sh) installed + [GitHub CLI](https://cli.github.com) installed and authenticated (`gh auth login`)
+
+```bash
+cd gh-ctrl
+bun install
+cd client && bun install && cd ..
+bun run dev
+# Backend: 3001  |  Frontend: 5173
+```
+
+**Production build:**
+
+```bash
+bun run build   # builds the React client
+bun run start   # serves everything on port 3001
+```
+
 ---
 
 ## GitHub Actions Workflows
@@ -125,43 +138,74 @@ These workflows are the backbone of **ClawCom** — the dashboard's AI command l
 <summary><strong>Full Feature Reference</strong></summary>
 
 ### Dashboard
-- Real-time SSE streaming — repos load as soon as they're ready
+- Real-time SSE streaming — repos load in parallel as soon as they're ready
 - Conflict warnings, draft PRs, running actions, stale branches
 - Configurable auto-refresh (30s – 30 min)
 
 ### Battlefield View
 - Infinite isometric canvas — pan, zoom, reposition bases freely
-- HUD: active bases, conflicts, running processes, stale branches
-- Minimap, sound effects, Relocate Mode (drag & drop bases)
+- HUD: active bases, conflicts, running workflows, stale branches
+- Minimap, sound effects, Relocate Mode (drag & drop for Bases and Badges)
 - Intel Feed Panel: @mentions, open issues, open PRs across all repos
 
 ### Base Nodes (per-repo)
-- Open PRs with review status, draft status, and Netlify preview URLs
+- Open PRs with review status, draft status, assignees, labels, and Netlify preview URLs
 - Open issues with labels and assignees
-- Branch staleness visualization
-- Repo metadata popup: stars, forks, watchers, languages, topics, top contributors, 26-week commit sparkline
-- Construct Dialog: trigger Claude, post comments, add/remove labels, assign users, create PRs
+- BranchSilo: branch staleness visualization (active / stale 30d+ / very-stale 90d+)
+- Ahead/behind tracking vs. default branch (lazy-loaded)
+- Delete branches directly from the UI
+- Repo metadata popup: stars, forks, languages, top contributors, 26-week commit sparkline
+- Construct Dialog: trigger Claude, post comments, add/remove labels, assign users, create PRs and Issues
+
+### Buildings
+
+**ClawCom** — AI Communications Hub
+- 6 idle animations (4–10s cycles)
+- Construction animation when placed
+- Connect via host URL (OpenClaw / NanoClaw)
+- Chat interface with message history
+- Unread badge counter
+
+**Healthcheck** — HTTP Endpoint Monitor
+- Multiple endpoints per building
+- Configurable polling intervals (30s to 1h)
+- 200-result history per building
+- Response time tracking
 
 ### Map Editor
-- Create isometric tile maps (up to 80×80 tiles) for battlefield backgrounds
-- Tile color painting with multi-select and flood fill
-- Save, load, delete named maps with mini-preview thumbnails
+- Isometric tile maps (up to 256×256 tiles)
+- Tools: Paint, Erase, Fill, Stamp
+- 10 tile types: Ground, Grass, Water, Sand, Rock, Forest, Mountain, Lava, Snow, Custom
+- Undo/Redo
+- Save, load, and delete maps; assign maps to repos
+
+### Badges
+- Upload any image (max 5MB, UUID filename on server)
+- Place on battlefield with position, scale slider, and label
+- Relocate Mode for repositioning
 
 ### Repository Management
 - Browse and search owned, collaborator, and org repos — add with one click
-- Manual `owner/repo` entry as fallback
-- Customizable per-repo color (preset palette + custom hex picker)
+- Manual `owner/repo` entry (GitHub URL auto-normalized)
+- Customizable per-repo color (8 presets + custom hex picker)
 - Create new GitHub repos directly from the dashboard
+- Map assignment directly from Settings
 
 ### Claude AI Integration
-- Surfaces `claude`, `ai`, `ai-fix`, `ai-feature` labeled issues in a dedicated section
-- Detects `claude/issue-*` branches and links them to source issues
-- Parses Claude's "Create a PR" links into one-click buttons
-- Shows active Claude workflow runs per repo
+- `claude`, `ai`, `ai-fix`, `ai-feature` labeled issues surface in a dedicated section
+- `claude/issue-*` branches detected and linked to their source issue
+- "Create a PR" links from Claude comments parsed into one-click buttons
+- Active Claude workflow runs visible per repo
 
-### Other
-- Voice input for hands-free issue and PR creation
-- Toast notifications for all actions
+### Voice Input
+- Web Speech API (en-US)
+- Available in Compact (toolbar) and Construct-style variants
+- Graceful fallback on unsupported browsers
+
+### Setup & Connectivity
+- Automatic connection check on startup
+- Setup Wizard when `gh` CLI or authentication is missing (with fix instructions + clipboard copy)
+- Custom server URL support (for remote instances)
 
 </details>
 
@@ -182,31 +226,55 @@ These workflows are the backbone of **ClawCom** — the dashboard's AI command l
 
 ```
 vibe-and-conquer/
+├── compose.yml                 # Docker Compose (prod + dev profiles)
+├── .env.example                # GH_TOKEN template
 └── gh-ctrl/
     ├── src/
-    │   ├── index.ts          # Hono server entry point
-    │   ├── db/               # Drizzle ORM schema & SQLite connection
+    │   ├── index.ts            # Hono server: CORS, routes, static files, health
+    │   ├── healthcheck-service.ts  # Background HTTP monitoring scheduler
+    │   ├── db/
+    │   │   ├── index.ts        # SQLite connection (WAL mode)
+    │   │   └── schema.ts       # Drizzle ORM: repos, maps, buildings, badges, ...
     │   └── routes/
-    │       ├── github.ts     # GitHub data fetching via gh CLI (SSE streaming, actions, PRs, issues)
-    │       ├── repos.ts      # Repository CRUD endpoints
-    │       └── maps.ts       # Map CRUD endpoints (tile maps for Battlefield)
+    │       ├── github.ts       # GitHub API via gh CLI (SSE stream, PRs, issues, workflows)
+    │       ├── repos.ts        # Repository CRUD
+    │       ├── maps.ts         # Tile map CRUD + repo assignment
+    │       ├── buildings.ts    # Building CRUD + ClawCom messages + healthcheck trigger
+    │       ├── badges.ts       # Badge upload/CRUD + placement
+    │       └── setup.ts        # Setup diagnostics (gh auth, DB check)
     └── client/
         └── src/
-            ├── App.tsx               # Root app with view routing
-            ├── store.ts              # Zustand global state
-            ├── api.ts                # Frontend API client
-            ├── types.ts              # Shared TypeScript types
-            ├── hooks/                # Custom hooks (sound, voice input)
+            ├── App.tsx                  # Root: connection check, routing, sidebar
+            ├── store.ts                 # Zustand: repos, entries, buildings, badges, toasts
+            ├── api.ts                   # API client (all endpoints)
+            ├── types.ts                 # TypeScript interfaces
+            ├── hooks/
+            │   └── useSound.ts          # Audio (peep, hydraulic, refreshed, glass_poop)
             └── components/
-                ├── Dashboard.tsx     # Grid view of all repos
-                ├── BattlefieldView.tsx # RTS-style isometric battlefield
-                ├── BaseNode.tsx      # Per-repo node on the battlefield
-                ├── MapEditor.tsx     # Tile map creation and editing
-                ├── FeedPanel.tsx     # Intel feed (@mentions, issues, PRs)
-                ├── ActionModal.tsx   # Claude trigger / issue action modal
-                ├── ConstructDialog.tsx # Construct / issue action dialog
-                ├── Settings.tsx      # Repo management and preferences
-                └── RepoCard.tsx      # Repo card for the dashboard grid
+                ├── BattlefieldView.tsx  # Isometric canvas: pan, zoom, buildings, badges
+                ├── BaseNode.tsx         # Per-repo node: PRs, issues, branch silo
+                ├── BranchBuilding.tsx   # Branch silo + individual branch cards
+                ├── BranchSiloPanel.tsx  # Branch management panel
+                ├── ClawComBuilding.tsx  # ClawCom hub with animations
+                ├── ClawComChatDialog.tsx    # Chat interface
+                ├── ClawComSetupDialog.tsx   # Host configuration
+                ├── HealthcheckBuilding.tsx  # HTTP monitor building
+                ├── HealthcheckSetupDialog.tsx # Endpoint configuration
+                ├── BadgeMarker.tsx      # Placed badge on battlefield
+                ├── BadgeLibraryDialog.tsx   # Upload and manage badges
+                ├── BuildOptionsMenu.tsx # Place ClawCom/Healthcheck/new base
+                ├── ActionModal.tsx      # Universal modal: comment, label, assign, create PR/issue
+                ├── ConstructDialog.tsx  # Issue/PR creation with Voice Input
+                ├── FeedPanel.tsx        # Intel Feed: mentions, issues, PRs
+                ├── MapEditor.tsx        # Tile map editor
+                ├── Settings.tsx         # Repo management + preferences
+                ├── SetupScreen.tsx      # Setup Wizard (gh CLI + auth checks)
+                ├── ConnectionSetup.tsx  # Remote server URL input
+                ├── MarkdownContent.tsx  # Safe markdown renderer
+                ├── VoiceButton.tsx      # Speech recognition UI
+                ├── useVoiceInput.ts     # Web Speech API wrapper
+                ├── Toast.tsx            # Notification system
+                └── Icons.tsx            # SVG icon components
 ```
 
 ---
