@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import type { DeadlineTimer } from '../types'
 import { useAppStore } from '../store'
+import { SidePanel } from './SidePanel'
 
 interface DeadlineTimersProps {
   isOpen: boolean
@@ -231,7 +232,7 @@ export function DeadlineTimers({ isOpen, onClose }: DeadlineTimersProps) {
   }
 
   return (
-    <div className="dt-panel">
+    <SidePanel className="dt-panel" onClose={onClose}>
       <div className="dt-panel-header">
         <div className="dt-panel-title">⏱ MISSION TIMERS</div>
         <div className="dt-panel-header-actions">
@@ -241,7 +242,7 @@ export function DeadlineTimers({ isOpen, onClose }: DeadlineTimersProps) {
           >
             + NEW
           </button>
-          <button className="dt-panel-close" onClick={onClose} title="Close">✕</button>
+          <button className="dt-panel-close" onClick={onClose} title="Close [Esc]">✕</button>
         </div>
       </div>
 
@@ -278,6 +279,6 @@ export function DeadlineTimers({ isOpen, onClose }: DeadlineTimersProps) {
           />
         ))}
       </div>
-    </div>
+    </SidePanel>
   )
 }

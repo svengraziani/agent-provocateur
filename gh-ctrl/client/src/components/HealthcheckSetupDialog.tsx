@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { api } from '../api'
 import { useAppStore } from '../store'
 import type { Building, HealthcheckConfig, HealthcheckEndpoint } from '../types'
+import { BaseDialog } from './BaseDialog'
 
 interface HealthcheckSetupDialogProps {
   building: Building
@@ -83,7 +84,7 @@ export function HealthcheckSetupDialog({ building, onClose, onConfigured, onErro
   const activePreset = INTERVAL_PRESETS.find((p) => p.ms === intervalMs)
 
   return (
-    <div className="map-dialog" onWheel={(e) => e.stopPropagation()}>
+    <BaseDialog className="map-dialog" onClose={onClose}>
       <div className="map-dialog-title">&#x25a0; {building.name.toUpperCase()} — HEALTHCHECK SETUP</div>
 
       <div className="clawcom-setup-body">
@@ -191,6 +192,6 @@ export function HealthcheckSetupDialog({ building, onClose, onConfigured, onErro
           {saving ? '◌ SPEICHERN...' : '✓ KONFIGURIEREN'}
         </button>
       </div>
-    </div>
+    </BaseDialog>
   )
 }
