@@ -82,7 +82,7 @@ export function MailboxBuilding({
   const [unreadCount, setUnreadCount]         = useState(0)
   const colorInputRef = useRef<HTMLInputElement>(null)
 
-  const colorizedSrc = useColorizedImage('/buildings/mailbox.png', currentBuilding.color ?? '#4488ff')
+  const colorizedSrc = useColorizedImage('/buildings/snailbox.png', currentBuilding.color ?? '#4488ff')
 
   useEffect(() => {
     setCurrentBuilding(building)
@@ -188,7 +188,6 @@ export function MailboxBuilding({
               draggable={false}
             />
           ) : (
-            /* Placeholder until mailbox.png is added */
             <div style={{
               width: 100, height: 100,
               background: 'var(--bg-panel)',

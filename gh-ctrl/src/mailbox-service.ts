@@ -160,6 +160,35 @@ export async function sendMailboxEmail(
   })
 }
 
+export async function testImapConnection(
+  config: Pick<MailboxConfig, 'imapHost' | 'imapPort' | 'username' | 'password'>
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  let ImapFlow: any
+  try {
+    const mod = await import('imapflow')
+    ImapFlow = mod.ImapFlow
+  } catch {
+    return { ok: false, error: 'imapflow not installed — run `bun install`' }
+  }
+
+  const client = new ImapFlow({
+    host: config.imapHost,
+    port: config.imapPort,
+    secure: config.imapPort === 993,
+    auth: { user: config.username, pass: config.password },
+    logger: false,
+  })
+
+  try {
+    await client.connect()
+    await client.logout()
+    return { ok: true }
+  } catch (err: any) {
+    if (client.usable) await client.logout().catch(() => {})
+    return { ok: false, error: err.message }
+  }
+}
+
 export async function getMailMessages(
   buildingId: number,
   limit = 50,
