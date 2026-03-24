@@ -165,6 +165,7 @@ export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, on
   const hasConflicts = stats.conflicts > 0
   const hasReviews = stats.needsReview > 0
   const hasClaudeActive = (data.activeClaudeIssues?.length ?? 0) > 0
+  const claudeNotSetup = data.hasClaudeYml === false
   const runningWorkflows = data.runningWorkflows ?? []
   const hasRunningActions = runningWorkflows.length > 0
 
@@ -270,6 +271,11 @@ export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, on
               title={`${runningWorkflows.length} running action(s): ${runningWorkflows.map(r => r.workflowName).join(', ')}`}
             >
               ⚙
+            </span>
+          )}
+          {claudeNotSetup && (
+            <span className="base-beacon beacon-no-claude" title="Claude not set up — claude.yml missing from .github/workflows">
+              &#x2298;
             </span>
           )}
         </div>

@@ -170,6 +170,11 @@ async function fetchRunningWorkflows(fullName: string): Promise<RunningWorkflows
   return { activeClaudeIssues: Array.from(activeIssues), runningWorkflows }
 }
 
+async function checkClaudeYml(fullName: string): Promise<boolean> {
+  const result = await gh(['api', `repos/${fullName}/contents/.github/workflows/claude.yml`])
+  return result.error === null && result.data !== null
+}
+
 async function fetchRepoBranches(fullName: string): Promise<{ branches: { name: string; committedDate: string }[]; defaultBranch: string }> {
   const [owner, name] = fullName.split('/')
   const graphqlQuery = `{
@@ -236,6 +241,7 @@ async function fetchRepoData(fullName: string) {
       runningWorkflows: [],
       branches: [],
       defaultBranch: 'main',
+      hasClaudeYml: false,
       error: prResult.error || issueResult.error,
     }
   }
@@ -244,11 +250,12 @@ async function fetchRepoData(fullName: string) {
   const issues = issueResult.data || []
 
   // Netlify URLs depend on prs, but workflows and branches are independent
-  const [previewUrls, { activeClaudeIssues, runningWorkflows }, claudeIssueBranches, { branches, defaultBranch }] = await Promise.all([
+  const [previewUrls, { activeClaudeIssues, runningWorkflows }, claudeIssueBranches, { branches, defaultBranch }, hasClaudeYml] = await Promise.all([
     fetchNetlifyUrls(fullName, prs),
     fetchRunningWorkflows(fullName),
     fetchClaudeIssueBranches(fullName),
     fetchRepoBranches(fullName),
+    checkClaudeYml(fullName),
   ])
 
   const enrichedPrs = prs.map((pr: any) => ({
@@ -294,6 +301,7 @@ async function fetchRepoData(fullName: string) {
     runningWorkflows,
     branches,
     defaultBranch,
+    hasClaudeYml,
     error: null,
   }
 }

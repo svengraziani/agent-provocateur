@@ -107,6 +107,7 @@ export interface RepoData {
   runningWorkflows: WorkflowRun[]
   branches: Branch[]
   defaultBranch: string
+  hasClaudeYml: boolean
   error: string | null
 }
 
