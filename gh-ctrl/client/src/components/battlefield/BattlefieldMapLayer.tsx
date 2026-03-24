@@ -1,3 +1,4 @@
+import { useAppStore, selectBattlefieldUsers } from '../../store'
 import type { DashboardEntry, GameMap, Building, PlacedBadge } from '../../types'
 import type { ModalState } from '../ActionModal'
 import type { Position } from './battlefieldConstants'
@@ -7,6 +8,7 @@ import { BaseNode } from '../BaseNode'
 import { ClawComBuilding } from '../ClawComBuilding'
 import { HealthcheckBuilding } from '../HealthcheckBuilding'
 import { BadgeMarker } from '../BadgeMarker'
+import { UserUnit } from './UserUnit'
 import type { Repo } from '../../types'
 
 interface BattlefieldMapLayerProps {
@@ -80,6 +82,9 @@ export function BattlefieldMapLayer({
   onDeselectBuilding,
   onStartBadgeRelocate,
 }: BattlefieldMapLayerProps) {
+  const entries = useAppStore((s) => s.entries)
+  const battlefieldUsers = selectBattlefieldUsers(entries)
+
   return (
     <div
       className="battlefield-map"
@@ -212,6 +217,14 @@ export function BattlefieldMapLayer({
           />
         )
       })}
+
+      {battlefieldUsers.map((user) => (
+        <UserUnit
+          key={user.login}
+          user={user}
+          spawnPos={user.lastRepoId != null ? positions[user.lastRepoId] : undefined}
+        />
+      ))}
     </div>
   )
 }

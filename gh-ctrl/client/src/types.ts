@@ -300,3 +300,9 @@ export interface DeadlineTimer {
   createdAt: string | number | null
   updatedAt: string | number | null
 }
+
+export interface BattlefieldUser {
+  login: string
+  avatarUrl: string
+  lastRepoId?: number
+}

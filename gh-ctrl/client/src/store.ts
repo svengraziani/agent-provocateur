@@ -1,6 +1,27 @@
 import { create } from 'zustand'
-import type { Repo, DashboardEntry, RepoData, GameMap, Building, Badge, PlacedBadge, DeadlineTimer } from './types'
+import type { Repo, DashboardEntry, RepoData, GameMap, Building, Badge, PlacedBadge, DeadlineTimer, BattlefieldUser } from './types'
 import { api } from './api'
+
+export function selectBattlefieldUsers(entries: DashboardEntry[]): BattlefieldUser[] {
+  const seen = new Map<string, { login: string; avatarUrl: string; lastRepoId?: number; lastDate: string }>()
+  for (const entry of entries) {
+    for (const pr of entry.data.prs) {
+      const login = pr.author.login
+      const existing = seen.get(login)
+      if (!existing || pr.updatedAt > existing.lastDate) {
+        seen.set(login, { login, avatarUrl: `https://github.com/${login}.png?size=40`, lastRepoId: entry.repo.id, lastDate: pr.updatedAt })
+      }
+    }
+    for (const issue of entry.data.issues) {
+      const login = issue.author.login
+      const existing = seen.get(login)
+      if (!existing || issue.updatedAt > existing.lastDate) {
+        seen.set(login, { login, avatarUrl: `https://github.com/${login}.png?size=40`, lastRepoId: entry.repo.id, lastDate: issue.updatedAt })
+      }
+    }
+  }
+  return Array.from(seen.values()).map(({ login, avatarUrl, lastRepoId }) => ({ login, avatarUrl, lastRepoId }))
+}
 
 type ToastType = 'success' | 'error' | 'info'
 
