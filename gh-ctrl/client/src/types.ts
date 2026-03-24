@@ -304,4 +304,5 @@ export interface DeadlineTimer {
 export interface BattlefieldUser {
   login: string
   avatarUrl: string
+  lastRepoId?: number
 }

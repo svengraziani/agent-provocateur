@@ -11,13 +11,22 @@ function clamp(v: number, lo: number, hi: number) {
 
 interface UserUnitProps {
   user: BattlefieldUser
+  spawnPos?: { x: number; y: number }
 }
 
-export function UserUnit({ user }: UserUnitProps) {
-  const [pos, setPos] = useState(() => ({
-    x: UNIT_MARGIN + Math.random() * (MAP_W - UNIT_MARGIN * 2),
-    y: UNIT_MARGIN + Math.random() * (MAP_H - UNIT_MARGIN * 2),
-  }))
+export function UserUnit({ user, spawnPos }: UserUnitProps) {
+  const [pos, setPos] = useState(() => {
+    if (spawnPos) {
+      return {
+        x: clamp(spawnPos.x + (Math.random() - 0.5) * 160, UNIT_MARGIN, MAP_W - UNIT_MARGIN),
+        y: clamp(spawnPos.y + (Math.random() - 0.5) * 160, UNIT_MARGIN, MAP_H - UNIT_MARGIN),
+      }
+    }
+    return {
+      x: UNIT_MARGIN + Math.random() * (MAP_W - UNIT_MARGIN * 2),
+      y: UNIT_MARGIN + Math.random() * (MAP_H - UNIT_MARGIN * 2),
+    }
+  })
   const [hovered, setHovered] = useState(false)
 
   useEffect(() => {

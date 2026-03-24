@@ -219,7 +219,11 @@ export function BattlefieldMapLayer({
       })}
 
       {battlefieldUsers.map((user) => (
-        <UserUnit key={user.login} user={user} />
+        <UserUnit
+          key={user.login}
+          user={user}
+          spawnPos={user.lastRepoId != null ? positions[user.lastRepoId] : undefined}
+        />
       ))}
     </div>
   )

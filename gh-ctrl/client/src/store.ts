@@ -3,21 +3,24 @@ import type { Repo, DashboardEntry, RepoData, GameMap, Building, Badge, PlacedBa
 import { api } from './api'
 
 export function selectBattlefieldUsers(entries: DashboardEntry[]): BattlefieldUser[] {
-  const seen = new Set<string>()
-  const users: BattlefieldUser[] = []
+  const seen = new Map<string, { login: string; avatarUrl: string; lastRepoId?: number; lastDate: string }>()
   for (const entry of entries) {
-    const logins = [
-      ...entry.data.prs.map((pr) => pr.author.login),
-      ...entry.data.issues.map((issue) => issue.author.login),
-    ]
-    for (const login of logins) {
-      if (!seen.has(login)) {
-        seen.add(login)
-        users.push({ login, avatarUrl: `https://github.com/${login}.png?size=40` })
+    for (const pr of entry.data.prs) {
+      const login = pr.author.login
+      const existing = seen.get(login)
+      if (!existing || pr.updatedAt > existing.lastDate) {
+        seen.set(login, { login, avatarUrl: `https://github.com/${login}.png?size=40`, lastRepoId: entry.repo.id, lastDate: pr.updatedAt })
+      }
+    }
+    for (const issue of entry.data.issues) {
+      const login = issue.author.login
+      const existing = seen.get(login)
+      if (!existing || issue.updatedAt > existing.lastDate) {
+        seen.set(login, { login, avatarUrl: `https://github.com/${login}.png?size=40`, lastRepoId: entry.repo.id, lastDate: issue.updatedAt })
       }
     }
   }
-  return users
+  return Array.from(seen.values()).map(({ login, avatarUrl, lastRepoId }) => ({ login, avatarUrl, lastRepoId }))
 }
 
 type ToastType = 'success' | 'error' | 'info'
