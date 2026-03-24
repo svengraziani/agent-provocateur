@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Repo, DashboardEntry, RepoData, GameMap, Building, Badge, PlacedBadge } from './types'
+import type { Repo, DashboardEntry, RepoData, GameMap, Building, Badge, PlacedBadge, DeadlineTimer } from './types'
 import { api } from './api'
 
 type ToastType = 'success' | 'error' | 'info'
@@ -32,6 +32,7 @@ interface AppStore {
   buildings: Building[]
   badges: Badge[]
   placedBadges: PlacedBadge[]
+  deadlineTimers: DeadlineTimer[]
 
   // Toast
   addToast: (message: string, type?: ToastType) => void
@@ -60,6 +61,10 @@ interface AppStore {
   updatePlacedBadgeScale: (id: number, scale: number) => Promise<void>
   updatePlacedBadgeLabel: (id: number, label: string) => Promise<void>
   removePlacedBadge: (id: number) => Promise<void>
+  loadTimers: () => Promise<void>
+  createTimer: (params: { name: string; deadline: string; description?: string; color?: string }) => Promise<DeadlineTimer>
+  updateTimer: (id: number, updates: { name?: string; deadline?: string; description?: string; color?: string }) => Promise<void>
+  deleteTimer: (id: number) => Promise<void>
 }
 
 export const useAppStore = create<AppStore>((set, get) => ({
@@ -73,6 +78,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   buildings: [],
   badges: [],
   placedBadges: [],
+  deadlineTimers: [],
 
   addToast: (message, type = 'info') => {
     const id = nextToastId++
@@ -321,6 +327,50 @@ export const useAppStore = create<AppStore>((set, get) => ({
       }))
     } catch (err: any) {
       get().addToast(`Failed to remove badge: ${err.message}`, 'error')
+      throw err
+    }
+  },
+
+  loadTimers: async () => {
+    try {
+      const data = await api.listTimers()
+      set({ deadlineTimers: data })
+    } catch (err: any) {
+      get().addToast(`Failed to load timers: ${err.message}`, 'error')
+    }
+  },
+
+  createTimer: async (params) => {
+    try {
+      const timer = await api.createTimer(params)
+      set((state) => ({ deadlineTimers: [...state.deadlineTimers, timer].sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime()) }))
+      return timer
+    } catch (err: any) {
+      get().addToast(`Failed to create timer: ${err.message}`, 'error')
+      throw err
+    }
+  },
+
+  updateTimer: async (id, updates) => {
+    try {
+      const updated = await api.updateTimer(id, updates)
+      set((state) => ({
+        deadlineTimers: state.deadlineTimers
+          .map((t) => t.id === id ? updated : t)
+          .sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime()),
+      }))
+    } catch (err: any) {
+      get().addToast(`Failed to update timer: ${err.message}`, 'error')
+      throw err
+    }
+  },
+
+  deleteTimer: async (id) => {
+    try {
+      await api.deleteTimer(id)
+      set((state) => ({ deadlineTimers: state.deadlineTimers.filter((t) => t.id !== id) }))
+    } catch (err: any) {
+      get().addToast(`Failed to delete timer: ${err.message}`, 'error')
       throw err
     }
   },

@@ -8,6 +8,7 @@ import mapsRouter from './routes/maps'
 import setupRouter from './routes/setup'
 import buildingsRouter from './routes/buildings'
 import badgesRouter from './routes/badges'
+import timersRouter from './routes/timers'
 import pkg from '../package.json'
 import { existsSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
@@ -48,6 +49,7 @@ app.route('/api/maps', mapsRouter)
 app.route('/api/setup', setupRouter)
 app.route('/api/buildings', buildingsRouter)
 app.route('/api/badges', badgesRouter)
+app.route('/api/timers', timersRouter)
 
 app.get('/api/health', (c) => c.json({ ok: true }))
 app.get('/api/version', (c) => c.json({ version: pkg.version }))

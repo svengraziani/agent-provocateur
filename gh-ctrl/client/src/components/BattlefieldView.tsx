@@ -14,6 +14,7 @@ import { useAppStore } from '../store'
 import { BuildOptionsMenu } from './BuildOptionsMenu'
 import type { PlacementParams } from './BuildOptionsMenu'
 import { BadgeLibraryDialog } from './BadgeLibraryDialog'
+import { DeadlineTimers } from './DeadlineTimers'
 
 import { BattlefieldHUD } from './battlefield/BattlefieldHUD'
 import { BattlefieldMapLayer } from './battlefield/BattlefieldMapLayer'
@@ -71,6 +72,7 @@ export function BattlefieldView() {
   const [placementMode, setPlacementMode] = useState<PlacementParams | null>(null)
   const [ghostScreenPos, setGhostScreenPos] = useState<Position>({ x: 0, y: 0 })
   const [showBadgeLibrary, setShowBadgeLibrary] = useState(false)
+  const [showTimers, setShowTimers] = useState(false)
   const [placingBadge, setPlacingBadge] = useState<Badge | null>(null)
 
   const autoScanTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -354,6 +356,7 @@ export function BattlefieldView() {
         activeMap={activeMap}
         showFeedPanel={showFeedPanel}
         showBadgeLibrary={showBadgeLibrary}
+        showTimers={showTimers}
         onScan={() => { play('peep'); onRefresh() }}
         onToggleRelocate={() => { play('hydraulic'); setIsRelocateMode(v => !v); setRelocatingId(null); setRelocatingStart(null) }}
         onShowBuildMenu={() => { play('hydraulic'); setShowBuildMenu(true) }}
@@ -361,6 +364,7 @@ export function BattlefieldView() {
         onShowMapSelector={() => setShowMapSelector(true)}
         onClearMap={handleClearMap}
         onToggleFeed={() => { play('peep'); setShowFeedPanel(v => !v) }}
+        onToggleTimers={() => { play('peep'); setShowTimers(v => !v) }}
         onZoomIn={handleZoomIn}
         onZoomOut={handleZoomOut}
         onZoomReset={() => handleZoomReset(positions)}
@@ -522,6 +526,11 @@ export function BattlefieldView() {
         entries={visibleEntries}
         isOpen={showFeedPanel}
         onClose={() => setShowFeedPanel(false)}
+      />
+
+      <DeadlineTimers
+        isOpen={showTimers}
+        onClose={() => setShowTimers(false)}
       />
 
       <BranchSiloPanel

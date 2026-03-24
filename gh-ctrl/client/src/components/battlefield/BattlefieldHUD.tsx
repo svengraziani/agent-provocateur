@@ -15,6 +15,7 @@ interface BattlefieldHUDProps {
   activeMap: GameMap | null
   showFeedPanel: boolean
   showBadgeLibrary: boolean
+  showTimers: boolean
   onScan: () => void
   onToggleRelocate: () => void
   onShowBuildMenu: () => void
@@ -22,6 +23,7 @@ interface BattlefieldHUDProps {
   onShowMapSelector: () => void
   onClearMap: () => void
   onToggleFeed: () => void
+  onToggleTimers: () => void
   onZoomIn: () => void
   onZoomOut: () => void
   onZoomReset: () => void
@@ -40,6 +42,7 @@ export function BattlefieldHUD({
   activeMap,
   showFeedPanel,
   showBadgeLibrary,
+  showTimers,
   onScan,
   onToggleRelocate,
   onShowBuildMenu,
@@ -47,6 +50,7 @@ export function BattlefieldHUD({
   onShowMapSelector,
   onClearMap,
   onToggleFeed,
+  onToggleTimers,
   onZoomIn,
   onZoomOut,
   onZoomReset,
@@ -132,6 +136,13 @@ export function BattlefieldHUD({
           title="Toggle Intel Feed"
         >
           <FeedIcon size={11} /><span className="hud-label"> FEED</span>
+        </button>
+        <button
+          className={`hud-btn${showTimers ? ' active' : ''}`}
+          onClick={onToggleTimers}
+          title="Mission Timers — Deadline countdown for all maps"
+        >
+          ⏱<span className="hud-label"> TIMERS</span>
         </button>
         <span className="hud-zoom-sep" />
         <button className="hud-btn hud-zoom-btn" onClick={onZoomOut} disabled={zoom <= ZOOM_MIN} title="Zoom out">−</button>

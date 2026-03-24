@@ -289,3 +289,13 @@ export interface PlacedBadge {
   createdAt: string | number | null
   updatedAt: string | number | null
 }
+
+export interface DeadlineTimer {
+  id: number
+  name: string
+  description: string | null
+  deadline: string // ISO 8601 string
+  color: string
+  createdAt: string | number | null
+  updatedAt: string | number | null
+}
