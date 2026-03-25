@@ -19,6 +19,7 @@ sqlite.exec(`
 // Migrations: add provider and instance_url to repos (no-op if columns already exist)
 try { sqlite.exec(`ALTER TABLE repos ADD COLUMN provider TEXT NOT NULL DEFAULT 'github'`) } catch {}
 try { sqlite.exec(`ALTER TABLE repos ADD COLUMN instance_url TEXT`) } catch {}
+try { sqlite.exec(`ALTER TABLE repos ADD COLUMN gitlab_token TEXT`) } catch {}
 
 sqlite.exec(`
   CREATE TABLE IF NOT EXISTS maps (

@@ -33,10 +33,10 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 export const api = {
   listRepos: () => request<Repo[]>('/repos'),
 
-  addRepo: (fullName: string, color?: string, provider?: 'github' | 'gitlab', instanceUrl?: string) =>
+  addRepo: (fullName: string, color?: string, provider?: 'github' | 'gitlab', instanceUrl?: string, gitlabToken?: string) =>
     request<Repo>('/repos', {
       method: 'POST',
-      body: JSON.stringify({ fullName, color, provider, instanceUrl }),
+      body: JSON.stringify({ fullName, color, provider, instanceUrl, gitlabToken }),
     }),
 
   updateRepo: (id: number, updates: { color?: string; description?: string }) =>
@@ -373,6 +373,12 @@ export const api = {
 
   getGitLabRepoMeta: (ns: string, project: string) =>
     request<RepoMeta>(`/gitlab/meta/${ns}/${project}`),
+
+  getGitLabMR: (ns: string, project: string, number: number) =>
+    request<PRDetail>(`/gitlab/mr/${ns}/${project}/${number}`),
+
+  getGitLabIssueDetail: (ns: string, project: string, number: number) =>
+    request<IssueDetail>(`/gitlab/issue/${ns}/${project}/${number}`),
 
   postGitLabComment: (params: {
     fullName: string

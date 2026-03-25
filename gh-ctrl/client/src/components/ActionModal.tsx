@@ -8,16 +8,16 @@ import { CloseIcon, LabelIcon, CommentIcon, CopyIcon } from './Icons'
 import { useAppStore } from '../store'
 
 export type ModalState =
-  | { mode: 'comment'; fullName: string; number: number; type: 'pr' | 'issue' }
-  | { mode: 'label'; fullName: string; number: number; type: 'pr' | 'issue'; currentLabels: string[] }
-  | { mode: 'assignee'; fullName: string; owner: string; repoName: string; number: number; type: 'pr' | 'issue'; currentAssignees: string[] }
-  | { mode: 'create-pr'; fullName: string; owner: string; repoName: string; head?: string; base?: string; title?: string; prBody?: string; issueNumber?: number }
-  | { mode: 'create-issue'; fullName: string; owner: string; repoName: string }
-  | { mode: 'create-issues-batch'; fullName: string; owner: string; repoName: string }
-  | { mode: 'issue-detail'; fullName: string; owner: string; repoName: string; number: number; prLink?: { head: string; base: string; title: string; body: string } }
-  | { mode: 'pr-detail'; fullName: string; owner: string; repoName: string; number: number }
-  | { mode: 'trigger-claude'; fullName: string; number: number; type: 'pr' | 'issue' }
-  | { mode: 'assign'; fullName: string; owner: string; repoName: string; number: number; type: 'pr' | 'issue'; currentAssignees: string[] }
+  | { mode: 'comment'; fullName: string; number: number; type: 'pr' | 'issue'; provider?: 'github' | 'gitlab' }
+  | { mode: 'label'; fullName: string; number: number; type: 'pr' | 'issue'; currentLabels: string[]; provider?: 'github' | 'gitlab' }
+  | { mode: 'assignee'; fullName: string; owner: string; repoName: string; number: number; type: 'pr' | 'issue'; currentAssignees: string[]; provider?: 'github' | 'gitlab' }
+  | { mode: 'create-pr'; fullName: string; owner: string; repoName: string; head?: string; base?: string; title?: string; prBody?: string; issueNumber?: number; provider?: 'github' | 'gitlab' }
+  | { mode: 'create-issue'; fullName: string; owner: string; repoName: string; provider?: 'github' | 'gitlab' }
+  | { mode: 'create-issues-batch'; fullName: string; owner: string; repoName: string; provider?: 'github' | 'gitlab' }
+  | { mode: 'issue-detail'; fullName: string; owner: string; repoName: string; number: number; prLink?: { head: string; base: string; title: string; body: string }; provider?: 'github' | 'gitlab' }
+  | { mode: 'pr-detail'; fullName: string; owner: string; repoName: string; number: number; provider?: 'github' | 'gitlab' }
+  | { mode: 'trigger-claude'; fullName: string; number: number; type: 'pr' | 'issue'; provider?: 'github' | 'gitlab' }
+  | { mode: 'assign'; fullName: string; owner: string; repoName: string; number: number; type: 'pr' | 'issue'; currentAssignees: string[]; provider?: 'github' | 'gitlab' }
   | null
 
 interface Props {
@@ -90,7 +90,11 @@ function CommentForm({ state, onClose, onSuccess, onError }: {
     if (!comment.trim()) return
     setSubmitting(true)
     try {
-      await api.postComment({ fullName: state.fullName, number: state.number, type: state.type, comment: comment.trim() })
+      if (state.provider === 'gitlab') {
+        await api.postGitLabComment({ fullName: state.fullName, number: state.number, type: state.type === 'pr' ? 'mr' : 'issue', comment: comment.trim() })
+      } else {
+        await api.postComment({ fullName: state.fullName, number: state.number, type: state.type, comment: comment.trim() })
+      }
       onSuccess(`Comment posted on ${state.type} #${state.number}`)
       onClose()
     } catch (err: any) {
@@ -141,7 +145,10 @@ function LabelForm({ state, onClose, onSuccess, onError }: {
   const [owner, name] = state.fullName.split('/')
 
   useEffect(() => {
-    api.getLabels(owner, name)
+    const req = state.provider === 'gitlab'
+      ? api.getGitLabLabels(owner, name)
+      : api.getLabels(owner, name)
+    req
       .then(setAvailableLabels)
       .catch((err) => onError(`Failed to load labels: ${err.message}`))
       .finally(() => setLoading(false))
@@ -164,9 +171,14 @@ function LabelForm({ state, onClose, onSuccess, onError }: {
       const toAdd = [...selected].filter((l) => !original.has(l))
       const toRemove = [...original].filter((l) => !selected.has(l))
 
+      const glType = state.type === 'pr' ? 'mr' : 'issue'
       await Promise.all([
-        ...toAdd.map((label) => api.addLabel({ fullName: state.fullName, number: state.number, type: state.type, label })),
-        ...toRemove.map((label) => api.removeLabel({ fullName: state.fullName, number: state.number, type: state.type, label })),
+        ...toAdd.map((label) => state.provider === 'gitlab'
+          ? api.addGitLabLabel({ fullName: state.fullName, number: state.number, type: glType, label })
+          : api.addLabel({ fullName: state.fullName, number: state.number, type: state.type, label })),
+        ...toRemove.map((label) => state.provider === 'gitlab'
+          ? api.removeGitLabLabel({ fullName: state.fullName, number: state.number, type: glType, label })
+          : api.removeLabel({ fullName: state.fullName, number: state.number, type: state.type, label })),
       ])
 
       const changes = toAdd.length + toRemove.length
@@ -225,6 +237,16 @@ function AssigneeForm({ state, onClose, onSuccess, onError }: {
   const [selected, setSelected] = useState<Set<string>>(new Set(state.currentAssignees))
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
+
+  if (state.provider === 'gitlab') {
+    return (
+      <div>
+        <div className="modal-title">Assignees<span className="modal-subtitle">{state.fullName}</span></div>
+        <div className="modal-loading">Assignee management is not yet supported for GitLab — use the GitLab web UI.</div>
+        <div className="modal-actions"><button className="btn btn-primary btn-sm" onClick={onClose}>Close</button></div>
+      </div>
+    )
+  }
 
   useEffect(() => {
     api.getCollaborators(state.owner, state.repoName)
@@ -325,7 +347,10 @@ function CreatePRForm({ state, onClose, onSuccess, onError }: {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    api.getBranches(state.owner, state.repoName)
+    const req = state.provider === 'gitlab'
+      ? api.getGitLabBranches(state.owner, state.repoName)
+      : api.getBranches(state.owner, state.repoName)
+    req
       .then(({ branches: br, defaultBranch }) => {
         const names = br.map((b) => b.name)
         setAllBranchNames(names)
@@ -341,14 +366,27 @@ function CreatePRForm({ state, onClose, onSuccess, onError }: {
     if (!title.trim() || !base || !effectiveHead) return
     setSubmitting(true)
     try {
-      const result = await api.createPR({
-        fullName: state.fullName,
-        head: effectiveHead,
-        base,
-        title: title.trim(),
-        prBody: prBody.trim() || undefined,
-      })
-      onSuccess(`PR created: ${result.url || `${effectiveHead} → ${base}`}`)
+      let url: string
+      if (state.provider === 'gitlab') {
+        const result = await api.createGitLabMR({
+          fullName: state.fullName,
+          sourceBranch: effectiveHead,
+          targetBranch: base,
+          title: title.trim(),
+          description: prBody.trim() || undefined,
+        })
+        url = result.url
+      } else {
+        const result = await api.createPR({
+          fullName: state.fullName,
+          head: effectiveHead,
+          base,
+          title: title.trim(),
+          prBody: prBody.trim() || undefined,
+        })
+        url = result.url
+      }
+      onSuccess(`${state.provider === 'gitlab' ? 'MR' : 'PR'} created: ${url || `${effectiveHead} → ${base}`}`)
       onClose()
     } catch (err: any) {
       onError(`Failed: ${err.message}`)
@@ -364,7 +402,7 @@ function CreatePRForm({ state, onClose, onSuccess, onError }: {
   return (
     <form onSubmit={handleSubmit}>
       <div className="modal-title">
-        Open Pull Request
+        {state.provider === 'gitlab' ? 'Open Merge Request' : 'Open Pull Request'}
         <span className="modal-subtitle">{state.fullName}</span>
       </div>
 
@@ -442,7 +480,7 @@ function CreatePRForm({ state, onClose, onSuccess, onError }: {
           className="btn btn-primary"
           disabled={submitting || loading || !title.trim() || !effectiveHead}
         >
-          {submitting ? 'Creating...' : 'Create PR'}
+          {submitting ? 'Creating...' : state.provider === 'gitlab' ? 'Create MR' : 'Create PR'}
         </button>
       </div>
     </form>
@@ -466,7 +504,10 @@ function CreateIssueForm({ state, onClose, onSuccess, onError, onIssueCreated }:
 
   useEffect(() => {
     titleRef.current?.focus()
-    api.getLabels(state.owner, state.repoName)
+    const req = state.provider === 'gitlab'
+      ? api.getGitLabLabels(state.owner, state.repoName)
+      : api.getLabels(state.owner, state.repoName)
+    req
       .then(setAvailableLabels)
       .catch(() => {/* labels are optional */})
       .finally(() => setLabelsLoading(false))
@@ -486,12 +527,19 @@ function CreateIssueForm({ state, onClose, onSuccess, onError, onIssueCreated }:
     if (!title.trim()) return
     setSubmitting(true)
     try {
-      const result = await api.createIssue({
-        fullName: state.fullName,
-        title: title.trim(),
-        issueBody: issueBody.trim() || undefined,
-        labels: selectedLabels.size > 0 ? [...selectedLabels] : undefined,
-      })
+      const result = state.provider === 'gitlab'
+        ? await api.createGitLabIssue({
+            fullName: state.fullName,
+            title: title.trim(),
+            issueBody: issueBody.trim() || undefined,
+            labels: selectedLabels.size > 0 ? [...selectedLabels] : undefined,
+          })
+        : await api.createIssue({
+            fullName: state.fullName,
+            title: title.trim(),
+            issueBody: issueBody.trim() || undefined,
+            labels: selectedLabels.size > 0 ? [...selectedLabels] : undefined,
+          })
       onSuccess(`Issue created: ${result.url || title}`)
       onIssueCreated?.(state.owner, state.repoName)
       onClose()
@@ -585,10 +633,18 @@ function BatchCreateIssuesForm({ state, onClose, onSuccess, onError, onIssueCrea
     if (parsedTitles.length === 0) return
     setSubmitting(true)
     try {
-      const res = await api.createIssuesBatch({
-        fullName: state.fullName,
-        issues: parsedTitles.map((title) => ({ title })),
-      })
+      let res: { results: { title: string; url?: string; error?: string }[] }
+      if (state.provider === 'gitlab') {
+        const settled = await Promise.allSettled(
+          parsedTitles.map((title) => api.createGitLabIssue({ fullName: state.fullName, title }))
+        )
+        res = { results: settled.map((r, i) => r.status === 'fulfilled' ? { title: parsedTitles[i], url: r.value.url } : { title: parsedTitles[i], error: (r.reason as any)?.message ?? 'Failed' }) }
+      } else {
+        res = await api.createIssuesBatch({
+          fullName: state.fullName,
+          issues: parsedTitles.map((title) => ({ title })),
+        })
+      }
       setResults(res.results)
       const successCount = res.results.filter((r) => !r.error).length
       if (successCount > 0) {
@@ -662,6 +718,16 @@ function TriggerClaudeForm({ state, onClose, onSuccess, onError }: {
   onSuccess: (msg: string) => void
   onError: (msg: string) => void
 }) {
+  if (state.provider === 'gitlab') {
+    return (
+      <div>
+        <div className="modal-title">Trigger Claude<span className="modal-subtitle">{state.fullName}</span></div>
+        <div className="modal-loading">@claude trigger is GitHub-only — not supported for GitLab.</div>
+        <div className="modal-actions"><button className="btn btn-primary btn-sm" onClick={onClose}>Close</button></div>
+      </div>
+    )
+  }
+
   const [message, setMessage] = useState('@claude ')
   const [submitting, setSubmitting] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -726,6 +792,16 @@ function AssignForm({ state, onClose, onSuccess, onError }: {
   const [selected, setSelected] = useState<Set<string>>(new Set(state.currentAssignees))
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
+
+  if (state.provider === 'gitlab') {
+    return (
+      <div>
+        <div className="modal-title">Assign {state.type} #{state.number}<span className="modal-subtitle">{state.fullName}</span></div>
+        <div className="modal-loading">Assignee management is not yet supported for GitLab — use the GitLab web UI.</div>
+        <div className="modal-actions"><button className="btn btn-primary btn-sm" onClick={onClose}>Close</button></div>
+      </div>
+    )
+  }
 
   useEffect(() => {
     api.getCollaborators(state.owner, state.repoName)
@@ -818,9 +894,12 @@ function PRDetailView({ state, onClose, onError, onTransition }: {
   }
 
   useEffect(() => {
-    api.getPR(state.owner, state.repoName, state.number)
+    const req = state.provider === 'gitlab'
+      ? api.getGitLabMR(state.owner, state.repoName, state.number)
+      : api.getPR(state.owner, state.repoName, state.number)
+    req
       .then(setPR)
-      .catch((err) => onError(`Failed to load PR: ${err.message}`))
+      .catch((err) => onError(`Failed to load ${state.provider === 'gitlab' ? 'MR' : 'PR'}: ${err.message}`))
       .finally(() => setLoading(false))
   }, [state.owner, state.repoName, state.number])
 
@@ -835,7 +914,7 @@ function PRDetailView({ state, onClose, onError, onTransition }: {
   return (
     <div>
       <div className="modal-title">
-        PR #{state.number}
+        {state.provider === 'gitlab' ? 'MR' : 'PR'} #{state.number}
         <span className="modal-subtitle">{state.fullName}</span>
       </div>
       {loading ? (
@@ -901,14 +980,14 @@ function PRDetailView({ state, onClose, onError, onTransition }: {
           )}
           <div className="modal-actions detail-actions">
             <a href={pr.url} target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm">
-              View on GitHub ↗
+              View on {state.provider === 'gitlab' ? 'GitLab' : 'GitHub'} ↗
             </a>
             {onTransition && (
               <>
                 <button
                   type="button"
                   className="btn btn-ghost btn-sm"
-                  onClick={() => onTransition({ mode: 'comment', fullName: state.fullName, number: state.number, type: 'pr' })}
+                  onClick={() => onTransition({ mode: 'comment', fullName: state.fullName, number: state.number, type: 'pr', provider: state.provider })}
                   title="Post comment"
                 >
                   <CommentIcon size={12} />
@@ -916,26 +995,30 @@ function PRDetailView({ state, onClose, onError, onTransition }: {
                 <button
                   type="button"
                   className="btn btn-ghost btn-sm"
-                  onClick={() => onTransition({ mode: 'label', fullName: state.fullName, number: state.number, type: 'pr', currentLabels: pr.labels.map((l) => l.name) })}
+                  onClick={() => onTransition({ mode: 'label', fullName: state.fullName, number: state.number, type: 'pr', currentLabels: pr.labels.map((l) => l.name), provider: state.provider })}
                   title="Manage labels"
                 >
                   <LabelIcon size={12} />
                 </button>
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-sm"
-                  onClick={() => onTransition({ mode: 'assign', fullName: state.fullName, owner: state.owner, repoName: state.repoName, number: state.number, type: 'pr', currentAssignees: pr.assignees.map((a) => a.login) })}
-                  title="Assign"
-                >
-                  Assign
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-claude btn-sm"
-                  onClick={() => onTransition({ mode: 'trigger-claude', fullName: state.fullName, number: state.number, type: 'pr' })}
-                >
-                  @claude
-                </button>
+                {state.provider !== 'gitlab' && (
+                  <>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm"
+                      onClick={() => onTransition({ mode: 'assign', fullName: state.fullName, owner: state.owner, repoName: state.repoName, number: state.number, type: 'pr', currentAssignees: pr.assignees.map((a) => a.login), provider: state.provider })}
+                      title="Assign"
+                    >
+                      Assign
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-claude btn-sm"
+                      onClick={() => onTransition({ mode: 'trigger-claude', fullName: state.fullName, number: state.number, type: 'pr', provider: state.provider })}
+                    >
+                      @claude
+                    </button>
+                  </>
+                )}
               </>
             )}
             <button type="button" className="btn btn-primary btn-sm" onClick={onClose}>Close</button>
@@ -956,7 +1039,10 @@ function IssueDetailView({ state, onClose, onError, onTransition }: {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    api.getIssue(state.owner, state.repoName, state.number)
+    const req = state.provider === 'gitlab'
+      ? api.getGitLabIssueDetail(state.owner, state.repoName, state.number)
+      : api.getIssue(state.owner, state.repoName, state.number)
+    req
       .then(setIssue)
       .catch((err) => onError(`Failed to load issue: ${err.message}`))
       .finally(() => setLoading(false))
@@ -1025,14 +1111,14 @@ function IssueDetailView({ state, onClose, onError, onTransition }: {
           )}
           <div className="modal-actions detail-actions">
             <a href={issue.url} target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm">
-              View on GitHub ↗
+              View on {state.provider === 'gitlab' ? 'GitLab' : 'GitHub'} ↗
             </a>
             {onTransition && (
               <>
                 <button
                   type="button"
                   className="btn btn-ghost btn-sm"
-                  onClick={() => onTransition({ mode: 'comment', fullName: state.fullName, number: state.number, type: 'issue' })}
+                  onClick={() => onTransition({ mode: 'comment', fullName: state.fullName, number: state.number, type: 'issue', provider: state.provider })}
                   title="Post comment"
                 >
                   <CommentIcon size={12} />
@@ -1040,33 +1126,37 @@ function IssueDetailView({ state, onClose, onError, onTransition }: {
                 <button
                   type="button"
                   className="btn btn-ghost btn-sm"
-                  onClick={() => onTransition({ mode: 'label', fullName: state.fullName, number: state.number, type: 'issue', currentLabels: issue.labels.map((l) => l.name) })}
+                  onClick={() => onTransition({ mode: 'label', fullName: state.fullName, number: state.number, type: 'issue', currentLabels: issue.labels.map((l) => l.name), provider: state.provider })}
                   title="Manage labels"
                 >
                   <LabelIcon size={12} />
                 </button>
                 <button
                   type="button"
-                  className="btn btn-ghost btn-sm"
-                  onClick={() => onTransition({ mode: 'assign', fullName: state.fullName, owner: state.owner, repoName: state.repoName, number: state.number, type: 'issue', currentAssignees: issue.assignees.map((a) => a.login) })}
-                  title="Assign"
-                >
-                  Assign
-                </button>
-                <button
-                  type="button"
                   className="btn btn-success btn-sm"
-                  onClick={() => onTransition({ mode: 'create-pr', fullName: state.fullName, owner: state.owner, repoName: state.repoName, issueNumber: state.number, ...(state.prLink ? { head: state.prLink.head, base: state.prLink.base, title: state.prLink.title, prBody: state.prLink.body } : {}) })}
+                  onClick={() => onTransition({ mode: 'create-pr', fullName: state.fullName, owner: state.owner, repoName: state.repoName, issueNumber: state.number, provider: state.provider, ...(state.prLink ? { head: state.prLink.head, base: state.prLink.base, title: state.prLink.title, prBody: state.prLink.body } : {}) })}
                 >
-                  @pr
+                  {state.provider === 'gitlab' ? '@mr' : '@pr'}
                 </button>
-                <button
-                  type="button"
-                  className="btn btn-claude btn-sm"
-                  onClick={() => onTransition({ mode: 'trigger-claude', fullName: state.fullName, number: state.number, type: 'issue' })}
-                >
-                  @claude
-                </button>
+                {state.provider !== 'gitlab' && (
+                  <>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm"
+                      onClick={() => onTransition({ mode: 'assign', fullName: state.fullName, owner: state.owner, repoName: state.repoName, number: state.number, type: 'issue', currentAssignees: issue.assignees.map((a) => a.login), provider: state.provider })}
+                      title="Assign"
+                    >
+                      Assign
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-claude btn-sm"
+                      onClick={() => onTransition({ mode: 'trigger-claude', fullName: state.fullName, number: state.number, type: 'issue', provider: state.provider })}
+                    >
+                      @claude
+                    </button>
+                  </>
+                )}
               </>
             )}
             <button type="button" className="btn btn-primary btn-sm" onClick={onClose}>Close</button>

@@ -153,8 +153,11 @@ export const useAppStore = create<AppStore>((set, get) => ({
   },
 
   loadSingleRepo: async (owner: string, name: string) => {
+    const repo = get().entries.find((e) => e.repo.owner === owner && e.repo.name === name)?.repo
     try {
-      const data: RepoData = await api.getRepoData(owner, name)
+      const data: RepoData = repo?.provider === 'gitlab'
+        ? await api.getGitLabRepoData(owner, name)
+        : await api.getRepoData(owner, name)
       set((state) => ({
         entries: state.entries.map((e) =>
           e.repo.owner === owner && e.repo.name === name ? { ...e, data } : e

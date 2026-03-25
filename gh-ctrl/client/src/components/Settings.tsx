@@ -135,6 +135,7 @@ export function Settings() {
   const [formError, setFormError] = useState('')
   const [provider, setProvider] = useState<'github' | 'gitlab'>('github')
   const [instanceUrl, setInstanceUrl] = useState('')
+  const [gitlabToken, setGitlabToken] = useState('')
 
   // Browse tab state
   const [activeTab, setActiveTab] = useState<'manual' | 'browse'>('browse')
@@ -239,9 +240,10 @@ export function Settings() {
 
     setAdding(true)
     try {
-      await api.addRepo(fullName.trim(), selectedColor, provider, instanceUrl.trim() || undefined)
+      await api.addRepo(fullName.trim(), selectedColor, provider, instanceUrl.trim() || undefined, gitlabToken.trim() || undefined)
       addToast(`Added ${fullName}`, 'success')
       setFullName('')
+      setGitlabToken('')
       handleReposChange()
     } catch (err: any) {
       setFormError(err.message)
@@ -360,15 +362,43 @@ export function Settings() {
               </div>
             </div>
             {provider === 'gitlab' && (
-              <div className="form-row" style={{ marginBottom: '0.5rem' }}>
-                <input
-                  className="input"
-                  type="url"
-                  placeholder="Instance URL (leave blank for gitlab.com)"
-                  value={instanceUrl}
-                  onChange={(e) => setInstanceUrl(e.target.value)}
-                />
-              </div>
+              <>
+                <div className="form-row" style={{ marginBottom: '0.5rem' }}>
+                  <input
+                    className="input"
+                    type="url"
+                    placeholder="Instance URL (leave blank for gitlab.com)"
+                    value={instanceUrl}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      // If user pastes a full URL with a project path, auto-split it
+                      if (val.startsWith('http://') || val.startsWith('https://')) {
+                        try {
+                          const parsed = new URL(val)
+                          const path = parsed.pathname.replace(/^\//, '').replace(/\.git$/, '')
+                          if (path) {
+                            setInstanceUrl(`${parsed.protocol}//${parsed.host}`)
+                            setFullName(path)
+                            return
+                          }
+                        } catch {
+                          // not a valid URL yet
+                        }
+                      }
+                      setInstanceUrl(val)
+                    }}
+                  />
+                </div>
+                <div className="form-row" style={{ marginBottom: '0.5rem' }}>
+                  <input
+                    className="input"
+                    type="password"
+                    placeholder="Personal Access Token (required for private repos)"
+                    value={gitlabToken}
+                    onChange={(e) => setGitlabToken(e.target.value)}
+                  />
+                </div>
+              </>
             )}
             <div className="form-row">
               <input
@@ -376,7 +406,22 @@ export function Settings() {
                 type="text"
                 placeholder={provider === 'gitlab' ? 'group/project or GitLab URL' : 'owner/repo or GitHub URL'}
                 value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value
+                  setFullName(val)
+                  // Auto-detect custom GitLab instance URL from a pasted full URL
+                  if (provider === 'gitlab' && !instanceUrl && (val.startsWith('http://') || val.startsWith('https://'))) {
+                    try {
+                      const parsed = new URL(val)
+                      const detectedBase = `${parsed.protocol}//${parsed.host}`
+                      if (detectedBase !== 'https://gitlab.com') {
+                        setInstanceUrl(detectedBase)
+                      }
+                    } catch {
+                      // not a valid URL yet
+                    }
+                  }
+                }}
               />
               <button className="btn btn-primary" type="submit" disabled={adding}>
                 {adding ? 'Adding...' : 'Add'}
