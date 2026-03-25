@@ -399,14 +399,14 @@ export function BaseDetailPanel({ entry, onClose, onModalOpen }: {
         </a>
         <button
           className="bdp-action-btn"
-          onClick={() => onModalOpen({ mode: 'create-issue', fullName: repo.fullName, owner: repo.owner, repoName: repo.name })}
+          onClick={() => onModalOpen({ mode: 'create-issue', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, provider: repo.provider })}
           title="Create new issue"
         >
           + Issue
         </button>
         <button
           className="bdp-action-btn"
-          onClick={() => onModalOpen({ mode: 'create-issues-batch', fullName: repo.fullName, owner: repo.owner, repoName: repo.name })}
+          onClick={() => onModalOpen({ mode: 'create-issues-batch', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, provider: repo.provider })}
           title="Batch create issues from list"
         >
           + Batch
@@ -480,7 +480,7 @@ export function BaseDetailPanel({ entry, onClose, onModalOpen }: {
                 assignees={issue.assignees}
                 isClaudeActive={isActive}
                 prLink={prLink}
-                onPR={prLink ? () => onModalOpen({ mode: 'create-pr', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, head: prLink.head, base: prLink.base, title: prLink.title, prBody: prLink.body, issueNumber: issue.number }) : undefined}
+                onPR={prLink ? () => onModalOpen({ mode: 'create-pr', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, head: prLink.head, base: prLink.base, title: prLink.title, prBody: prLink.body, issueNumber: issue.number, provider: repo.provider }) : undefined}
               />
             )
           })}
@@ -561,7 +561,7 @@ export function BaseDetailPanel({ entry, onClose, onModalOpen }: {
                 isClaudeActive={isActive}
                 isUntouched
                 prLink={prLink}
-                onPR={prLink ? () => onModalOpen({ mode: 'create-pr', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, head: prLink.head, base: prLink.base, title: prLink.title, prBody: prLink.body, issueNumber: issue.number }) : undefined}
+                onPR={prLink ? () => onModalOpen({ mode: 'create-pr', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, head: prLink.head, base: prLink.base, title: prLink.title, prBody: prLink.body, issueNumber: issue.number, provider: repo.provider }) : undefined}
               />
             )
           })}
@@ -596,7 +596,7 @@ export function BaseDetailPanel({ entry, onClose, onModalOpen }: {
                     <button
                       className="bdp-icon-btn"
                       title="Open PR for this branch"
-                      onClick={() => onModalOpen({ mode: 'create-pr', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, head: branch.name })}
+                      onClick={() => onModalOpen({ mode: 'create-pr', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, head: branch.name, provider: repo.provider })}
                     >
                       PR
                     </button>
@@ -832,7 +832,7 @@ function PRBuilding({ pr, position, repo, onModalOpen }: {
       } as React.CSSProperties}
       onClick={(e) => {
         e.stopPropagation()
-        onModalOpen({ mode: 'pr-detail', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, number: pr.number })
+        onModalOpen({ mode: 'pr-detail', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, number: pr.number, provider: repo.provider })
       }}
       title={`#${pr.number} — ${pr.title}${openedDate ? ` · opened ${openedDate}` : ''}`}
     >
@@ -913,8 +913,8 @@ function BdpItemRow({ number, title, type, repo, onModalOpen, previewUrl, labels
           className="bdp-text-btn"
           onClick={() => onModalOpen(
             type === 'issue'
-              ? { mode: 'issue-detail', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, number, prLink }
-              : { mode: 'pr-detail', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, number }
+              ? { mode: 'issue-detail', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, number, prLink, provider: repo.provider }
+              : { mode: 'pr-detail', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, number, provider: repo.provider }
           )}
           title="View details"
         >
@@ -950,21 +950,21 @@ function BdpItemRow({ number, title, type, repo, onModalOpen, previewUrl, labels
         <button
           className="bdp-icon-btn"
           title="Manage labels"
-          onClick={() => onModalOpen({ mode: 'label', fullName: repo.fullName, number, type, currentLabels: labels.map((l) => l.name) })}
+          onClick={() => onModalOpen({ mode: 'label', fullName: repo.fullName, number, type, currentLabels: labels.map((l) => l.name), provider: repo.provider })}
         >
           <LabelIcon size={12} />
         </button>
         <button
           className="bdp-icon-btn"
           title="Manage assignees"
-          onClick={() => onModalOpen({ mode: 'assignee', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, number, type, currentAssignees: assignees.map((a) => a.login) })}
+          onClick={() => onModalOpen({ mode: 'assignee', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, number, type, currentAssignees: assignees.map((a) => a.login), provider: repo.provider })}
         >
           <AssigneeIcon size={12} />
         </button>
         <button
           className="bdp-icon-btn"
           title="Post comment"
-          onClick={() => onModalOpen({ mode: 'comment', fullName: repo.fullName, number, type })}
+          onClick={() => onModalOpen({ mode: 'comment', fullName: repo.fullName, number, type, provider: repo.provider })}
         >
           <CommentIcon size={12} />
         </button>

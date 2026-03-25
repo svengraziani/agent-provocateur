@@ -7,6 +7,7 @@ export interface Repo {
   color: string
   provider: 'github' | 'gitlab'
   instanceUrl?: string | null
+  gitlabToken?: string | null
   createdAt: string | number | null
 }
 

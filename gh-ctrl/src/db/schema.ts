@@ -7,8 +7,9 @@ export const repos = sqliteTable('repos', {
   fullName:    text('full_name').notNull().unique(),
   description: text('description'),
   color:       text('color').default('#00ff88'),
-  provider:    text('provider').notNull().default('github'), // 'github' | 'gitlab'
-  instanceUrl: text('instance_url'),                        // null = cloud, set for self-hosted GitLab
+  provider:     text('provider').notNull().default('github'), // 'github' | 'gitlab'
+  instanceUrl:  text('instance_url'),                        // null = cloud, set for self-hosted GitLab
+  gitlabToken:  text('gitlab_token'),                        // per-repo GitLab PAT
   createdAt:   integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
 })
 

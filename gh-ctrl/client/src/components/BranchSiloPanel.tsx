@@ -23,6 +23,8 @@ function BranchRow({
   repoFullName,
   repoOwner,
   repoName,
+  repoProvider,
+  repoInstanceUrl,
   prs,
   onDelete,
   onModalOpen,
@@ -32,6 +34,8 @@ function BranchRow({
   repoFullName: string
   repoOwner: string
   repoName: string
+  repoProvider: 'github' | 'gitlab'
+  repoInstanceUrl?: string | null
   prs: GHPR[]
   onDelete: (branchName: string) => Promise<void>
   onModalOpen: (state: ModalState) => void
@@ -56,7 +60,10 @@ function BranchRow({
     const observer = new IntersectionObserver(([entry]) => {
       if (!entry.isIntersecting) return
       observer.disconnect()
-      api.getBranchCompare(repoOwner, repoName, branch.name, defaultBranch)
+      const req = repoProvider === 'gitlab'
+        ? api.getGitLabBranchCompare(repoOwner, repoName, branch.name, defaultBranch)
+        : api.getBranchCompare(repoOwner, repoName, branch.name, defaultBranch)
+      req
         .then(setCompare)
         .catch(() => {})
         .finally(() => setCompareLoading(false))
@@ -83,11 +90,11 @@ function BranchRow({
           ⎇ {branch.name.length > 26 ? branch.name.slice(0, 24) + '…' : branch.name}
         </span>
         <a
-          href={`https://github.com/${repoFullName}/tree/${encodeURIComponent(branch.name)}`}
+          href={`${repoProvider === 'gitlab' ? (repoInstanceUrl ?? 'https://gitlab.com') : 'https://github.com'}/${repoFullName}/-/tree/${encodeURIComponent(branch.name)}`}
           target="_blank"
           rel="noopener noreferrer"
           className="silo-panel-icon-btn"
-          title="View on GitHub"
+          title={`View on ${repoProvider === 'gitlab' ? 'GitLab' : 'GitHub'}`}
           onClick={(e) => e.stopPropagation()}
         >
           <ExternalLinkIcon size={11} />
@@ -113,14 +120,16 @@ function BranchRow({
       <div className="silo-panel-branch-actions">
         {openPR ? (
           <a
-            href={`https://github.com/${repoFullName}/pull/${openPR.number}`}
+            href={repoProvider === 'gitlab'
+              ? `${repoInstanceUrl ?? 'https://gitlab.com'}/${repoFullName}/-/merge_requests/${openPR.number}`
+              : `https://github.com/${repoFullName}/pull/${openPR.number}`}
             target="_blank"
             rel="noopener noreferrer"
             className="silo-panel-pr-badge"
-            title={`PR #${openPR.number}: ${openPR.title}`}
+            title={`${repoProvider === 'gitlab' ? 'MR' : 'PR'} #${openPR.number}: ${openPR.title}`}
             onClick={(e) => e.stopPropagation()}
           >
-            PR #{openPR.number}
+            {repoProvider === 'gitlab' ? 'MR' : 'PR'} #{openPR.number}
           </a>
         ) : (
           <button
@@ -131,6 +140,7 @@ function BranchRow({
               owner: repoOwner,
               repoName: repoName,
               head: branch.name,
+              provider: repoProvider,
             })}
             title="Create PR for this branch"
           >
@@ -195,9 +205,13 @@ export function BranchSiloPanel({ entry, onClose, addToast, onModalOpen }: Branc
 
   const handleDelete = useCallback(async (branchName: string) => {
     if (!entry) return
-    const [owner, name] = entry.repo.fullName.split('/')
+    const { owner, name, provider } = entry.repo
     try {
-      await api.deleteBranch(owner, name, branchName)
+      if (provider === 'gitlab') {
+        await api.deleteGitLabBranch(owner, name, branchName)
+      } else {
+        await api.deleteBranch(owner, name, branchName)
+      }
       setDeletedBranches(prev => new Set([...prev, branchName]))
       addToast(`Branch "${branchName}" deleted`, 'success')
     } catch (err: any) {
@@ -270,6 +284,8 @@ export function BranchSiloPanel({ entry, onClose, addToast, onModalOpen }: Branc
               repoFullName={repo.fullName}
               repoOwner={repo.owner}
               repoName={repo.name}
+              repoProvider={repo.provider}
+              repoInstanceUrl={repo.instanceUrl}
               prs={data.prs}
               onDelete={handleDelete}
               onModalOpen={onModalOpen}

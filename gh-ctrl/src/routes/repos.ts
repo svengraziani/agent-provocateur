@@ -15,7 +15,9 @@ app.get('/', async (c) => {
 // POST /api/repos — add a repo
 app.post('/', async (c) => {
   const body = await c.req.json()
-  const { fullName, color, description, provider = 'github', instanceUrl } = body
+  const { fullName, color, description, provider = 'github' } = body
+  let instanceUrl: string | null = body.instanceUrl || null
+  const gitlabToken: string | null = body.gitlabToken || null
 
   if (!fullName) {
     return c.json({ error: 'fullName must be in "owner/repo" format or a GitHub/GitLab URL' }, 400)
@@ -28,11 +30,25 @@ app.post('/', async (c) => {
   if (provider === 'gitlab') {
     // Normalize GitLab URLs to namespace/project format
     let normalized = fullName.trim()
-    const gitlabBase = (instanceUrl ?? 'https://gitlab.com').replace(/\/$/, '')
-    if (normalized.startsWith(gitlabBase + '/')) {
-      normalized = normalized.slice(gitlabBase.length + 1)
-    } else if (normalized.startsWith('https://gitlab.com/')) {
-      normalized = normalized.slice('https://gitlab.com/'.length)
+
+    if (normalized.startsWith('http://') || normalized.startsWith('https://')) {
+      // Parse the full URL to extract the instance base and project path
+      try {
+        const parsed = new URL(normalized)
+        const detectedBase = `${parsed.protocol}//${parsed.host}`
+        if (!instanceUrl && detectedBase !== 'https://gitlab.com') {
+          instanceUrl = detectedBase
+        }
+        normalized = parsed.pathname.replace(/^\//, '')
+      } catch {
+        // Not a valid URL — fall through
+      }
+    } else {
+      // Strip known base prefix if present
+      const gitlabBase = (instanceUrl ?? 'https://gitlab.com').replace(/\/$/, '')
+      if (normalized.startsWith(gitlabBase + '/')) {
+        normalized = normalized.slice(gitlabBase.length + 1)
+      }
     }
     // Remove trailing .git
     normalized = normalized.replace(/\.git$/, '')
@@ -40,7 +56,7 @@ app.post('/', async (c) => {
     // Validate project exists via GitLab API
     const { data, error } = await glabApi(
       `/projects/${encodeProjectPath(normalized)}`,
-      { instanceUrl }
+      { instanceUrl, token: gitlabToken }
     )
     if (error || !data) {
       return c.json({ error: error ?? 'GitLab project not found' }, 404)
@@ -84,6 +100,7 @@ app.post('/', async (c) => {
       color: color || '#00ff88',
       provider,
       instanceUrl: instanceUrl || null,
+      gitlabToken: gitlabToken || null,
     }).returning()
 
     return c.json(result[0], 201)
