@@ -4,6 +4,7 @@ import { logger } from 'hono/logger'
 import { serveStatic } from 'hono/bun'
 import reposRouter from './routes/repos'
 import githubRouter from './routes/github'
+import gitlabRouter from './routes/gitlab'
 import mapsRouter from './routes/maps'
 import setupRouter from './routes/setup'
 import buildingsRouter from './routes/buildings'
@@ -45,6 +46,7 @@ app.use('*', logger())
 
 app.route('/api/repos', reposRouter)
 app.route('/api/github', githubRouter)
+app.route('/api/gitlab', gitlabRouter)
 app.route('/api/maps', mapsRouter)
 app.route('/api/setup', setupRouter)
 app.route('/api/buildings', buildingsRouter)
