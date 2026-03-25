@@ -8,6 +8,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "keycloak-js": "^26.1.4",
     "lucide-react": "^0.475.0",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
