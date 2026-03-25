@@ -91,3 +91,34 @@ export const deadlineTimers = sqliteTable('deadline_timers', {
   createdAt:   integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
   updatedAt:   integer('updated_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
 })
+
+export const mailMessages = sqliteTable('mail_messages', {
+  id:           integer('id').primaryKey({ autoIncrement: true }),
+  buildingId:   integer('building_id').notNull().references(() => buildings.id, { onDelete: 'cascade' }),
+  messageId:    text('message_id').notNull(),
+  folder:       text('folder').notNull().default('INBOX'),
+  subject:      text('subject'),
+  fromAddress:  text('from_address'),
+  toAddresses:  text('to_addresses'),
+  ccAddresses:  text('cc_addresses'),
+  bccAddresses: text('bcc_addresses'),
+  date:         integer('date'),
+  snippet:      text('snippet'),
+  bodyText:     text('body_text'),
+  htmlBody:     text('html_body'),
+  inReplyTo:    text('in_reply_to'),
+  isRead:       integer('is_read').default(0),
+  isStarred:    integer('is_starred').default(0),
+  fetchedAt:    integer('fetched_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
+})
+
+export const mailFolders = sqliteTable('mail_folders', {
+  id:          integer('id').primaryKey({ autoIncrement: true }),
+  buildingId:  integer('building_id').notNull().references(() => buildings.id, { onDelete: 'cascade' }),
+  name:        text('name').notNull(),
+  displayName: text('display_name').notNull(),
+  role:        text('role').notNull().default('custom'),
+  unreadCount: integer('unread_count').notNull().default(0),
+  delimiter:   text('delimiter').notNull().default('/'),
+  syncedAt:    integer('synced_at'),
+})

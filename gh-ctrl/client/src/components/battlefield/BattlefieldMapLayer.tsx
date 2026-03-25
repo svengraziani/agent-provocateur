@@ -7,6 +7,7 @@ import { BattlefieldMapCanvas } from './BattlefieldMapCanvas'
 import { BaseNode } from '../BaseNode'
 import { ClawComBuilding } from '../ClawComBuilding'
 import { HealthcheckBuilding } from '../HealthcheckBuilding'
+import { MailboxBuilding } from '../MailboxBuilding'
 import { BadgeMarker } from '../BadgeMarker'
 import { UserUnit } from './UserUnit'
 import type { Repo } from '../../types'
@@ -173,7 +174,9 @@ export function BattlefieldMapLayer({
         if (constructingBuildingIds.has(building.id)) {
           const constructGif = building.type === 'healthcheck'
             ? '/buildings/construct_4s_healthcheck.gif'
-            : '/buildings/construct_3s_clawcom.gif'
+            : building.type === 'snailbox'
+              ? '/buildings/construction_4s_snailbox.gif'
+              : '/buildings/construct_3s_clawcom.gif'
           return (
             <div
               key={`building-${building.id}`}
@@ -198,6 +201,9 @@ export function BattlefieldMapLayer({
         }
         if (building.type === 'healthcheck') {
           return <HealthcheckBuilding {...commonProps} />
+        }
+        if (building.type === 'snailbox') {
+          return <MailboxBuilding {...commonProps} />
         }
         return <ClawComBuilding {...commonProps} />
       })}

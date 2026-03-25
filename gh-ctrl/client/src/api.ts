@@ -1,4 +1,4 @@
-import type { Repo, DashboardEntry, RepoData, GHLabel, BranchesData, IssueDetail, PRDetail, GameMap, RepoMeta, FeedData, SetupStatus, Building, ClawComMessage, Badge, PlacedBadge, HealthcheckResult, DeadlineTimer } from './types'
+import type { Repo, DashboardEntry, RepoData, GHLabel, BranchesData, IssueDetail, PRDetail, GameMap, RepoMeta, FeedData, SetupStatus, Building, ClawComMessage, Badge, PlacedBadge, HealthcheckResult, DeadlineTimer, MailMessage } from './types'
 
 export function getServerUrl(): string {
   return localStorage.getItem('serverUrl')?.replace(/\/$/, '') ?? ''
@@ -342,6 +342,36 @@ export const api = {
 
   deleteTimer: (id: number) =>
     request<{ ok: boolean }>(`/timers/${id}`, { method: 'DELETE' }),
+
+  getMailMessages: (id: number) =>
+    request<MailMessage[]>(`/buildings/${id}/mail`),
+
+  getMailUnreadCount: (id: number) =>
+    request<{ count: number }>(`/buildings/${id}/mail/unread-count`),
+
+  markMailRead: (buildingId: number, msgId: number) =>
+    request<{ ok: boolean }>(`/buildings/${buildingId}/mail/${msgId}/read`, { method: 'POST' }),
+
+  toggleMailStar: (buildingId: number, msgId: number) =>
+    request<{ isStarred: number }>(`/buildings/${buildingId}/mail/${msgId}/star`, { method: 'POST' }),
+
+  deleteMailMessage: (buildingId: number, msgId: number) =>
+    request<{ ok: boolean }>(`/buildings/${buildingId}/mail/${msgId}`, { method: 'DELETE' }),
+
+  sendMail: (buildingId: number, params: { to: string; subject: string; body: string }) =>
+    request<{ ok: boolean }>(`/buildings/${buildingId}/mail/send`, {
+      method: 'POST',
+      body: JSON.stringify(params),
+    }),
+
+  syncMail: (buildingId: number) =>
+    request<{ ok: boolean }>(`/buildings/${buildingId}/mail/sync`, { method: 'POST' }),
+
+  testMailConnection: (params: { imapHost: string; imapPort: number; username: string; password: string }) =>
+    request<{ ok: boolean; error?: string }>('/buildings/mail/test-connection', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    }),
 
   // ── GitLab API methods ──────────────────────────────────────────────────────
 

@@ -28,6 +28,14 @@ const AVAILABLE_BUILDINGS: BuildingDef[] = [
     defaultColor: '#00FF00',
   },
   {
+    type: 'snailbox',
+    name: 'Snailbox',
+    description:
+      'Interner E-Mail-Client — verbinde dein IMAP/SMTP-Postfach und verwalte E-Mails direkt vom Schlachtfeld. Zeigt ungelesene Nachrichten als Badge an.',
+    buildImage: '/buildings/build_snailbox.png',
+    defaultColor: '#4488ff',
+  },
+  {
     type: 'new-base',
     name: 'Repository',
     description:
