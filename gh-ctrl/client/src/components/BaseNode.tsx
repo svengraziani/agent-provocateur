@@ -979,12 +979,6 @@ function BdpItemRow({ number, title, type, repo, onModalOpen, previewUrl, labels
             PR
           </button>
         )}
-        <button
-          className="bdp-claude-btn"
-          onClick={() => onModalOpen({ mode: 'trigger-claude', fullName: repo.fullName, number, type })}
-        >
-          @claude
-        </button>
       </div>
     </div>
   )
