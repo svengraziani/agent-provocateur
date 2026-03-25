@@ -269,10 +269,15 @@ export function ClawComBuilding({
             right: 2,
             width: 8,
             height: 8,
-            borderRadius: '50%',
-            background: isConfigured ? 'var(--green-neon)' : '#888',
+            borderRadius: config.clawType === 'claudechannel' ? '2px' : '50%',
+            background: isConfigured
+              ? config.clawType === 'claudechannel' ? '#a78bfa' : 'var(--green-neon)'
+              : '#888',
             border: '1px solid var(--bg-darker)',
-          }} title={isConfigured ? 'Verbunden' : 'Nicht konfiguriert'} />
+          }} title={isConfigured
+            ? config.clawType === 'claudechannel' ? 'Claude Channel aktiv' : 'Verbunden'
+            : 'Nicht konfiguriert'
+          } />
         </div>
 
         {/* Name label */}
@@ -293,7 +298,9 @@ export function ClawComBuilding({
         {/* Status text */}
         <div style={{ fontSize: 9, color: 'var(--text-dim)', textAlign: 'center' }}>
           {isConfigured
-            ? `${config.clawType?.toUpperCase() ?? 'CLAW'} ● ONLINE`
+            ? config.clawType === 'claudechannel'
+              ? '✦ CLAUDE ● AKTIV'
+              : `${config.clawType?.toUpperCase() ?? 'CLAW'} ● ONLINE`
             : '⚙ SETUP ERFORDERLICH'}
         </div>
 
