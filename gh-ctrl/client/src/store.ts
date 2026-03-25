@@ -1,6 +1,36 @@
 import { create } from 'zustand'
-import type { Repo, DashboardEntry, RepoData, GameMap, Building, Badge, PlacedBadge, DeadlineTimer } from './types'
+import type { Repo, DashboardEntry, RepoData, GameMap, Building, Badge, PlacedBadge, DeadlineTimer, BattlefieldUser } from './types'
 import { api } from './api'
+
+function avatarUrlForLogin(login: string, provider: 'github' | 'gitlab', instanceUrl?: string | null): string {
+  if (provider === 'gitlab') {
+    const base = instanceUrl ?? 'https://gitlab.com'
+    return `${base}/${login}.png?size=40`
+  }
+  return `https://github.com/${login}.png?size=40`
+}
+
+export function selectBattlefieldUsers(entries: DashboardEntry[]): BattlefieldUser[] {
+  const seen = new Map<string, { login: string; avatarUrl: string; lastRepoId?: number; lastDate: string }>()
+  for (const entry of entries) {
+    const { provider, instanceUrl } = entry.repo
+    for (const pr of entry.data.prs) {
+      const login = pr.author.login
+      const existing = seen.get(login)
+      if (!existing || pr.updatedAt > existing.lastDate) {
+        seen.set(login, { login, avatarUrl: avatarUrlForLogin(login, provider, instanceUrl), lastRepoId: entry.repo.id, lastDate: pr.updatedAt })
+      }
+    }
+    for (const issue of entry.data.issues) {
+      const login = issue.author.login
+      const existing = seen.get(login)
+      if (!existing || issue.updatedAt > existing.lastDate) {
+        seen.set(login, { login, avatarUrl: avatarUrlForLogin(login, provider, instanceUrl), lastRepoId: entry.repo.id, lastDate: issue.updatedAt })
+      }
+    }
+  }
+  return Array.from(seen.values()).map(({ login, avatarUrl, lastRepoId }) => ({ login, avatarUrl, lastRepoId }))
+}
 
 type ToastType = 'success' | 'error' | 'info'
 
@@ -123,8 +153,11 @@ export const useAppStore = create<AppStore>((set, get) => ({
   },
 
   loadSingleRepo: async (owner: string, name: string) => {
+    const repo = get().entries.find((e) => e.repo.owner === owner && e.repo.name === name)?.repo
     try {
-      const data: RepoData = await api.getRepoData(owner, name)
+      const data: RepoData = repo?.provider === 'gitlab'
+        ? await api.getGitLabRepoData(repo?.fullName ?? `${owner}/${name}`)
+        : await api.getRepoData(owner, name)
       set((state) => ({
         entries: state.entries.map((e) =>
           e.repo.owner === owner && e.repo.name === name ? { ...e, data } : e

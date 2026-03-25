@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import type { DashboardEntry, GHPR, GHIssue, Branch, WorkflowRun, RepoMeta } from '../types'
-import { getPROrigin } from '../types'
+import { getPROrigin, getRepoUrl, getMRLabel } from '../types'
 import type { ModalState } from './ActionModal'
 import { CloseIcon, LinkIcon, LabelIcon, CommentIcon, RefreshIcon, ExternalLinkIcon, AssigneeIcon, CopyIcon } from './Icons'
 import { api } from '../api'
@@ -256,13 +256,16 @@ export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, on
           {claudeDonePRs.length > 0 && (
             <a
               className="beacon-claude-done"
-              href={`https://github.com/${repo.fullName}/pulls?q=is%3Aopen+head%3Aclaude%2F`}
+              href={repo.provider === 'gitlab'
+                ? getRepoUrl(repo, '/-/merge_requests?state=opened&search=claude')
+                : getRepoUrl(repo, '/pulls?q=is%3Aopen+head%3Aclaude%2F')
+              }
               target="_blank"
               rel="noopener noreferrer"
-              title={`Claude created ${claudeDonePRs.length} PR(s) — click to review`}
+              title={`Claude created ${claudeDonePRs.length} ${getMRLabel(repo)} — click to review`}
               onClick={(e) => e.stopPropagation()}
             >
-              &#x2605; PR READY
+              &#x2605; {getMRLabel(repo)} READY
             </a>
           )}
           {hasRunningActions && !hasClaudeActive && (
@@ -289,7 +292,7 @@ export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, on
         <div className="base-hud">
           <div className="base-name">{repo.name}</div>
           <div className="base-stats-mini">
-            <span className="bsm green" title="Open PRs">▲{stats.openPRs}</span>
+            <span className="bsm green" title={`Open ${getMRLabel(repo)}`}>▲{stats.openPRs}</span>
             <span className="bsm blue" title="Open Issues">◆{stats.openIssues}</span>
             {stats.conflicts > 0 && <span className="bsm red" title="Conflicts"><CloseIcon size={10} />{stats.conflicts}</span>}
             {stats.needsReview > 0 && <span className="bsm amber" title="Needs Review">◎{stats.needsReview}</span>}
@@ -352,7 +355,9 @@ export function BaseDetailPanel({ entry, onClose, onModalOpen }: {
     if (!showBranches && branches.length === 0) {
       setBranchesLoading(true)
       try {
-        const result = await api.getBranches(repo.owner, repo.name)
+        const result = repo.provider === 'gitlab'
+          ? await api.getGitLabBranches(repo.fullName)
+          : await api.getBranches(repo.owner, repo.name)
         setBranches(result.branches)
         setDefaultBranch(result.defaultBranch)
       } catch {
@@ -387,7 +392,7 @@ export function BaseDetailPanel({ entry, onClose, onModalOpen }: {
     >
       <div className="bdp-header">
         <a
-          href={`https://github.com/${repo.fullName}`}
+          href={getRepoUrl(repo)}
           target="_blank"
           rel="noopener noreferrer"
           className="bdp-title"
@@ -396,14 +401,14 @@ export function BaseDetailPanel({ entry, onClose, onModalOpen }: {
         </a>
         <button
           className="bdp-action-btn"
-          onClick={() => onModalOpen({ mode: 'create-issue', fullName: repo.fullName, owner: repo.owner, repoName: repo.name })}
+          onClick={() => onModalOpen({ mode: 'create-issue', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, provider: repo.provider })}
           title="Create new issue"
         >
           + Issue
         </button>
         <button
           className="bdp-action-btn"
-          onClick={() => onModalOpen({ mode: 'create-issues-batch', fullName: repo.fullName, owner: repo.owner, repoName: repo.name })}
+          onClick={() => onModalOpen({ mode: 'create-issues-batch', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, provider: repo.provider })}
           title="Batch create issues from list"
         >
           + Batch
@@ -411,7 +416,7 @@ export function BaseDetailPanel({ entry, onClose, onModalOpen }: {
       </div>
 
       <div className="bdp-stats">
-        <span className="bdp-stat green">{data.stats.openPRs} PRs</span>
+        <span className="bdp-stat green">{data.stats.openPRs} {getMRLabel(repo)}</span>
         <span className="bdp-stat blue">{data.stats.openIssues} Issues</span>
         <span className="bdp-stat red">{data.stats.conflicts} Conflicts</span>
         <span className="bdp-stat amber">{data.stats.needsReview} Reviews</span>
@@ -477,7 +482,7 @@ export function BaseDetailPanel({ entry, onClose, onModalOpen }: {
                 assignees={issue.assignees}
                 isClaudeActive={isActive}
                 prLink={prLink}
-                onPR={prLink ? () => onModalOpen({ mode: 'create-pr', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, head: prLink.head, base: prLink.base, title: prLink.title, prBody: prLink.body, issueNumber: issue.number }) : undefined}
+                onPR={prLink ? () => onModalOpen({ mode: 'create-pr', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, head: prLink.head, base: prLink.base, title: prLink.title, prBody: prLink.body, issueNumber: issue.number, provider: repo.provider }) : undefined}
               />
             )
           })}
@@ -486,7 +491,7 @@ export function BaseDetailPanel({ entry, onClose, onModalOpen }: {
 
       {(data.runningWorkflows?.length ?? 0) > 0 && (
         <div className="bdp-section">
-          <div className="bdp-section-title actions">&#x2699; RUNNING ACTIONS ({data.runningWorkflows.length})</div>
+          <div className="bdp-section-title actions">&#x2699; {repo.provider === 'gitlab' ? 'CI PIPELINES' : 'RUNNING ACTIONS'} ({data.runningWorkflows.length})</div>
           {data.runningWorkflows.map((run: WorkflowRun) => (
             <div key={run.databaseId} className="bdp-item bdp-action-run">
               <div className="bdp-item-left">
@@ -496,11 +501,14 @@ export function BaseDetailPanel({ entry, onClose, onModalOpen }: {
               </div>
               <div className="bdp-item-right">
                 <a
-                  href={`https://github.com/${repo.fullName}/actions/runs/${run.databaseId}`}
+                  href={repo.provider === 'gitlab'
+                    ? getRepoUrl(repo, `/-/pipelines/${run.databaseId}`)
+                    : getRepoUrl(repo, `/actions/runs/${run.databaseId}`)
+                  }
                   target="_blank"
                   rel="noopener noreferrer"
                   className="bdp-icon-btn"
-                  title="View action run"
+                  title={repo.provider === 'gitlab' ? 'View pipeline' : 'View action run'}
                   onClick={(e) => e.stopPropagation()}
                 >
                   <ExternalLinkIcon size={11} />
@@ -514,7 +522,7 @@ export function BaseDetailPanel({ entry, onClose, onModalOpen }: {
       {remainingPRs.length > 0 && (
         <div className="bdp-section">
           <button className="bdp-toggle" onClick={() => setShowAllPRs((v) => !v)}>
-            <span>{showAllPRs ? '▾' : '▸'}</span> All PRs ({remainingPRs.length})
+            <span>{showAllPRs ? '▾' : '▸'}</span> All {getMRLabel(repo)} ({remainingPRs.length})
           </button>
           {showAllPRs && remainingPRs.map((pr: GHPR) => (
             <BdpItemRow
@@ -555,7 +563,7 @@ export function BaseDetailPanel({ entry, onClose, onModalOpen }: {
                 isClaudeActive={isActive}
                 isUntouched
                 prLink={prLink}
-                onPR={prLink ? () => onModalOpen({ mode: 'create-pr', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, head: prLink.head, base: prLink.base, title: prLink.title, prBody: prLink.body, issueNumber: issue.number }) : undefined}
+                onPR={prLink ? () => onModalOpen({ mode: 'create-pr', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, head: prLink.head, base: prLink.base, title: prLink.title, prBody: prLink.body, issueNumber: issue.number, provider: repo.provider }) : undefined}
               />
             )
           })}
@@ -590,7 +598,7 @@ export function BaseDetailPanel({ entry, onClose, onModalOpen }: {
                     <button
                       className="bdp-icon-btn"
                       title="Open PR for this branch"
-                      onClick={() => onModalOpen({ mode: 'create-pr', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, head: branch.name })}
+                      onClick={() => onModalOpen({ mode: 'create-pr', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, head: branch.name, provider: repo.provider })}
                     >
                       PR
                     </button>
@@ -826,7 +834,7 @@ function PRBuilding({ pr, position, repo, onModalOpen }: {
       } as React.CSSProperties}
       onClick={(e) => {
         e.stopPropagation()
-        onModalOpen({ mode: 'pr-detail', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, number: pr.number })
+        onModalOpen({ mode: 'pr-detail', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, number: pr.number, provider: repo.provider })
       }}
       title={`#${pr.number} — ${pr.title}${openedDate ? ` · opened ${openedDate}` : ''}`}
     >
@@ -907,8 +915,8 @@ function BdpItemRow({ number, title, type, repo, onModalOpen, previewUrl, labels
           className="bdp-text-btn"
           onClick={() => onModalOpen(
             type === 'issue'
-              ? { mode: 'issue-detail', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, number, prLink }
-              : { mode: 'pr-detail', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, number }
+              ? { mode: 'issue-detail', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, number, prLink, provider: repo.provider }
+              : { mode: 'pr-detail', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, number, provider: repo.provider }
           )}
           title="View details"
         >
@@ -944,21 +952,21 @@ function BdpItemRow({ number, title, type, repo, onModalOpen, previewUrl, labels
         <button
           className="bdp-icon-btn"
           title="Manage labels"
-          onClick={() => onModalOpen({ mode: 'label', fullName: repo.fullName, number, type, currentLabels: labels.map((l) => l.name) })}
+          onClick={() => onModalOpen({ mode: 'label', fullName: repo.fullName, number, type, currentLabels: labels.map((l) => l.name), provider: repo.provider })}
         >
           <LabelIcon size={12} />
         </button>
         <button
           className="bdp-icon-btn"
           title="Manage assignees"
-          onClick={() => onModalOpen({ mode: 'assignee', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, number, type, currentAssignees: assignees.map((a) => a.login) })}
+          onClick={() => onModalOpen({ mode: 'assignee', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, number, type, currentAssignees: assignees.map((a) => a.login), provider: repo.provider })}
         >
           <AssigneeIcon size={12} />
         </button>
         <button
           className="bdp-icon-btn"
           title="Post comment"
-          onClick={() => onModalOpen({ mode: 'comment', fullName: repo.fullName, number, type })}
+          onClick={() => onModalOpen({ mode: 'comment', fullName: repo.fullName, number, type, provider: repo.provider })}
         >
           <CommentIcon size={12} />
         </button>

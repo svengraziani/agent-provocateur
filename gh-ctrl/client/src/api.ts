@@ -33,10 +33,10 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 export const api = {
   listRepos: () => request<Repo[]>('/repos'),
 
-  addRepo: (fullName: string, color?: string) =>
+  addRepo: (fullName: string, color?: string, provider?: 'github' | 'gitlab', instanceUrl?: string, gitlabToken?: string) =>
     request<Repo>('/repos', {
       method: 'POST',
-      body: JSON.stringify({ fullName, color }),
+      body: JSON.stringify({ fullName, color, provider, instanceUrl, gitlabToken }),
     }),
 
   updateRepo: (id: number, updates: { color?: string; description?: string }) =>
@@ -383,4 +383,89 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(params),
     }),
+
+  // ── GitLab API methods ──────────────────────────────────────────────────────
+
+  getGitLabRepoData: (fullName: string) =>
+    request<RepoData>(`/gitlab/repo?path=${encodeURIComponent(fullName)}`),
+
+  getGitLabLabels: (fullName: string) =>
+    request<GHLabel[]>(`/gitlab/labels?path=${encodeURIComponent(fullName)}`),
+
+  getGitLabBranches: (fullName: string) =>
+    request<BranchesData>(`/gitlab/branches?path=${encodeURIComponent(fullName)}`),
+
+  getGitLabBranchCompare: (fullName: string, branch: string, base: string) =>
+    request<{ ahead: number; behind: number }>(`/gitlab/branch-compare?path=${encodeURIComponent(fullName)}&branch=${encodeURIComponent(branch)}&base=${encodeURIComponent(base)}`),
+
+  deleteGitLabBranch: (fullName: string, branch: string) =>
+    request<{ ok: boolean }>(`/gitlab/branch?path=${encodeURIComponent(fullName)}&branch=${encodeURIComponent(branch)}`, { method: 'DELETE' }),
+
+  getGitLabRepoMeta: (fullName: string) =>
+    request<RepoMeta>(`/gitlab/meta?path=${encodeURIComponent(fullName)}`),
+
+  getGitLabMR: (fullName: string, number: number) =>
+    request<PRDetail>(`/gitlab/mr?path=${encodeURIComponent(fullName)}&number=${number}`),
+
+  getGitLabIssueDetail: (fullName: string, number: number) =>
+    request<IssueDetail>(`/gitlab/issue?path=${encodeURIComponent(fullName)}&number=${number}`),
+
+  postGitLabComment: (params: {
+    fullName: string
+    number: number
+    type: 'mr' | 'issue'
+    comment: string
+  }) =>
+    request<{ ok: boolean }>('/gitlab/comment', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    }),
+
+  addGitLabLabel: (params: {
+    fullName: string
+    number: number
+    type: 'mr' | 'issue'
+    label: string
+  }) =>
+    request<{ ok: boolean }>('/gitlab/label', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    }),
+
+  removeGitLabLabel: (params: {
+    fullName: string
+    number: number
+    type: 'mr' | 'issue'
+    label: string
+  }) =>
+    request<{ ok: boolean }>('/gitlab/label', {
+      method: 'DELETE',
+      body: JSON.stringify(params),
+    }),
+
+  createGitLabIssue: (params: {
+    fullName: string
+    title: string
+    issueBody?: string
+    labels?: string[]
+  }) =>
+    request<{ ok: boolean; url: string }>('/gitlab/create-issue', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    }),
+
+  createGitLabMR: (params: {
+    fullName: string
+    sourceBranch: string
+    targetBranch: string
+    title: string
+    description?: string
+  }) =>
+    request<{ ok: boolean; url: string }>('/gitlab/create-mr', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    }),
+
+  validateGitLabProject: (ns: string, project: string) =>
+    request<{ ok: boolean; projectId: number; name: string }>(`/gitlab/validate/${ns}/${project}`),
 }
