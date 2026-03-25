@@ -146,13 +146,13 @@ function LabelForm({ state, onClose, onSuccess, onError }: {
 
   useEffect(() => {
     const req = state.provider === 'gitlab'
-      ? api.getGitLabLabels(owner, name)
+      ? api.getGitLabLabels(state.fullName)
       : api.getLabels(owner, name)
     req
       .then(setAvailableLabels)
       .catch((err) => onError(`Failed to load labels: ${err.message}`))
       .finally(() => setLoading(false))
-  }, [owner, name])
+  }, [state.fullName])
 
   const toggle = (labelName: string) => {
     setSelected((prev) => {
@@ -348,7 +348,7 @@ function CreatePRForm({ state, onClose, onSuccess, onError }: {
 
   useEffect(() => {
     const req = state.provider === 'gitlab'
-      ? api.getGitLabBranches(state.owner, state.repoName)
+      ? api.getGitLabBranches(state.fullName)
       : api.getBranches(state.owner, state.repoName)
     req
       .then(({ branches: br, defaultBranch }) => {
@@ -358,7 +358,7 @@ function CreatePRForm({ state, onClose, onSuccess, onError }: {
       })
       .catch((err) => onError(`Failed to load branches: ${err.message}`))
       .finally(() => setLoading(false))
-  }, [state.owner, state.repoName, state.base])
+  }, [state.fullName, state.owner, state.repoName, state.base])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -505,13 +505,13 @@ function CreateIssueForm({ state, onClose, onSuccess, onError, onIssueCreated }:
   useEffect(() => {
     titleRef.current?.focus()
     const req = state.provider === 'gitlab'
-      ? api.getGitLabLabels(state.owner, state.repoName)
+      ? api.getGitLabLabels(state.fullName)
       : api.getLabels(state.owner, state.repoName)
     req
       .then(setAvailableLabels)
       .catch(() => {/* labels are optional */})
       .finally(() => setLabelsLoading(false))
-  }, [state.owner, state.repoName])
+  }, [state.fullName, state.owner, state.repoName])
 
   const toggleLabel = (name: string) => {
     setSelectedLabels((prev) => {
@@ -895,13 +895,13 @@ function PRDetailView({ state, onClose, onError, onTransition }: {
 
   useEffect(() => {
     const req = state.provider === 'gitlab'
-      ? api.getGitLabMR(state.owner, state.repoName, state.number)
+      ? api.getGitLabMR(state.fullName, state.number)
       : api.getPR(state.owner, state.repoName, state.number)
     req
       .then(setPR)
       .catch((err) => onError(`Failed to load ${state.provider === 'gitlab' ? 'MR' : 'PR'}: ${err.message}`))
       .finally(() => setLoading(false))
-  }, [state.owner, state.repoName, state.number])
+  }, [state.fullName, state.owner, state.repoName, state.number])
 
   const formatDate = (dateStr: string) => {
     try {
@@ -1040,13 +1040,13 @@ function IssueDetailView({ state, onClose, onError, onTransition }: {
 
   useEffect(() => {
     const req = state.provider === 'gitlab'
-      ? api.getGitLabIssueDetail(state.owner, state.repoName, state.number)
+      ? api.getGitLabIssueDetail(state.fullName, state.number)
       : api.getIssue(state.owner, state.repoName, state.number)
     req
       .then(setIssue)
       .catch((err) => onError(`Failed to load issue: ${err.message}`))
       .finally(() => setLoading(false))
-  }, [state.owner, state.repoName, state.number])
+  }, [state.fullName, state.owner, state.repoName, state.number])
 
   const formatDate = (dateStr: string) => {
     try {

@@ -356,29 +356,29 @@ export const api = {
 
   // ── GitLab API methods ──────────────────────────────────────────────────────
 
-  getGitLabRepoData: (ns: string, project: string) =>
-    request<RepoData>(`/gitlab/repo/${ns}/${project}`),
+  getGitLabRepoData: (fullName: string) =>
+    request<RepoData>(`/gitlab/repo?path=${encodeURIComponent(fullName)}`),
 
-  getGitLabLabels: (ns: string, project: string) =>
-    request<GHLabel[]>(`/gitlab/labels/${ns}/${project}`),
+  getGitLabLabels: (fullName: string) =>
+    request<GHLabel[]>(`/gitlab/labels?path=${encodeURIComponent(fullName)}`),
 
-  getGitLabBranches: (ns: string, project: string) =>
-    request<BranchesData>(`/gitlab/branches/${ns}/${project}`),
+  getGitLabBranches: (fullName: string) =>
+    request<BranchesData>(`/gitlab/branches?path=${encodeURIComponent(fullName)}`),
 
-  getGitLabBranchCompare: (ns: string, project: string, branch: string, base: string) =>
-    request<{ ahead: number; behind: number }>(`/gitlab/branch-compare/${ns}/${project}/${encodeURIComponent(branch)}?base=${encodeURIComponent(base)}`),
+  getGitLabBranchCompare: (fullName: string, branch: string, base: string) =>
+    request<{ ahead: number; behind: number }>(`/gitlab/branch-compare?path=${encodeURIComponent(fullName)}&branch=${encodeURIComponent(branch)}&base=${encodeURIComponent(base)}`),
 
-  deleteGitLabBranch: (ns: string, project: string, branch: string) =>
-    request<{ ok: boolean }>(`/gitlab/branch/${ns}/${project}/${encodeURIComponent(branch)}`, { method: 'DELETE' }),
+  deleteGitLabBranch: (fullName: string, branch: string) =>
+    request<{ ok: boolean }>(`/gitlab/branch?path=${encodeURIComponent(fullName)}&branch=${encodeURIComponent(branch)}`, { method: 'DELETE' }),
 
-  getGitLabRepoMeta: (ns: string, project: string) =>
-    request<RepoMeta>(`/gitlab/meta/${ns}/${project}`),
+  getGitLabRepoMeta: (fullName: string) =>
+    request<RepoMeta>(`/gitlab/meta?path=${encodeURIComponent(fullName)}`),
 
-  getGitLabMR: (ns: string, project: string, number: number) =>
-    request<PRDetail>(`/gitlab/mr/${ns}/${project}/${number}`),
+  getGitLabMR: (fullName: string, number: number) =>
+    request<PRDetail>(`/gitlab/mr?path=${encodeURIComponent(fullName)}&number=${number}`),
 
-  getGitLabIssueDetail: (ns: string, project: string, number: number) =>
-    request<IssueDetail>(`/gitlab/issue/${ns}/${project}/${number}`),
+  getGitLabIssueDetail: (fullName: string, number: number) =>
+    request<IssueDetail>(`/gitlab/issue?path=${encodeURIComponent(fullName)}&number=${number}`),
 
   postGitLabComment: (params: {
     fullName: string

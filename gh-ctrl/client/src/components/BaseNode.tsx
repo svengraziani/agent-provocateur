@@ -355,7 +355,9 @@ export function BaseDetailPanel({ entry, onClose, onModalOpen }: {
     if (!showBranches && branches.length === 0) {
       setBranchesLoading(true)
       try {
-        const result = await api.getBranches(repo.owner, repo.name)
+        const result = repo.provider === 'gitlab'
+          ? await api.getGitLabBranches(repo.fullName)
+          : await api.getBranches(repo.owner, repo.name)
         setBranches(result.branches)
         setDefaultBranch(result.defaultBranch)
       } catch {

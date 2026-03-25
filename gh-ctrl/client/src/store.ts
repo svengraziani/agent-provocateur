@@ -156,7 +156,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
     const repo = get().entries.find((e) => e.repo.owner === owner && e.repo.name === name)?.repo
     try {
       const data: RepoData = repo?.provider === 'gitlab'
-        ? await api.getGitLabRepoData(owner, name)
+        ? await api.getGitLabRepoData(repo?.fullName ?? `${owner}/${name}`)
         : await api.getRepoData(owner, name)
       set((state) => ({
         entries: state.entries.map((e) =>
