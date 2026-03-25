@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import type { DashboardEntry, GHPR, GHIssue, Branch, WorkflowRun, RepoMeta } from '../types'
-import { getPROrigin } from '../types'
+import { getPROrigin, getRepoUrl, getMRLabel } from '../types'
 import type { ModalState } from './ActionModal'
 import { CloseIcon, LinkIcon, LabelIcon, CommentIcon, RefreshIcon, ExternalLinkIcon, AssigneeIcon, CopyIcon } from './Icons'
 import { api } from '../api'
@@ -256,13 +256,16 @@ export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, on
           {claudeDonePRs.length > 0 && (
             <a
               className="beacon-claude-done"
-              href={`https://github.com/${repo.fullName}/pulls?q=is%3Aopen+head%3Aclaude%2F`}
+              href={repo.provider === 'gitlab'
+                ? getRepoUrl(repo, '/-/merge_requests?state=opened&search=claude')
+                : getRepoUrl(repo, '/pulls?q=is%3Aopen+head%3Aclaude%2F')
+              }
               target="_blank"
               rel="noopener noreferrer"
-              title={`Claude created ${claudeDonePRs.length} PR(s) — click to review`}
+              title={`Claude created ${claudeDonePRs.length} ${getMRLabel(repo)} — click to review`}
               onClick={(e) => e.stopPropagation()}
             >
-              &#x2605; PR READY
+              &#x2605; {getMRLabel(repo)} READY
             </a>
           )}
           {hasRunningActions && !hasClaudeActive && (
@@ -289,7 +292,7 @@ export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, on
         <div className="base-hud">
           <div className="base-name">{repo.name}</div>
           <div className="base-stats-mini">
-            <span className="bsm green" title="Open PRs">▲{stats.openPRs}</span>
+            <span className="bsm green" title={`Open ${getMRLabel(repo)}`}>▲{stats.openPRs}</span>
             <span className="bsm blue" title="Open Issues">◆{stats.openIssues}</span>
             {stats.conflicts > 0 && <span className="bsm red" title="Conflicts"><CloseIcon size={10} />{stats.conflicts}</span>}
             {stats.needsReview > 0 && <span className="bsm amber" title="Needs Review">◎{stats.needsReview}</span>}
@@ -387,7 +390,7 @@ export function BaseDetailPanel({ entry, onClose, onModalOpen }: {
     >
       <div className="bdp-header">
         <a
-          href={`https://github.com/${repo.fullName}`}
+          href={getRepoUrl(repo)}
           target="_blank"
           rel="noopener noreferrer"
           className="bdp-title"
@@ -411,7 +414,7 @@ export function BaseDetailPanel({ entry, onClose, onModalOpen }: {
       </div>
 
       <div className="bdp-stats">
-        <span className="bdp-stat green">{data.stats.openPRs} PRs</span>
+        <span className="bdp-stat green">{data.stats.openPRs} {getMRLabel(repo)}</span>
         <span className="bdp-stat blue">{data.stats.openIssues} Issues</span>
         <span className="bdp-stat red">{data.stats.conflicts} Conflicts</span>
         <span className="bdp-stat amber">{data.stats.needsReview} Reviews</span>
@@ -486,7 +489,7 @@ export function BaseDetailPanel({ entry, onClose, onModalOpen }: {
 
       {(data.runningWorkflows?.length ?? 0) > 0 && (
         <div className="bdp-section">
-          <div className="bdp-section-title actions">&#x2699; RUNNING ACTIONS ({data.runningWorkflows.length})</div>
+          <div className="bdp-section-title actions">&#x2699; {repo.provider === 'gitlab' ? 'CI PIPELINES' : 'RUNNING ACTIONS'} ({data.runningWorkflows.length})</div>
           {data.runningWorkflows.map((run: WorkflowRun) => (
             <div key={run.databaseId} className="bdp-item bdp-action-run">
               <div className="bdp-item-left">
@@ -496,11 +499,14 @@ export function BaseDetailPanel({ entry, onClose, onModalOpen }: {
               </div>
               <div className="bdp-item-right">
                 <a
-                  href={`https://github.com/${repo.fullName}/actions/runs/${run.databaseId}`}
+                  href={repo.provider === 'gitlab'
+                    ? getRepoUrl(repo, `/-/pipelines/${run.databaseId}`)
+                    : getRepoUrl(repo, `/actions/runs/${run.databaseId}`)
+                  }
                   target="_blank"
                   rel="noopener noreferrer"
                   className="bdp-icon-btn"
-                  title="View action run"
+                  title={repo.provider === 'gitlab' ? 'View pipeline' : 'View action run'}
                   onClick={(e) => e.stopPropagation()}
                 >
                   <ExternalLinkIcon size={11} />
@@ -514,7 +520,7 @@ export function BaseDetailPanel({ entry, onClose, onModalOpen }: {
       {remainingPRs.length > 0 && (
         <div className="bdp-section">
           <button className="bdp-toggle" onClick={() => setShowAllPRs((v) => !v)}>
-            <span>{showAllPRs ? '▾' : '▸'}</span> All PRs ({remainingPRs.length})
+            <span>{showAllPRs ? '▾' : '▸'}</span> All {getMRLabel(repo)} ({remainingPRs.length})
           </button>
           {showAllPRs && remainingPRs.map((pr: GHPR) => (
             <BdpItemRow
