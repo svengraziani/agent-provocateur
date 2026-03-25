@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { PlusIcon, CloseIcon } from './Icons'
+import { SidePanel } from './SidePanel'
 
 interface BuildingDef {
   type: string
@@ -93,12 +94,12 @@ export function BuildOptionsMenu({ onClose, onStartPlacement }: BuildOptionsMenu
   }
 
   return (
-    <div className="cnc-sidebar" onWheel={(e) => e.stopPropagation()}>
+    <SidePanel className="cnc-sidebar" onClose={onClose}>
 
       {/* Header */}
       <div className="cnc-sidebar-header">
         <span>&#x25a0; BAU OPTIONEN</span>
-        <button className="cnc-close-btn" onClick={onClose} title="Schließen">
+        <button className="cnc-close-btn" onClick={onClose} title="Close [Esc]">
           <CloseIcon size={10} />
         </button>
       </div>
@@ -222,6 +223,6 @@ export function BuildOptionsMenu({ onClose, onStartPlacement }: BuildOptionsMenu
         </button>
       </div>
 
-    </div>
+    </SidePanel>
   )
 }

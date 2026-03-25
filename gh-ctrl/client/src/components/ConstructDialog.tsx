@@ -3,6 +3,7 @@ import type { DashboardEntry, GHLabel } from '../types'
 import { api } from '../api'
 import { VoiceButton } from './VoiceButton'
 import { CloseIcon } from './Icons'
+import { BaseDialog } from './BaseDialog'
 
 interface Props {
   entry: DashboardEntry
@@ -87,18 +88,8 @@ export function ConstructDialog({ entry, onClose, onSuccess, onError }: Props) {
     }
   }
 
-  useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
-    document.addEventListener('keydown', handleKey)
-    return () => document.removeEventListener('keydown', handleKey)
-  }, [onClose])
-
   return (
-    <div
-      className="construct-dialog"
-      onWheel={(e) => e.stopPropagation()}
-      onMouseDown={(e) => e.stopPropagation()}
-    >
+    <BaseDialog className="construct-dialog" onClose={onClose}>
         {/* Header */}
         <div className="construct-header">
           <div className="construct-title-bar">
@@ -189,6 +180,6 @@ export function ConstructDialog({ entry, onClose, onSuccess, onError }: Props) {
         <div className="construct-footer">
           &#x25a0; BASE: {entry.repo.fullName} &nbsp;·&nbsp; COMMAND CENTER READY
         </div>
-    </div>
+    </BaseDialog>
   )
 }

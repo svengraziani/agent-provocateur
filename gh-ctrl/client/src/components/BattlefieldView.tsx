@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import type { DashboardEntry, GameMap, Badge } from '../types'
 import { BranchSiloPanel } from './BranchSiloPanel'
+import { SidePanel } from './SidePanel'
 import { api } from '../api'
 import { getServerUrl } from '../api'
 import { getBranchState } from './BranchBuilding'
@@ -67,7 +68,6 @@ export function BattlefieldView() {
   const [selectedBuildingId, setSelectedBuildingId] = useState<number | null>(null)
   const [constructingBuildingIds, setConstructingBuildingIds] = useState<Set<number>>(new Set())
   const [constructingRepoIds, setConstructingRepoIds] = useState<Set<number>>(new Set())
-  const detailPanelRef = useRef<HTMLDivElement>(null)
   const [showBuildMenu, setShowBuildMenu] = useState(false)
   const [placementMode, setPlacementMode] = useState<PlacementParams | null>(null)
   const [ghostScreenPos, setGhostScreenPos] = useState<Position>({ x: 0, y: 0 })
@@ -76,14 +76,6 @@ export function BattlefieldView() {
   const [placingBadge, setPlacingBadge] = useState<Badge | null>(null)
 
   const autoScanTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  useEffect(() => {
-    const el = detailPanelRef.current
-    if (!el) return
-    const stop = (e: WheelEvent) => e.stopPropagation()
-    el.addEventListener('wheel', stop, { passive: true })
-    return () => el.removeEventListener('wheel', stop)
-  }, [detailEntry])
 
   const { play } = useSound()
 
@@ -363,7 +355,7 @@ export function BattlefieldView() {
         onToggleBadgeLibrary={() => { play('peep'); setShowBadgeLibrary(true) }}
         onShowMapSelector={() => setShowMapSelector(true)}
         onClearMap={handleClearMap}
-        onToggleFeed={() => { play('peep'); setShowFeedPanel(v => !v) }}
+        onToggleFeed={() => { play('peep'); setShowFeedPanel(v => !v); setBranchSiloEntry(null); setDetailEntry(null); setSelectedBuildingId(null) }}
         onToggleTimers={() => { play('peep'); setShowTimers(v => !v) }}
         onZoomIn={handleZoomIn}
         onZoomOut={handleZoomOut}
@@ -541,7 +533,7 @@ export function BattlefieldView() {
       />
 
       {detailEntry && (
-        <div ref={detailPanelRef} className="base-detail-side-panel">
+        <SidePanel className="base-detail-side-panel" onClose={() => setDetailEntry(null)}>
           <div className="base-detail-side-panel-header">
             <div className="base-detail-side-panel-title-row">
               <span className="base-detail-side-panel-icon" style={{ color: detailEntry.repo.color }}>&#x25a0;</span>
@@ -559,7 +551,7 @@ export function BattlefieldView() {
               onModalOpen={(state) => { play('peep'); setModalState(state) }}
             />
           </div>
-        </div>
+        </SidePanel>
       )}
     </div>
   )
