@@ -80,7 +80,7 @@ app.patch('/:id', async (c) => {
   }
 
   // If updating a mailbox building's config, reschedule
-  if (updated.type === 'mailbox' && body.config !== undefined) {
+  if (updated.type === 'snailbox' && body.config !== undefined) {
     let newConfig: any = {}
     try { newConfig = JSON.parse(updated.config ?? '{}') } catch { /* empty */ }
     if (newConfig.configured) {
@@ -99,7 +99,7 @@ app.delete('/:id', async (c) => {
   const existing = await db.select().from(buildings).where(eq(buildings.id, id))
   if (existing.length === 0) return c.json({ error: 'Building not found' }, 404)
   if (existing[0].type === 'healthcheck') unscheduleBuilding(id)
-  if (existing[0].type === 'mailbox') {
+  if (existing[0].type === 'snailbox') {
     unscheduleMailbox(id)
     await db.delete(mailMessages).where(eq(mailMessages.buildingId, id))
   }
@@ -220,7 +220,7 @@ app.get('/:id/mail', async (c) => {
   const id = Number(c.req.param('id'))
   const buildingResult = await db.select().from(buildings).where(eq(buildings.id, id))
   if (buildingResult.length === 0) return c.json({ error: 'Building not found' }, 404)
-  if (buildingResult[0].type !== 'mailbox') return c.json({ error: 'Not a mailbox building' }, 400)
+  if (buildingResult[0].type !== 'snailbox') return c.json({ error: 'Not a snailbox building' }, 400)
   const msgs = await getMailMessages(id, 100)
   return c.json(msgs)
 })
@@ -270,7 +270,7 @@ app.post('/:id/mail/send', async (c) => {
   const id = Number(c.req.param('id'))
   const buildingResult = await db.select().from(buildings).where(eq(buildings.id, id))
   if (buildingResult.length === 0) return c.json({ error: 'Building not found' }, 404)
-  if (buildingResult[0].type !== 'mailbox') return c.json({ error: 'Not a mailbox building' }, 400)
+  if (buildingResult[0].type !== 'snailbox') return c.json({ error: 'Not a snailbox building' }, 400)
 
   let config: Partial<MailboxConfig> = {}
   try { config = JSON.parse(buildingResult[0].config ?? '{}') } catch { /* empty */ }
@@ -295,7 +295,7 @@ app.post('/:id/mail/sync', async (c) => {
   const id = Number(c.req.param('id'))
   const buildingResult = await db.select().from(buildings).where(eq(buildings.id, id))
   if (buildingResult.length === 0) return c.json({ error: 'Building not found' }, 404)
-  if (buildingResult[0].type !== 'mailbox') return c.json({ error: 'Not a mailbox building' }, 400)
+  if (buildingResult[0].type !== 'snailbox') return c.json({ error: 'Not a snailbox building' }, 400)
   let config: Partial<MailboxConfig> = {}
   try { config = JSON.parse(buildingResult[0].config ?? '{}') } catch { /* empty */ }
   if (!config.configured) return c.json({ error: 'Building not configured' }, 400)
