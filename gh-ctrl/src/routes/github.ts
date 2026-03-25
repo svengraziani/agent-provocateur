@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { streamSSE } from 'hono/streaming'
 import { db } from '../db'
 import { repos } from '../db/schema'
+import { fetchGitLabRepoData } from '../providers/gitlab'
 
 interface GHResult {
   data: any
@@ -308,6 +309,13 @@ async function fetchRepoData(fullName: string) {
 
 const app = new Hono()
 
+function fetchAnyRepoData(repo: typeof repos.$inferSelect) {
+  if (repo.provider === 'gitlab') {
+    return fetchGitLabRepoData(repo.fullName, repo.instanceUrl, repo.gitlabToken)
+  }
+  return fetchRepoData(repo.fullName)
+}
+
 // GET /api/github/dashboard — fetch all repos in parallel (non-streaming)
 app.get('/dashboard', async (c) => {
   const allRepos = await db.select().from(repos)
@@ -315,7 +323,7 @@ app.get('/dashboard', async (c) => {
   const results = await Promise.all(
     allRepos.map(async (repo) => ({
       repo,
-      data: await fetchRepoData(repo.fullName),
+      data: await fetchAnyRepoData(repo),
     }))
   )
 
@@ -329,7 +337,7 @@ app.get('/dashboard/stream', (c) => {
 
     await Promise.all(
       allRepos.map(async (repo) => {
-        const data = await fetchRepoData(repo.fullName)
+        const data = await fetchAnyRepoData(repo)
         await stream.writeSSE({
           data: JSON.stringify({ repo, data }),
           event: 'repo',

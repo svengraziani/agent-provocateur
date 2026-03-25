@@ -25,16 +25,16 @@ import {
 
 const app = new Hono()
 
-/** Resolve project path and instanceUrl from request params + DB. */
+/** Resolve project path, instanceUrl, and gitlabToken from request params + DB. */
 async function resolveProject(
   c: Parameters<Parameters<typeof app.get>[1]>[0]
-): Promise<{ projectPath: string; instanceUrl: string | null } | null> {
+): Promise<{ projectPath: string; instanceUrl: string | null; gitlabToken: string | null } | null> {
   const namespace = c.req.param('namespace')
   const project = c.req.param('project')
   const queryPath = c.req.query('path')
   const projectPath = queryPath || `${namespace}/${project}`
 
-  // Look up the repo in DB to get instanceUrl (if any)
+  // Look up the repo in DB to get instanceUrl and gitlabToken (if any)
   const row = await db
     .select()
     .from(repos)
@@ -42,8 +42,9 @@ async function resolveProject(
     .get()
 
   const instanceUrl = row?.instanceUrl ?? process.env.GITLAB_INSTANCE_URL ?? null
+  const gitlabToken = row?.gitlabToken ?? null
 
-  return { projectPath, instanceUrl }
+  return { projectPath, instanceUrl, gitlabToken }
 }
 
 // ---------------------------------------------------------------------------
@@ -55,7 +56,7 @@ app.get('/repo/:namespace/:project', async (c) => {
   const resolved = await resolveProject(c)
   if (!resolved) return c.json({ error: 'Could not resolve project' }, 400)
 
-  const data = await fetchGitLabRepoData(resolved.projectPath, resolved.instanceUrl)
+  const data = await fetchGitLabRepoData(resolved.projectPath, resolved.instanceUrl, resolved.gitlabToken)
   return c.json(data)
 })
 
@@ -68,7 +69,7 @@ app.get('/meta/:namespace/:project', async (c) => {
   const resolved = await resolveProject(c)
   if (!resolved) return c.json({ error: 'Could not resolve project' }, 400)
 
-  const meta = await fetchGitLabRepoMeta(resolved.projectPath, resolved.instanceUrl)
+  const meta = await fetchGitLabRepoMeta(resolved.projectPath, resolved.instanceUrl, resolved.gitlabToken)
   return c.json(meta)
 })
 
@@ -84,6 +85,7 @@ app.get('/labels/:namespace/:project', async (c) => {
   const encoded = encodeProjectPath(resolved.projectPath)
   const result = await glabApi(`/projects/${encoded}/labels?per_page=100`, {
     instanceUrl: resolved.instanceUrl,
+    token: resolved.gitlabToken,
   })
   if (result.error) return c.json({ error: result.error }, 500)
 
@@ -106,12 +108,13 @@ app.post('/label', async (c) => {
 
   const row = await db.select().from(repos).where(eq(repos.fullName, fullName)).get()
   const instanceUrl = bodyInstanceUrl ?? row?.instanceUrl ?? process.env.GITLAB_INSTANCE_URL ?? null
+  const token = row?.gitlabToken ?? null
 
   const encoded = encodeProjectPath(fullName)
   const resource = type === 'mr' || type === 'pr' ? 'merge_requests' : 'issues'
 
   // Fetch current labels first
-  const currentResult = await glabApi(`/projects/${encoded}/${resource}/${number}`, { instanceUrl })
+  const currentResult = await glabApi(`/projects/${encoded}/${resource}/${number}`, { instanceUrl, token })
   if (currentResult.error) return c.json({ error: currentResult.error }, 500)
 
   const currentLabels: string[] = currentResult.data?.labels ?? []
@@ -119,6 +122,7 @@ app.post('/label', async (c) => {
 
   const updateResult = await glabApi(`/projects/${encoded}/${resource}/${number}`, {
     instanceUrl,
+    token,
     method: 'PUT',
     body: { labels: currentLabels.join(',') },
   })
@@ -138,18 +142,20 @@ app.delete('/label', async (c) => {
 
   const row = await db.select().from(repos).where(eq(repos.fullName, fullName)).get()
   const instanceUrl = bodyInstanceUrl ?? row?.instanceUrl ?? process.env.GITLAB_INSTANCE_URL ?? null
+  const token = row?.gitlabToken ?? null
 
   const encoded = encodeProjectPath(fullName)
   const resource = type === 'mr' || type === 'pr' ? 'merge_requests' : 'issues'
 
   // Fetch current labels first
-  const currentResult = await glabApi(`/projects/${encoded}/${resource}/${number}`, { instanceUrl })
+  const currentResult = await glabApi(`/projects/${encoded}/${resource}/${number}`, { instanceUrl, token })
   if (currentResult.error) return c.json({ error: currentResult.error }, 500)
 
   const currentLabels: string[] = (currentResult.data?.labels ?? []).filter((l: string) => l !== label)
 
   const updateResult = await glabApi(`/projects/${encoded}/${resource}/${number}`, {
     instanceUrl,
+    token,
     method: 'PUT',
     body: { labels: currentLabels.join(',') },
   })
@@ -171,9 +177,9 @@ app.get('/branches/:namespace/:project', async (c) => {
   const [branchResult, projectResult] = await Promise.all([
     glabApi(
       `/projects/${encoded}/repository/branches?per_page=100&order_by=updated_at&sort=desc`,
-      { instanceUrl: resolved.instanceUrl }
+      { instanceUrl: resolved.instanceUrl, token: resolved.gitlabToken }
     ),
-    glabApi(`/projects/${encoded}`, { instanceUrl: resolved.instanceUrl }),
+    glabApi(`/projects/${encoded}`, { instanceUrl: resolved.instanceUrl, token: resolved.gitlabToken }),
   ])
 
   if (branchResult.error) return c.json({ error: branchResult.error }, 500)
@@ -198,7 +204,7 @@ app.get('/branch-compare/:namespace/:project/:branch', async (c) => {
 
   const result = await glabApi(
     `/projects/${encoded}/repository/compare?from=${encodeURIComponent(base)}&to=${encodeURIComponent(branch)}`,
-    { instanceUrl: resolved.instanceUrl }
+    { instanceUrl: resolved.instanceUrl, token: resolved.gitlabToken }
   )
   if (result.error) return c.json({ error: result.error }, 500)
 
@@ -218,10 +224,93 @@ app.delete('/branch/:namespace/:project/:branch', async (c) => {
 
   const result = await glabApi(
     `/projects/${encoded}/repository/branches/${encodeURIComponent(branch)}`,
-    { instanceUrl: resolved.instanceUrl, method: 'DELETE' }
+    { instanceUrl: resolved.instanceUrl, token: resolved.gitlabToken, method: 'DELETE' }
   )
   if (result.error) return c.json({ error: result.error }, 500)
   return c.json({ ok: true })
+})
+
+// ---------------------------------------------------------------------------
+// Single MR / Issue detail views
+// ---------------------------------------------------------------------------
+
+// GET /api/gitlab/mr/:namespace/:project/:number — fetch a single MR with comments
+app.get('/mr/:namespace/:project/:number', async (c) => {
+  const resolved = await resolveProject(c)
+  if (!resolved) return c.json({ error: 'Could not resolve project' }, 400)
+
+  const number = c.req.param('number')
+  const encoded = encodeProjectPath(resolved.projectPath)
+  const opts = { instanceUrl: resolved.instanceUrl, token: resolved.gitlabToken }
+
+  const [mrResult, notesResult] = await Promise.all([
+    glabApi(`/projects/${encoded}/merge_requests/${number}`, opts),
+    glabApi(`/projects/${encoded}/merge_requests/${number}/notes?per_page=100`, opts),
+  ])
+
+  if (mrResult.error) return c.json({ error: mrResult.error }, 404)
+
+  const mr = mrResult.data
+  const notes = (notesResult.data ?? []).filter((n: any) => !n.system)
+
+  return c.json({
+    number: mr.iid,
+    title: mr.title,
+    body: mr.description ?? '',
+    state: mr.state,
+    labels: (mr.labels ?? []).map((name: string) => ({ name, color: '6366f1' })),
+    assignees: (mr.assignees ?? (mr.assignee ? [mr.assignee] : [])).map((u: any) => ({ login: u.username })),
+    author: { login: mr.author?.username ?? '' },
+    url: mr.web_url,
+    createdAt: mr.created_at,
+    reviewDecision: mr.approved ? 'APPROVED' : null,
+    mergeable: mr.merge_status === 'can_be_merged' ? 'MERGEABLE' : mr.merge_status === 'cannot_be_merged' ? 'CONFLICTING' : 'UNKNOWN',
+    headRefName: mr.source_branch,
+    baseRefName: mr.target_branch,
+    isDraft: mr.draft ?? mr.work_in_progress ?? false,
+    comments: notes.map((n: any) => ({
+      author: { login: n.author?.username ?? '' },
+      body: n.body,
+      createdAt: n.created_at,
+    })),
+  })
+})
+
+// GET /api/gitlab/issue/:namespace/:project/:number — fetch a single issue with comments
+app.get('/issue/:namespace/:project/:number', async (c) => {
+  const resolved = await resolveProject(c)
+  if (!resolved) return c.json({ error: 'Could not resolve project' }, 400)
+
+  const number = c.req.param('number')
+  const encoded = encodeProjectPath(resolved.projectPath)
+  const opts = { instanceUrl: resolved.instanceUrl, token: resolved.gitlabToken }
+
+  const [issueResult, notesResult] = await Promise.all([
+    glabApi(`/projects/${encoded}/issues/${number}`, opts),
+    glabApi(`/projects/${encoded}/issues/${number}/notes?per_page=100`, opts),
+  ])
+
+  if (issueResult.error) return c.json({ error: issueResult.error }, 404)
+
+  const issue = issueResult.data
+  const notes = (notesResult.data ?? []).filter((n: any) => !n.system)
+
+  return c.json({
+    number: issue.iid,
+    title: issue.title,
+    body: issue.description ?? '',
+    state: issue.state,
+    labels: (issue.labels ?? []).map((name: string) => ({ name, color: '6366f1' })),
+    assignees: (issue.assignees ?? (issue.assignee ? [issue.assignee] : [])).map((u: any) => ({ login: u.username })),
+    author: { login: issue.author?.username ?? '' },
+    url: issue.web_url,
+    createdAt: issue.created_at,
+    comments: notes.map((n: any) => ({
+      author: { login: n.author?.username ?? '' },
+      body: n.body,
+      createdAt: n.created_at,
+    })),
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -239,10 +328,12 @@ app.post('/create-issue', async (c) => {
 
   const row = await db.select().from(repos).where(eq(repos.fullName, fullName)).get()
   const instanceUrl = bodyInstanceUrl ?? row?.instanceUrl ?? process.env.GITLAB_INSTANCE_URL ?? null
+  const token = row?.gitlabToken ?? null
 
   const encoded = encodeProjectPath(fullName)
   const result = await glabApi(`/projects/${encoded}/issues`, {
     instanceUrl,
+    token,
     method: 'POST',
     body: {
       title,
@@ -282,10 +373,12 @@ app.post('/create-mr', async (c) => {
 
   const row = await db.select().from(repos).where(eq(repos.fullName, fullName)).get()
   const instanceUrl = bodyInstanceUrl ?? row?.instanceUrl ?? process.env.GITLAB_INSTANCE_URL ?? null
+  const token = row?.gitlabToken ?? null
 
   const encoded = encodeProjectPath(fullName)
   const result = await glabApi(`/projects/${encoded}/merge_requests`, {
     instanceUrl,
+    token,
     method: 'POST',
     body: {
       title: draft ? `Draft: ${title}` : title,
@@ -315,12 +408,14 @@ app.post('/comment', async (c) => {
 
   const row = await db.select().from(repos).where(eq(repos.fullName, fullName)).get()
   const instanceUrl = bodyInstanceUrl ?? row?.instanceUrl ?? process.env.GITLAB_INSTANCE_URL ?? null
+  const token = row?.gitlabToken ?? null
 
   const encoded = encodeProjectPath(fullName)
   const resource = type === 'mr' || type === 'pr' ? 'merge_requests' : 'issues'
 
   const result = await glabApi(`/projects/${encoded}/${resource}/${number}/notes`, {
     instanceUrl,
+    token,
     method: 'POST',
     body: { body: comment },
   })

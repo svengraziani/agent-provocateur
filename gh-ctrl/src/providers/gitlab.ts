@@ -24,10 +24,10 @@ export function encodeProjectPath(path: string): string {
 /** Low-level GitLab REST API v4 fetch helper. */
 export async function glabApi(
   path: string,
-  options: { instanceUrl?: string | null; method?: string; body?: unknown } = {}
+  options: { instanceUrl?: string | null; token?: string | null; method?: string; body?: unknown } = {}
 ): Promise<{ data: any; error: string | null }> {
   const base = (options.instanceUrl ?? 'https://gitlab.com').replace(/\/$/, '')
-  const token = process.env.GITLAB_TOKEN
+  const token = options.token ?? process.env.GITLAB_TOKEN
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -161,10 +161,11 @@ export function normalizePipeline(gl: any, projectUrl: string): NormalizedPipeli
 /** Fetch the full repo dashboard data for a GitLab project. */
 export async function fetchGitLabRepoData(
   projectPath: string,
-  instanceUrl?: string | null
+  instanceUrl?: string | null,
+  token?: string | null
 ): Promise<NormalizedRepoData> {
   const encoded = encodeProjectPath(projectPath)
-  const opts = { instanceUrl }
+  const opts = { instanceUrl, token }
 
   const empty: NormalizedRepoData = {
     fullName: projectPath,
@@ -257,10 +258,11 @@ export async function fetchGitLabRepoData(
 /** Fetch repo meta: stars, languages, topics, contributors, commit activity */
 export async function fetchGitLabRepoMeta(
   projectPath: string,
-  instanceUrl?: string | null
+  instanceUrl?: string | null,
+  token?: string | null
 ): Promise<NormalizedRepoMeta> {
   const encoded = encodeProjectPath(projectPath)
-  const opts = { instanceUrl }
+  const opts = { instanceUrl, token }
 
   const [projectResult, languagesResult, membersResult, commitsResult] = await Promise.all([
     glabApi(`/projects/${encoded}`, opts),
