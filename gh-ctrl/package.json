@@ -17,6 +17,7 @@
     "drizzle-orm": "^0.31.0",
     "hono": "^4.4.0",
     "imapflow": "^1.2.18",
+    "jose": "^5.9.6",
     "lucide-react": "^0.577.0",
     "nodemailer": "^8.0.4",
     "react-router-dom": "^7.13.1",
