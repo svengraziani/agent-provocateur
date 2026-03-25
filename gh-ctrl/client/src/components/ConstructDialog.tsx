@@ -44,7 +44,7 @@ export function ConstructDialog({ entry, onClose, onSuccess, onError }: Props) {
 
   useEffect(() => {
     const req = entry.repo.provider === 'gitlab'
-      ? api.getGitLabLabels(entry.repo.owner, entry.repo.name)
+      ? api.getGitLabLabels(entry.repo.fullName)
       : api.getLabels(entry.repo.owner, entry.repo.name)
     req
       .then(setAvailableLabels)
