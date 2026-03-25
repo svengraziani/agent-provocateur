@@ -16,7 +16,6 @@ export type ModalState =
   | { mode: 'create-issues-batch'; fullName: string; owner: string; repoName: string; provider?: 'github' | 'gitlab' }
   | { mode: 'issue-detail'; fullName: string; owner: string; repoName: string; number: number; prLink?: { head: string; base: string; title: string; body: string }; provider?: 'github' | 'gitlab' }
   | { mode: 'pr-detail'; fullName: string; owner: string; repoName: string; number: number; provider?: 'github' | 'gitlab' }
-  | { mode: 'trigger-claude'; fullName: string; number: number; type: 'pr' | 'issue'; provider?: 'github' | 'gitlab' }
   | { mode: 'assign'; fullName: string; owner: string; repoName: string; number: number; type: 'pr' | 'issue'; currentAssignees: string[]; provider?: 'github' | 'gitlab' }
   | null
 
@@ -59,9 +58,6 @@ export function ActionModal({ state, onClose, onSuccess, onError, onIssueCreated
         )}
         {state.mode === 'pr-detail' && (
           <PRDetailView state={state} onClose={onClose} onError={onError} onTransition={onTransition} />
-        )}
-        {state.mode === 'trigger-claude' && (
-          <TriggerClaudeForm state={state} onClose={onClose} onSuccess={onSuccess} onError={onError} />
         )}
         {state.mode === 'assign' && (
           <AssignForm state={state} onClose={onClose} onSuccess={onSuccess} onError={onError} />
@@ -712,76 +708,6 @@ function BatchCreateIssuesForm({ state, onClose, onSuccess, onError, onIssueCrea
   )
 }
 
-function TriggerClaudeForm({ state, onClose, onSuccess, onError }: {
-  state: Extract<ModalState, { mode: 'trigger-claude' }>
-  onClose: () => void
-  onSuccess: (msg: string) => void
-  onError: (msg: string) => void
-}) {
-  if (state.provider === 'gitlab') {
-    return (
-      <div>
-        <div className="modal-title">Trigger Claude<span className="modal-subtitle">{state.fullName}</span></div>
-        <div className="modal-loading">@claude trigger is GitHub-only — not supported for GitLab.</div>
-        <div className="modal-actions"><button className="btn btn-primary btn-sm" onClick={onClose}>Close</button></div>
-      </div>
-    )
-  }
-
-  const [message, setMessage] = useState('@claude ')
-  const [submitting, setSubmitting] = useState(false)
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
-
-  useEffect(() => {
-    const el = textareaRef.current
-    if (el) {
-      el.focus()
-      el.setSelectionRange(el.value.length, el.value.length)
-    }
-  }, [])
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!message.trim()) return
-    setSubmitting(true)
-    try {
-      await api.triggerClaude({ fullName: state.fullName, number: state.number, type: state.type, message: message.trim() })
-      onSuccess(`@claude triggered on ${state.type} #${state.number}`)
-      onClose()
-    } catch (err: any) {
-      onError(`Failed: ${err.message}`)
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  return (
-    <form onSubmit={handleSubmit}>
-      <div className="modal-title">
-        Trigger Claude on {state.type} #{state.number}
-        <span className="modal-subtitle">{state.fullName}</span>
-      </div>
-      <div className="voice-input-group">
-        <textarea
-          ref={textareaRef}
-          className="input modal-textarea"
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          placeholder="@claude ..."
-          rows={5}
-        />
-        <VoiceButton onTranscript={(text) => setMessage((prev) => prev ? `${prev} ${text}` : text)} />
-      </div>
-      <div className="modal-actions">
-        <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
-        <button type="submit" className="btn btn-claude" disabled={submitting || !message.trim()}>
-          {submitting ? 'Triggering...' : 'Trigger @claude'}
-        </button>
-      </div>
-    </form>
-  )
-}
-
 function AssignForm({ state, onClose, onSuccess, onError }: {
   state: Extract<ModalState, { mode: 'assign' }>
   onClose: () => void
@@ -1001,23 +927,14 @@ function PRDetailView({ state, onClose, onError, onTransition }: {
                   <LabelIcon size={12} />
                 </button>
                 {state.provider !== 'gitlab' && (
-                  <>
-                    <button
-                      type="button"
-                      className="btn btn-ghost btn-sm"
-                      onClick={() => onTransition({ mode: 'assign', fullName: state.fullName, owner: state.owner, repoName: state.repoName, number: state.number, type: 'pr', currentAssignees: pr.assignees.map((a) => a.login), provider: state.provider })}
-                      title="Assign"
-                    >
-                      Assign
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-claude btn-sm"
-                      onClick={() => onTransition({ mode: 'trigger-claude', fullName: state.fullName, number: state.number, type: 'pr', provider: state.provider })}
-                    >
-                      @claude
-                    </button>
-                  </>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => onTransition({ mode: 'assign', fullName: state.fullName, owner: state.owner, repoName: state.repoName, number: state.number, type: 'pr', currentAssignees: pr.assignees.map((a) => a.login), provider: state.provider })}
+                    title="Assign"
+                  >
+                    Assign
+                  </button>
                 )}
               </>
             )}
@@ -1139,23 +1056,14 @@ function IssueDetailView({ state, onClose, onError, onTransition }: {
                   {state.provider === 'gitlab' ? '@mr' : '@pr'}
                 </button>
                 {state.provider !== 'gitlab' && (
-                  <>
-                    <button
-                      type="button"
-                      className="btn btn-ghost btn-sm"
-                      onClick={() => onTransition({ mode: 'assign', fullName: state.fullName, owner: state.owner, repoName: state.repoName, number: state.number, type: 'issue', currentAssignees: issue.assignees.map((a) => a.login), provider: state.provider })}
-                      title="Assign"
-                    >
-                      Assign
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-claude btn-sm"
-                      onClick={() => onTransition({ mode: 'trigger-claude', fullName: state.fullName, number: state.number, type: 'issue', provider: state.provider })}
-                    >
-                      @claude
-                    </button>
-                  </>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => onTransition({ mode: 'assign', fullName: state.fullName, owner: state.owner, repoName: state.repoName, number: state.number, type: 'issue', currentAssignees: issue.assignees.map((a) => a.login), provider: state.provider })}
+                    title="Assign"
+                  >
+                    Assign
+                  </button>
                 )}
               </>
             )}

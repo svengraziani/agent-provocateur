@@ -490,18 +490,6 @@ a:hover { text-decoration: underline; }
   background: rgba(248, 81, 73, 0.3);
 }
 
-.btn-claude {
-  background: rgba(188, 140, 255, 0.15);
-  color: var(--purple);
-  font-size: 10px;
-  padding: 3px 8px;
-  border-radius: 4px;
-}
-
-.btn-claude:hover {
-  background: rgba(188, 140, 255, 0.3);
-}
-
 .btn-success {
   background: rgba(63, 185, 80, 0.15);
   color: #3fb950;
@@ -2525,22 +2513,6 @@ select.input {
 
 .bdp-toggle:hover {
   color: var(--text);
-}
-
-.bdp-claude-btn {
-  background: rgba(188, 140, 255, 0.12);
-  border: 1px solid rgba(188, 140, 255, 0.3);
-  color: var(--purple);
-  font-family: var(--font-mono);
-  font-size: 9px;
-  padding: 2px 6px;
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: all 0.15s;
-}
-
-.bdp-claude-btn:hover {
-  background: rgba(188, 140, 255, 0.25);
 }
 
 .bdp-error {
