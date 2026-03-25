@@ -43,7 +43,10 @@ export function ConstructDialog({ entry, onClose, onSuccess, onError }: Props) {
   }, [])
 
   useEffect(() => {
-    api.getLabels(entry.repo.owner, entry.repo.name)
+    const req = entry.repo.provider === 'gitlab'
+      ? api.getGitLabLabels(entry.repo.owner, entry.repo.name)
+      : api.getLabels(entry.repo.owner, entry.repo.name)
+    req
       .then(setAvailableLabels)
       .catch(() => {/* labels optional */})
       .finally(() => setLabelsLoading(false))
@@ -63,12 +66,19 @@ export function ConstructDialog({ entry, onClose, onSuccess, onError }: Props) {
     if (!title.trim()) return
     setSubmitting(true)
     try {
-      const result = await api.createIssue({
-        fullName: entry.repo.fullName,
-        title: title.trim(),
-        issueBody: issueBody.trim() || undefined,
-        labels: selectedLabels.size > 0 ? [...selectedLabels] : undefined,
-      })
+      const result = entry.repo.provider === 'gitlab'
+        ? await api.createGitLabIssue({
+            fullName: entry.repo.fullName,
+            title: title.trim(),
+            issueBody: issueBody.trim() || undefined,
+            labels: selectedLabels.size > 0 ? [...selectedLabels] : undefined,
+          })
+        : await api.createIssue({
+            fullName: entry.repo.fullName,
+            title: title.trim(),
+            issueBody: issueBody.trim() || undefined,
+            labels: selectedLabels.size > 0 ? [...selectedLabels] : undefined,
+          })
       onSuccess(`ISSUE DEPLOYED: ${result.url || title}`)
     } catch (err: any) {
       onError(`DEPLOYMENT FAILED: ${err.message}`)
