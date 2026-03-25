@@ -1,3 +1,5 @@
+import { ImapFlow } from 'imapflow'
+import nodemailer from 'nodemailer'
 import { db } from './db'
 import { buildings, mailMessages } from './db/schema'
 import { eq, desc, and } from 'drizzle-orm'
@@ -18,16 +20,6 @@ export interface MailboxConfig {
 const timers = new Map<number, ReturnType<typeof setInterval>>()
 
 async function pollMailbox(buildingId: number, config: MailboxConfig): Promise<void> {
-  // Dynamic import so the server still starts even if imapflow isn't installed yet
-  let ImapFlow: any
-  try {
-    const mod = await import('imapflow')
-    ImapFlow = mod.ImapFlow
-  } catch {
-    console.warn('[mailbox-service] imapflow not installed — run `bun install`')
-    return
-  }
-
   const client = new ImapFlow({
     host: config.imapHost,
     port: config.imapPort,
@@ -137,15 +129,7 @@ export async function sendMailboxEmail(
   subject: string,
   body: string,
 ): Promise<void> {
-  let nodemailer: any
-  try {
-    nodemailer = await import('nodemailer')
-  } catch {
-    throw new Error('nodemailer not installed — run `bun install`')
-  }
-
-  const createTransport = nodemailer.createTransport ?? nodemailer.default?.createTransport
-  const transporter = createTransport({
+  const transporter = nodemailer.createTransport({
     host: config.smtpHost,
     port: config.smtpPort,
     secure: config.smtpPort === 465,
@@ -163,14 +147,6 @@ export async function sendMailboxEmail(
 export async function testImapConnection(
   config: Pick<MailboxConfig, 'imapHost' | 'imapPort' | 'username' | 'password'>
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  let ImapFlow: any
-  try {
-    const mod = await import('imapflow')
-    ImapFlow = mod.ImapFlow
-  } catch {
-    return { ok: false, error: 'imapflow not installed — run `bun install`' }
-  }
-
   const client = new ImapFlow({
     host: config.imapHost,
     port: config.imapPort,
