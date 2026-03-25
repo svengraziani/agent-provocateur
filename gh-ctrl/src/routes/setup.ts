@@ -41,11 +41,15 @@ app.get('/status', async (c) => {
     dbDetail = err instanceof Error ? err.message : 'Unknown error'
   }
 
+  // Check 4: GitLab token (optional)
+  const gitlabToken = !!process.env.GITLAB_TOKEN
+
   const checks = [
     {
       id: 'gh_installed',
       label: 'GitHub CLI installed',
       ok: ghInstalled,
+      required: true,
       detail: ghInstalled ? ghVersionOutput : 'gh CLI not found',
       fix: ghInstalled
         ? null
@@ -57,6 +61,7 @@ app.get('/status', async (c) => {
       id: 'gh_auth',
       label: 'GitHub authenticated',
       ok: ghAuthed,
+      required: true,
       detail: ghAuthDetail || null,
       fix: ghAuthFix,
     },
@@ -64,12 +69,25 @@ app.get('/status', async (c) => {
       id: 'db',
       label: 'Database accessible',
       ok: dbOk,
+      required: true,
       detail: dbOk ? null : dbDetail,
       fix: dbOk ? null : 'Ensure the data/ directory exists and is writable',
     },
+    {
+      id: 'gitlab_token',
+      label: 'GitLab Token',
+      ok: gitlabToken,
+      required: false,
+      detail: gitlabToken ? 'GitLab token configured' : 'No GitLab token found',
+      fix: gitlabToken
+        ? null
+        : mode === 'docker'
+        ? 'Add GITLAB_TOKEN=<your_token> to your .env file and restart the container'
+        : 'Set GITLAB_TOKEN env var to enable GitLab repository support',
+    },
   ]
 
-  const ready = checks.every((ch) => ch.ok)
+  const ready = checks.filter((ch) => ch.required).every((ch) => ch.ok)
 
   return c.json({ ready, mode, checks })
 })
