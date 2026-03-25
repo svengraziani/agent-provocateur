@@ -174,7 +174,7 @@ export function BattlefieldMapLayer({
         if (constructingBuildingIds.has(building.id)) {
           const constructGif = building.type === 'healthcheck'
             ? '/buildings/construct_4s_healthcheck.gif'
-            : building.type === 'mailbox'
+            : building.type === 'snailbox'
               ? '/buildings/construction_4s_snailbox.gif'
               : '/buildings/construct_3s_clawcom.gif'
           return (
@@ -202,7 +202,7 @@ export function BattlefieldMapLayer({
         if (building.type === 'healthcheck') {
           return <HealthcheckBuilding {...commonProps} />
         }
-        if (building.type === 'mailbox') {
+        if (building.type === 'snailbox') {
           return <MailboxBuilding {...commonProps} />
         }
         return <ClawComBuilding {...commonProps} />

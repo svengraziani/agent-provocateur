@@ -213,7 +213,7 @@ export async function initMailboxService(): Promise<void> {
   const allBuildings = await db.select().from(buildings)
 
   for (const building of allBuildings) {
-    if (building.type !== 'mailbox') continue
+    if (building.type !== 'snailbox') continue
 
     let config: Partial<MailboxConfig> = {}
     try { config = JSON.parse(building.config ?? '{}') } catch { /* empty */ }
