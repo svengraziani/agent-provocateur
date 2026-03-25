@@ -240,6 +240,12 @@ export const api = {
       body: JSON.stringify(params),
     }),
 
+  importMap: (params: { name: string; width: number; height: number; tiles: string | Record<string, unknown> }) =>
+    request<GameMap>('/maps/import', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    }),
+
   getMap: (id: number) => request<GameMap>(`/maps/${id}`),
 
   saveMap: (id: number, updates: { name?: string; tiles?: string }) =>

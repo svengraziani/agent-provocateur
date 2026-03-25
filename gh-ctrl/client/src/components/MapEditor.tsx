@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
-import { Pencil, Eraser, PaintBucket, Plus, FolderOpen, Save, Trash2, ZoomIn, ZoomOut, Stamp } from 'lucide-react'
+import { Pencil, Eraser, PaintBucket, Plus, FolderOpen, Save, Trash2, ZoomIn, ZoomOut, Stamp, Download, Upload } from 'lucide-react'
 import type { GameMap, MapTile } from '../types'
 import { api } from '../api'
 import { useAppStore } from '../store'
@@ -721,6 +721,119 @@ function StampImageDialog({ mapWidth, mapHeight, customColor, onClose, onStamp, 
   )
 }
 
+// ─── Import Map Dialog ────────────────────────────────────────────────────────
+
+interface ImportMapDialogProps {
+  onClose: () => void
+  onImport: (map: GameMap) => void
+  onToast: (msg: string, type: 'success' | 'error' | 'info') => void
+}
+
+function ImportMapDialog({ onClose, onImport, onToast }: ImportMapDialogProps) {
+  const [isDragging, setIsDragging] = useState(false)
+  const [isImporting, setIsImporting] = useState(false)
+  const [fileName, setFileName] = useState<string | null>(null)
+  const [parsedData, setParsedData] = useState<{ name: string; width: number; height: number; tiles: string } | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleFile = (file: File) => {
+    if (!file.name.endsWith('.json')) {
+      onToast('Please select a .json map file', 'error')
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      try {
+        const data = JSON.parse(e.target?.result as string)
+        if (!data.name || typeof data.width !== 'number' || typeof data.height !== 'number') {
+          onToast('Invalid map file format', 'error')
+          return
+        }
+        const tilesStr = typeof data.tiles === 'string' ? data.tiles : JSON.stringify(data.tiles ?? {})
+        setParsedData({ name: data.name, width: data.width, height: data.height, tiles: tilesStr })
+        setFileName(file.name)
+      } catch {
+        onToast('Failed to parse map file', 'error')
+      }
+    }
+    reader.readAsText(file)
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(false)
+    const file = e.dataTransfer.files[0]
+    if (file) handleFile(file)
+  }
+
+  const handleImport = async () => {
+    if (!parsedData) return
+    setIsImporting(true)
+    try {
+      const map = await api.importMap(parsedData)
+      onImport(map)
+    } catch (err: any) {
+      onToast(`Import failed: ${err.message}`, 'error')
+    } finally {
+      setIsImporting(false)
+    }
+  }
+
+  return (
+    <div className="map-dialog-overlay" onClick={onClose}>
+      <div className="map-dialog" onClick={e => e.stopPropagation()}>
+        <div className="map-dialog-title">&#x2191; IMPORT MAP</div>
+
+        <div
+          className={`stamp-drop-zone${isDragging ? ' drag-over' : ''}${parsedData ? ' has-image' : ''}`}
+          onDragOver={e => { e.preventDefault(); setIsDragging(true) }}
+          onDragLeave={() => setIsDragging(false)}
+          onDrop={handleDrop}
+          onClick={() => fileInputRef.current?.click()}
+        >
+          {parsedData ? (
+            <div className="stamp-drop-hint">
+              <span className="stamp-drop-icon">&#x2714;</span>
+              <span>{fileName}</span>
+              <span className="stamp-drop-sub">{parsedData.name} · {parsedData.width}×{parsedData.height} tiles</span>
+            </div>
+          ) : (
+            <div className="stamp-drop-hint">
+              <span className="stamp-drop-icon">&#x1f5c2;</span>
+              <span>Drop .json map file here or click to browse</span>
+              <span className="stamp-drop-sub">Exported Vibe &amp; Conquer map files only</span>
+            </div>
+          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".json,application/json"
+            style={{ display: 'none' }}
+            onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f) }}
+          />
+        </div>
+
+        {parsedData && (
+          <div className="map-dialog-size-hint">
+            Will create a new map: &ldquo;{parsedData.name}&rdquo; ({parsedData.width}×{parsedData.height})
+          </div>
+        )}
+
+        <div className="map-dialog-actions">
+          <button className="hud-btn" onClick={onClose}>CANCEL</button>
+          <button
+            className="hud-btn hud-btn-new-base"
+            onClick={handleImport}
+            disabled={!parsedData || isImporting}
+          >
+            {isImporting ? 'IMPORTING...' : '&#x2191; IMPORT'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Main MapEditor component ─────────────────────────────────────────────────
 
 const ZOOM_MIN = 0.3
@@ -758,6 +871,7 @@ export function MapEditor() {
   const [showLoadMap, setShowLoadMap] = useState(false)
   const [showRenameMap, setShowRenameMap] = useState(false)
   const [showStampImage, setShowStampImage] = useState(false)
+  const [showImportMap, setShowImportMap] = useState(false)
   const [editingName, setEditingName] = useState(false)
   const [nameInput, setNameInput] = useState('')
 
@@ -1110,6 +1224,36 @@ export function MapEditor() {
     onToast('Image stamped to map', 'success')
   }, [onToast])
 
+  // ── Export map ────────────────────────────────────────────────────────────────
+
+  const handleExport = () => {
+    if (!currentMap) return
+    const exportData = {
+      version: 1,
+      name: currentMap.name,
+      width: currentMap.width,
+      height: currentMap.height,
+      tiles: tilesRef.current,
+    }
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${currentMap.name.replace(/[^a-z0-9_-]/gi, '_')}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+    onToast('Map exported', 'success')
+  }
+
+  // ── Import map ────────────────────────────────────────────────────────────────
+
+  const handleImportMap = (map: GameMap) => {
+    setAllMaps(prev => [...prev, map])
+    handleLoadMap(map)
+    setShowImportMap(false)
+    onToast(`Map "${map.name}" imported`, 'success')
+  }
+
   // ─── Render ─────────────────────────────────────────────────────────────────
 
   // Sync refs during render so rAF callbacks and event handlers always see current values
@@ -1206,6 +1350,21 @@ export function MapEditor() {
             title="Stamp image to map"
           >
             <Stamp size={12} /> STAMP
+          </button>
+          <button
+            className="hud-btn"
+            onClick={handleExport}
+            disabled={!currentMap}
+            title="Export map as JSON file"
+          >
+            <Download size={12} /> EXPORT
+          </button>
+          <button
+            className="hud-btn"
+            onClick={() => setShowImportMap(true)}
+            title="Import map from JSON file"
+          >
+            <Upload size={12} /> IMPORT
           </button>
 
           <span className="hud-zoom-sep" />
@@ -1337,6 +1496,13 @@ export function MapEditor() {
           customColor={customColor}
           onClose={() => setShowStampImage(false)}
           onStamp={handleStampImage}
+          onToast={onToast}
+        />
+      )}
+      {showImportMap && (
+        <ImportMapDialog
+          onClose={() => setShowImportMap(false)}
+          onImport={handleImportMap}
           onToast={onToast}
         />
       )}
