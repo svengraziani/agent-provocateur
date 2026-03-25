@@ -5,7 +5,20 @@ export interface Repo {
   fullName: string
   description: string | null
   color: string
+  provider: 'github' | 'gitlab'
+  instanceUrl?: string | null
   createdAt: string | number | null
+}
+
+export function getRepoUrl(repo: Repo, path?: string): string {
+  const base = repo.provider === 'gitlab'
+    ? (repo.instanceUrl ?? 'https://gitlab.com')
+    : 'https://github.com'
+  return `${base}/${repo.fullName}${path ?? ''}`
+}
+
+export function getMRLabel(repo: Repo): string {
+  return repo.provider === 'gitlab' ? 'MRs' : 'PRs'
 }
 
 export type AuthorAssociation = 'OWNER' | 'MEMBER' | 'COLLABORATOR' | 'CONTRIBUTOR' | 'FIRST_TIME_CONTRIBUTOR' | 'FIRST_TIMER' | 'NONE'
