@@ -22,9 +22,8 @@ services:
     environment:
       - GH_TOKEN=${GH_TOKEN}
     volumes:
-      - ./gh-ctrl:/app
-      - /app/node_modules
-      - /app/client/node_modules
+      - ./gh-ctrl/src:/app/src
+      - ./gh-ctrl/client/src:/app/client/src
       - gh-ctrl-data:/app/data
 
 volumes:

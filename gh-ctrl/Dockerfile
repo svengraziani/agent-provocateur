@@ -75,6 +75,8 @@ RUN bun install
 COPY client/package.json client/bun.lock ./client/
 RUN cd client && bun install
 
+COPY . .
+
 EXPOSE 3001 5173
 
 CMD ["bun", "run", "dev"]
