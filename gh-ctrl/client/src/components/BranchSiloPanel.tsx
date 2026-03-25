@@ -61,7 +61,7 @@ function BranchRow({
       if (!entry.isIntersecting) return
       observer.disconnect()
       const req = repoProvider === 'gitlab'
-        ? api.getGitLabBranchCompare(repoOwner, repoName, branch.name, defaultBranch)
+        ? api.getGitLabBranchCompare(repoFullName, branch.name, defaultBranch)
         : api.getBranchCompare(repoOwner, repoName, branch.name, defaultBranch)
       req
         .then(setCompare)
@@ -208,7 +208,7 @@ export function BranchSiloPanel({ entry, onClose, addToast, onModalOpen }: Branc
     const { owner, name, provider } = entry.repo
     try {
       if (provider === 'gitlab') {
-        await api.deleteGitLabBranch(owner, name, branchName)
+        await api.deleteGitLabBranch(repo.fullName, branchName)
       } else {
         await api.deleteBranch(owner, name, branchName)
       }
