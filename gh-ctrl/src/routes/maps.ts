@@ -33,6 +33,37 @@ app.post('/', async (c) => {
   return c.json(result[0], 201)
 })
 
+// POST /import — import a map from JSON
+app.post('/import', async (c) => {
+  const body = await c.req.json()
+  const { name, width, height, tiles } = body
+
+  if (!name?.trim()) {
+    return c.json({ error: 'Map name is required' }, 400)
+  }
+  if (!Number.isInteger(width) || width < 2 || width > 256 ||
+      !Number.isInteger(height) || height < 2 || height > 256) {
+    return c.json({ error: 'Map dimensions must be between 2 and 256' }, 400)
+  }
+
+  let tilesJson: string
+  try {
+    tilesJson = typeof tiles === 'string' ? tiles : JSON.stringify(tiles ?? {})
+    JSON.parse(tilesJson) // validate it's valid JSON
+  } catch {
+    return c.json({ error: 'Invalid tiles format' }, 400)
+  }
+
+  const result = await db.insert(maps).values({
+    name: name.trim(),
+    width: Math.floor(width),
+    height: Math.floor(height),
+    tiles: tilesJson,
+  }).returning()
+
+  return c.json(result[0], 201)
+})
+
 // GET /:id — get a specific map
 app.get('/:id', async (c) => {
   const id = Number(c.req.param('id'))
