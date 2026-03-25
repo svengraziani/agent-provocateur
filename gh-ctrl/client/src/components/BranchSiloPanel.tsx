@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import type { DashboardEntry, Branch, GHPR } from '../types'
 import { getBranchState } from './BranchBuilding'
 import { api } from '../api'
 import { ExternalLinkIcon } from './Icons'
 import type { ModalState } from './ActionModal'
+import { SidePanel } from './SidePanel'
 
 interface BranchSiloPanelProps {
   entry: DashboardEntry | null
@@ -181,27 +182,10 @@ function BranchRow({
 
 export function BranchSiloPanel({ entry, onClose, addToast, onModalOpen }: BranchSiloPanelProps) {
   const [deletedBranches, setDeletedBranches] = useState<Set<string>>(new Set())
-  const panelRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const el = panelRef.current
-    if (!el) return
-    const stop = (e: WheelEvent) => e.stopPropagation()
-    el.addEventListener('wheel', stop, { passive: true })
-    return () => el.removeEventListener('wheel', stop)
-  }, [])
 
   useEffect(() => {
     setDeletedBranches(new Set())
   }, [entry?.repo.id])
-
-  useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', handleKey)
-    return () => window.removeEventListener('keydown', handleKey)
-  }, [onClose])
 
   const handleDelete = useCallback(async (branchName: string) => {
     if (!entry) return
@@ -233,12 +217,7 @@ export function BranchSiloPanel({ entry, onClose, addToast, onModalOpen }: Branc
   const activeCount = nonDefaultBranches.length - staleCount - veryStaleCount
 
   return (
-    <div
-      ref={panelRef}
-      className="silo-panel"
-      onClick={(e) => e.stopPropagation()}
-      onMouseDown={(e) => e.stopPropagation()}
-    >
+    <SidePanel className="silo-panel" onClose={onClose}>
       {/* C&C-style panel header */}
       <div className="silo-panel-header">
         <div className="silo-panel-header-left">
@@ -293,6 +272,6 @@ export function BranchSiloPanel({ entry, onClose, addToast, onModalOpen }: Branc
           ))
         )}
       </div>
-    </div>
+    </SidePanel>
   )
 }

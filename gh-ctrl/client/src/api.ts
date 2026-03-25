@@ -87,17 +87,6 @@ export const api = {
   getRepoMeta: (owner: string, name: string) =>
     request<RepoMeta>(`/github/meta/${owner}/${name}`),
 
-  triggerClaude: (params: {
-    fullName: string
-    number: number
-    type: 'pr' | 'issue'
-    message?: string
-  }) =>
-    request<{ ok: boolean }>('/github/trigger-claude', {
-      method: 'POST',
-      body: JSON.stringify(params),
-    }),
-
   postComment: (params: {
     fullName: string
     number: number
