@@ -15,6 +15,7 @@ import { existsSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { initHealthcheckService } from './healthcheck-service'
 import { initMailboxService } from './mailbox-service'
+import { authMiddleware } from './middleware/auth'
 
 // Ensure uploads directory exists on startup
 const uploadsDir = join(process.cwd(), 'uploads', 'badges')
@@ -44,6 +45,7 @@ app.use(
   })
 )
 app.use('*', logger())
+app.use('/api/*', authMiddleware)
 
 app.route('/api/repos', reposRouter)
 app.route('/api/github', githubRouter)
