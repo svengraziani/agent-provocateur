@@ -1,5 +1,29 @@
 import '@testing-library/jest-dom'
 
+// Ensure localStorage is fully functional (bun's jsdom integration may provide a broken stub)
+function makeLocalStorageMock() {
+  let store: Record<string, string> = {}
+  return {
+    getItem: (key: string) => store[key] ?? null,
+    setItem: (key: string, value: string) => { store[key] = String(value) },
+    removeItem: (key: string) => { delete store[key] },
+    clear: () => { store = {} },
+    get length() { return Object.keys(store).length },
+    key: (i: number) => Object.keys(store)[i] ?? null,
+  }
+}
+
+try {
+  localStorage.clear()
+} catch {
+  // localStorage is broken in this jsdom environment — replace it with a working mock
+  Object.defineProperty(window, 'localStorage', {
+    value: makeLocalStorageMock(),
+    writable: true,
+    configurable: true,
+  })
+}
+
 // Reset localStorage before each test to prevent state leakage
 beforeEach(() => {
   localStorage.clear()

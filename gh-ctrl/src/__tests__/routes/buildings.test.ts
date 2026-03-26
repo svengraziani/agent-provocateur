@@ -201,7 +201,7 @@ describe('messages', () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ content: 'Hello world' }),
     })
-    expect(res.status).toBe(200)
+    expect(res.status).toBe(201)
     const body = await res.json()
     expect(body.content).toBe('Hello world')
     expect(body.direction).toBe('out')
