@@ -18,9 +18,18 @@ function getBase(): string {
   return serverUrl ? `${serverUrl}/api` : '/api'
 }
 
+// Auth token provider — set by KeycloakProvider when Keycloak is enabled
+let _getToken: (() => string | undefined) | null = null
+
+export function setAuthTokenProvider(fn: () => string | undefined) {
+  _getToken = fn
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const token = _getToken?.()
+  const authHeader: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {}
   const res = await fetch(`${getBase()}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeader },
     ...options,
   })
   if (!res.ok) {
@@ -319,7 +328,9 @@ export const api = {
     const formData = new FormData()
     formData.append('file', file)
     formData.append('name', name)
-    return fetch(`${base}/badges/upload`, { method: 'POST', body: formData })
+    const token = _getToken?.()
+    const uploadHeaders: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {}
+    return fetch(`${base}/badges/upload`, { method: 'POST', body: formData, headers: uploadHeaders })
       .then(async (res) => {
         if (!res.ok) {
           const err = await res.json().catch(() => ({ error: res.statusText }))
