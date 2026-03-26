@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "claude-channel": {
+      "command": "bun",
+      "args": ["gh-ctrl/src/mcp/claude-channel-server.ts"],
+      "env": {
+        "PORT": "8788"
+      }
+    }
+  }
+}

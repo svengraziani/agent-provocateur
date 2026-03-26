@@ -13,6 +13,7 @@
     "version:major": "node scripts/bump-version.js major"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.10.2",
     "concurrently": "^8.2.0",
     "drizzle-orm": "^0.31.0",
     "hono": "^4.4.0",

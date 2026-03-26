@@ -1,4 +1,4 @@
-import type { Repo, DashboardEntry, RepoData, GHLabel, BranchesData, IssueDetail, PRDetail, GameMap, RepoMeta, FeedData, SetupStatus, Building, ClawComMessage, Badge, PlacedBadge, HealthcheckResult, DeadlineTimer, MailMessage } from './types'
+import type { Repo, DashboardEntry, RepoData, GHLabel, BranchesData, IssueDetail, PRDetail, GameMap, RepoMeta, FeedData, SetupStatus, Building, ClawComMessage, Badge, PlacedBadge, HealthcheckResult, DeadlineTimer, ChannelEvent, MailMessage } from './types'
 
 export function getServerUrl(): string {
   return localStorage.getItem('serverUrl')?.replace(/\/$/, '') ?? ''
@@ -277,6 +277,34 @@ export const api = {
     request<ClawComMessage>(`/buildings/${id}/messages`, {
       method: 'POST',
       body: JSON.stringify({ content }),
+    }),
+
+  /**
+   * Open an SSE connection to receive real-time events from the Claude Channel MCP server.
+   * Returns a cleanup function that closes the connection.
+   */
+  streamChannelEvents: (
+    buildingId: number,
+    onEvent: (event: ChannelEvent) => void,
+    onError?: () => void
+  ): (() => void) => {
+    const es = new EventSource(`${getBase()}/buildings/${buildingId}/channel-events`)
+    es.onmessage = (e: MessageEvent) => {
+      try {
+        onEvent(JSON.parse(e.data as string))
+      } catch { /* ignore non-JSON */ }
+    }
+    es.onerror = () => {
+      onError?.()
+    }
+    return () => es.close()
+  },
+
+  /** Submit a permission verdict (allow/deny) for a pending Claude tool call. */
+  submitPermissionVerdict: (buildingId: number, id: string, verdict: 'allow' | 'deny') =>
+    request<{ ok: boolean }>(`/buildings/${buildingId}/permission`, {
+      method: 'POST',
+      body: JSON.stringify({ id, verdict }),
     }),
 
   getBuildingHealthcheck: (id: number) =>
