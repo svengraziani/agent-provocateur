@@ -52,7 +52,7 @@ export function MailboxInboxDialog({ building, onClose, onReconfigure, onError }
       const msgs = await api.getMailMessages(building.id)
       setMessages(msgs)
     } catch (err: any) {
-      onError(`Fehler beim Laden: ${err.message}`)
+      onError(`Error loading: ${err.message}`)
     } finally {
       setLoading(false)
     }
@@ -68,7 +68,7 @@ export function MailboxInboxDialog({ building, onClose, onReconfigure, onError }
       await api.syncMail(building.id)
       setTimeout(loadMessages, 2000)
     } catch (err: any) {
-      onError(`Sync fehlgeschlagen: ${err.message}`)
+      onError(`Sync failed: ${err.message}`)
     } finally {
       setSyncing(false)
     }
@@ -101,7 +101,7 @@ export function MailboxInboxDialog({ building, onClose, onReconfigure, onError }
       setMessages((prev) => prev.filter((m) => m.id !== msg.id))
       if (selected?.id === msg.id) setSelected(null)
     } catch (err: any) {
-      onError(`Löschen fehlgeschlagen: ${err.message}`)
+      onError(`Delete failed: ${err.message}`)
     }
   }
 
@@ -113,7 +113,7 @@ export function MailboxInboxDialog({ building, onClose, onReconfigure, onError }
       setComposing(false)
       setCompose({ to: '', subject: '', body: '' })
     } catch (err: any) {
-      onError(`Senden fehlgeschlagen: ${err.message}`)
+      onError(`Send failed: ${err.message}`)
     } finally {
       setSending(false)
     }
@@ -126,13 +126,13 @@ export function MailboxInboxDialog({ building, onClose, onReconfigure, onError }
     <div className="map-dialog" style={{ width: 720, maxWidth: '95vw' }} onWheel={(e) => e.stopPropagation()}>
       {/* Header */}
       <div className="map-dialog-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span>&#x25a0; {building.name.toUpperCase()} — POSTEINGANG</span>
+        <span>&#x25a0; {building.name.toUpperCase()} — INBOX</span>
         <div style={{ display: 'flex', gap: 6 }}>
           <button className="hud-btn" style={{ fontSize: 9 }} onClick={handleSync} disabled={syncing}>
             {syncing ? '◌' : '↻'} SYNC
           </button>
           <button className="hud-btn" style={{ fontSize: 9 }} onClick={() => { setComposing(true); setSelected(null) }}>
-            ✉ VERFASSEN
+            ✉ COMPOSE
           </button>
           <button className="hud-btn" style={{ fontSize: 9 }} onClick={onReconfigure}>
             ⚙
@@ -151,25 +151,25 @@ export function MailboxInboxDialog({ building, onClose, onReconfigure, onError }
               style={{ flex: 1, fontSize: 9, borderRadius: 0 }}
               onClick={() => setTab('inbox')}
             >
-              EINGANG {unreadCount > 0 && <span style={{ color: '#ff4444' }}>({unreadCount})</span>}
+              INBOX {unreadCount > 0 && <span style={{ color: '#ff4444' }}>({unreadCount})</span>}
             </button>
             <button
               className={`hud-btn${tab === 'starred' ? ' active' : ''}`}
               style={{ flex: 1, fontSize: 9, borderRadius: 0 }}
               onClick={() => setTab('starred')}
             >
-              ★ MARKIERT
+              ★ STARRED
             </button>
           </div>
 
           {/* List */}
           <div style={{ overflowY: 'auto', flex: 1 }}>
             {loading && (
-              <div style={{ padding: 12, fontSize: 10, color: 'var(--text-dim)', textAlign: 'center' }}>◌ Lade...</div>
+              <div style={{ padding: 12, fontSize: 10, color: 'var(--text-dim)', textAlign: 'center' }}>◌ Loading...</div>
             )}
             {!loading && displayed.length === 0 && (
               <div style={{ padding: 12, fontSize: 10, color: 'var(--text-dim)', textAlign: 'center' }}>
-                Keine Nachrichten
+                No messages
               </div>
             )}
             {displayed.map((msg) => (
@@ -204,7 +204,7 @@ export function MailboxInboxDialog({ building, onClose, onReconfigure, onError }
                   color: msg.isRead ? 'var(--text-dim)' : 'var(--text)',
                   overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                 }}>
-                  {msg.subject ?? '(kein Betreff)'}
+                  {msg.subject ?? '(no subject)'}
                 </div>
                 <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                   {!msg.isRead && (
@@ -213,12 +213,12 @@ export function MailboxInboxDialog({ building, onClose, onReconfigure, onError }
                   <button
                     style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 10, padding: 0, color: msg.isStarred ? '#ffaa00' : 'var(--text-dim)' }}
                     onClick={(e) => handleToggleStar(msg, e)}
-                    title="Stern"
+                    title="Star"
                   >★</button>
                   <button
                     style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 10, padding: 0, color: 'var(--text-dim)', marginLeft: 'auto' }}
                     onClick={(e) => handleDelete(msg, e)}
-                    title="Löschen"
+                    title="Delete"
                   >✕</button>
                 </div>
               </div>
@@ -230,37 +230,37 @@ export function MailboxInboxDialog({ building, onClose, onReconfigure, onError }
         <div style={{ flex: 1, padding: 14, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10 }}>
           {composing ? (
             <>
-              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--green-neon)' }}>✉ NEUE E-MAIL</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--green-neon)' }}>✉ NEW EMAIL</div>
               <input
                 className="hud-input"
                 value={compose.to}
                 onChange={(e) => setCompose((c) => ({ ...c, to: e.target.value }))}
-                placeholder="An: empfaenger@example.com"
+                placeholder="To: recipient@example.com"
                 style={{ width: '100%' }}
               />
               <input
                 className="hud-input"
                 value={compose.subject}
                 onChange={(e) => setCompose((c) => ({ ...c, subject: e.target.value }))}
-                placeholder="Betreff"
+                placeholder="Subject"
                 style={{ width: '100%' }}
               />
               <textarea
                 className="hud-input"
                 value={compose.body}
                 onChange={(e) => setCompose((c) => ({ ...c, body: e.target.value }))}
-                placeholder="Nachricht..."
+                placeholder="Message..."
                 rows={8}
                 style={{ width: '100%', resize: 'vertical', fontFamily: 'inherit' }}
               />
               <div style={{ display: 'flex', gap: 6 }}>
-                <button className="hud-btn" onClick={() => setComposing(false)}>ABBRECHEN</button>
+                <button className="hud-btn" onClick={() => setComposing(false)}>CANCEL</button>
                 <button
                   className="hud-btn hud-btn-new-base"
                   onClick={handleSend}
                   disabled={!compose.to.trim() || !compose.subject.trim() || sending}
                 >
-                  {sending ? '◌ SENDEN...' : '▶ SENDEN'}
+                  {sending ? '◌ SENDING...' : '▶ SEND'}
                 </button>
               </div>
             </>
@@ -268,28 +268,28 @@ export function MailboxInboxDialog({ building, onClose, onReconfigure, onError }
             <>
               <div>
                 <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', marginBottom: 6 }}>
-                  {selected.subject ?? '(kein Betreff)'}
+                  {selected.subject ?? '(no subject)'}
                 </div>
                 <div style={{ fontSize: 10, color: 'var(--text-dim)', marginBottom: 2 }}>
-                  <strong>Von:</strong> {selected.fromAddress ?? '—'}
+                  <strong>From:</strong> {selected.fromAddress ?? '—'}
                 </div>
                 {selected.toAddresses && (() => {
                   try {
                     const addrs = JSON.parse(selected.toAddresses) as string[]
                     return addrs.length > 0 ? (
                       <div style={{ fontSize: 10, color: 'var(--text-dim)', marginBottom: 2 }}>
-                        <strong>An:</strong> {addrs.join(', ')}
+                        <strong>To:</strong> {addrs.join(', ')}
                       </div>
                     ) : null
                   } catch { return null }
                 })()}
                 <div style={{ fontSize: 10, color: 'var(--text-dim)', marginBottom: 10 }}>
-                  <strong>Datum:</strong> {selected.date ? new Date(selected.date).toLocaleString() : '—'}
+                  <strong>Date:</strong> {selected.date ? new Date(selected.date).toLocaleString() : '—'}
                 </div>
                 <div style={{ borderTop: '1px solid var(--border)', paddingTop: 10, fontSize: 11, color: 'var(--text)', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
                   {selected.bodyText ?? selected.snippet ?? (
                     <span style={{ color: 'var(--text-dim)', fontStyle: 'italic' }}>
-                      Kein Text verfügbar. Starte einen Sync um den Nachrichtentext abzurufen.
+                      No text available. Start a sync to fetch the message content.
                     </span>
                   )}
                 </div>
@@ -297,14 +297,14 @@ export function MailboxInboxDialog({ building, onClose, onReconfigure, onError }
             </>
           ) : (
             <div style={{ color: 'var(--text-dim)', fontSize: 10, marginTop: 40, textAlign: 'center' }}>
-              &#x25a6; Nachricht auswählen
+              &#x25a6; Select a message
             </div>
           )}
         </div>
       </div>
 
       <div className="map-dialog-actions">
-        <button className="hud-btn" onClick={onClose}>SCHLIESSEN</button>
+        <button className="hud-btn" onClick={onClose}>CLOSE</button>
       </div>
     </div>
   )

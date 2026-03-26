@@ -84,7 +84,7 @@ export function ClawComChatDialog({ building, onClose, onReconfigure, onError }:
         setMessages(updated)
       }
     } catch (err: any) {
-      onError(`Nachricht konnte nicht gesendet werden: ${err.message}`)
+      onError(`Message could not be sent: ${err.message}`)
     } finally {
       setSending(false)
     }
@@ -105,7 +105,7 @@ export function ClawComChatDialog({ building, onClose, onReconfigure, onError }:
       await loadBuildings()
       onReconfigure()
     } catch (err: any) {
-      onError(`Trennung fehlgeschlagen: ${err.message}`)
+      onError(`Disconnect failed: ${err.message}`)
     }
   }
 
@@ -115,7 +115,7 @@ export function ClawComChatDialog({ building, onClose, onReconfigure, onError }:
       await api.submitPermissionVerdict(building.id, id, verdict)
       setPermissionPrompts((prev) => prev.filter((p) => p.id !== id))
     } catch (err: any) {
-      onError(`Permission-Antwort fehlgeschlagen: ${err.message}`)
+      onError(`Permission response failed: ${err.message}`)
     } finally {
       setSubmittingPermission(null)
     }
@@ -151,7 +151,7 @@ export function ClawComChatDialog({ building, onClose, onReconfigure, onError }:
               {isChannel ? (
                 <>
                   <span className={`clawcom-chat-online-dot${sseConnected ? '' : ' clawcom-chat-online-dot--dim'}`}>●</span>&nbsp;
-                  CLAUDE CHANNEL {sseConnected ? '● AKTIV' : '● VERBINDE...'}
+                  CLAUDE CHANNEL {sseConnected ? '● ACTIVE' : '● CONNECTING...'}
                 </>
               ) : (
                 <>
@@ -165,7 +165,7 @@ export function ClawComChatDialog({ building, onClose, onReconfigure, onError }:
             <button
               className="hud-btn"
               onClick={handleDisconnect}
-              title="Verbindung trennen und neu konfigurieren"
+              title="Disconnect and reconfigure"
             >
               ⚙ RESET
             </button>
@@ -176,14 +176,14 @@ export function ClawComChatDialog({ building, onClose, onReconfigure, onError }:
         <div className="clawcom-chat-messages">
           {loading && (
             <div className="clawcom-chat-status" style={{ textAlign: 'center' }}>
-              ◌ Lade Nachrichten...
+              ◌ Loading messages...
             </div>
           )}
           {!loading && messages.length === 0 && permissionPrompts.length === 0 && (
             <div className="clawcom-chat-status" style={{ textAlign: 'center', margin: 'auto' }}>
               {isChannel
-                ? 'Keine Nachrichten. Sende eine Frage an Claude Code.'
-                : 'Keine Nachrichten. Sende deinen ersten Befehl an den Claw.'}
+                ? 'No messages. Send a question to Claude Code.'
+                : 'No messages. Send your first command to the Claw.'}
             </div>
           )}
           {messages.map((msg) => (
@@ -195,7 +195,7 @@ export function ClawComChatDialog({ building, onClose, onReconfigure, onError }:
                 {msg.content}
               </div>
               <div className="clawcom-chat-msg-meta">
-                {msg.direction === 'out' ? 'Du' : (isChannel ? 'Claude' : (config.clawType ?? 'Claw'))} · {formatTime(msg.createdAt)}
+                {msg.direction === 'out' ? 'You' : (isChannel ? 'Claude' : (config.clawType ?? 'Claw'))} · {formatTime(msg.createdAt)}
               </div>
             </div>
           ))}
@@ -208,7 +208,7 @@ export function ClawComChatDialog({ building, onClose, onReconfigure, onError }:
                 style={{ borderColor: '#ff9900', background: 'rgba(255,153,0,0.08)' }}
               >
                 <div style={{ fontWeight: 700, marginBottom: 4, color: '#ff9900' }}>
-                  ⚠ TOOL-ANFRAGE: {prompt.toolName}
+                  ⚠ TOOL REQUEST: {prompt.toolName}
                 </div>
                 {!!prompt.input && (
                   <pre style={{ fontSize: 9, color: 'var(--text-dim)', whiteSpace: 'pre-wrap', marginBottom: 8 }}>
@@ -222,7 +222,7 @@ export function ClawComChatDialog({ building, onClose, onReconfigure, onError }:
                     disabled={submittingPermission === prompt.id}
                     onClick={() => handlePermissionVerdict(prompt.id, 'allow')}
                   >
-                    {submittingPermission === prompt.id ? '◌' : '✓ ERLAUBEN'}
+                    {submittingPermission === prompt.id ? '◌' : '✓ ALLOW'}
                   </button>
                   <button
                     className="hud-btn"
@@ -230,11 +230,11 @@ export function ClawComChatDialog({ building, onClose, onReconfigure, onError }:
                     disabled={submittingPermission === prompt.id}
                     onClick={() => handlePermissionVerdict(prompt.id, 'deny')}
                   >
-                    ✕ ABLEHNEN
+                    ✕ DENY
                   </button>
                 </div>
               </div>
-              <div className="clawcom-chat-msg-meta">Claude · Tool-Genehmigung erforderlich</div>
+              <div className="clawcom-chat-msg-meta">Claude · Tool approval required</div>
             </div>
           ))}
 
@@ -248,7 +248,7 @@ export function ClawComChatDialog({ building, onClose, onReconfigure, onError }:
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={isChannel ? 'Nachricht an Claude... (Enter zum Senden)' : 'Befehl eingeben... (Enter zum Senden)'}
+            placeholder={isChannel ? 'Message to Claude... (Enter to send)' : 'Enter command... (Enter to send)'}
             disabled={sending}
             autoFocus
           />
@@ -262,7 +262,7 @@ export function ClawComChatDialog({ building, onClose, onReconfigure, onError }:
         </div>
 
         <div className="map-dialog-actions">
-          <button className="hud-btn" onClick={onClose}>SCHLIESSEN</button>
+          <button className="hud-btn" onClick={onClose}>CLOSE</button>
         </div>
     </div>
   )

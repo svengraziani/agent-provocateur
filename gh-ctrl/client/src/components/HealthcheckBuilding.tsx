@@ -145,7 +145,7 @@ export function HealthcheckBuilding({
   }
 
   async function handleDelete() {
-    if (!confirm(`"${currentBuilding.name}" wirklich löschen?`)) return
+    if (!confirm(`Delete "${currentBuilding.name}"?`)) return
     try {
       await deleteBuilding(currentBuilding.id)
     } catch { /* toast shown by store */ }
@@ -160,10 +160,10 @@ export function HealthcheckBuilding({
   async function handleTriggerCheck() {
     try {
       await api.triggerBuildingHealthcheck(currentBuilding.id)
-      addToast('Healthcheck gestartet', 'info')
+      addToast('Healthcheck started', 'info')
       setTimeout(fetchResults, 2000)
     } catch (err: any) {
-      addToast(`Fehler: ${err.message}`, 'error')
+      addToast(`Error: ${err.message}`, 'error')
     }
   }
 
@@ -249,7 +249,7 @@ export function HealthcheckBuilding({
             background: isConfigured ? statusColor : '#888',
             border: '1px solid var(--bg-darker)',
             boxShadow: isConfigured && overallStatus === 'ok' ? `0 0 6px ${statusColor}` : undefined,
-          }} title={isConfigured ? `Status: ${overallStatus.toUpperCase()}` : 'Nicht konfiguriert'} />
+          }} title={isConfigured ? `Status: ${overallStatus.toUpperCase()}` : 'Not configured'} />
         </div>
 
         {/* Name label */}
@@ -273,7 +273,7 @@ export function HealthcheckBuilding({
             ? results.length > 0
               ? `${results.filter((r) => r.ok).length}/${results.length} ● ${overallStatus.toUpperCase()}`
               : '◌ CHECKING...'
-            : '⚙ SETUP ERFORDERLICH'}
+            : '⚙ SETUP REQUIRED'}
         </div>
 
         {/* Action bar (visible on hover via CSS) */}
@@ -288,14 +288,14 @@ export function HealthcheckBuilding({
                 className="hud-btn"
                 style={{ fontSize: 9, padding: '1px 5px' }}
                 onClick={handleTriggerCheck}
-                title="Jetzt prüfen"
+                title="Check now"
               >↻</button>
             )}
             <button
               className="hud-btn"
               style={{ fontSize: 9, padding: '1px 5px' }}
               onClick={() => colorInputRef.current?.click()}
-              title="Farbe ändern"
+              title="Change color"
             >◈</button>
             <input
               ref={colorInputRef}
@@ -308,7 +308,7 @@ export function HealthcheckBuilding({
               className="hud-btn"
               style={{ fontSize: 9, padding: '1px 5px', color: '#ff6b6b' }}
               onClick={handleDelete}
-              title="Gebäude abreißen"
+              title="Demolish building"
             >✕</button>
           </div>
         )}
@@ -321,7 +321,7 @@ export function HealthcheckBuilding({
           onClose={() => onDeselect?.()}
           onConfigured={(updated) => {
             setCurrentBuilding(updated)
-            addToast(`${updated.name} erfolgreich konfiguriert!`, 'success')
+            addToast(`${updated.name} configured successfully!`, 'success')
             setTimeout(fetchResults, 2000)
           }}
           onError={(msg) => addToast(msg, 'error')}
