@@ -1842,6 +1842,14 @@ select.input {
   50%       { filter: drop-shadow(0 4px 20px rgba(248, 81, 73, 1.0)); }
 }
 
+.base-node.base-offline .base-building :is(img, canvas) {
+  filter: drop-shadow(0 4px 8px rgba(120, 120, 120, 0.4)) grayscale(0.5) opacity(0.75);
+}
+
+.beacon-offline {
+  color: #888;
+}
+
 .base-node.relocate-mode .base-building {
   outline: 2px dashed var(--base-color, var(--crt-green));
   outline-offset: 2px;

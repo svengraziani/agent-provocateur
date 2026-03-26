@@ -104,6 +104,18 @@ function IsoBaseBuilding({ color }: { color: string }) {
   )
 }
 
+function OfflineBaseBuilding() {
+  return (
+    <img
+      src="/buildings/offline_base.gif"
+      width="120"
+      height="120"
+      style={{ display: 'block', imageRendering: 'pixelated' }}
+      draggable={false}
+    />
+  )
+}
+
 function IsoPRBuilding() {
   return (
     <img
@@ -162,6 +174,7 @@ export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, on
     }
   }, [onRefreshRepo, repo.owner, repo.name])
 
+  const isOffline = !!data.error
   const hasConflicts = stats.conflicts > 0
   const hasReviews = stats.needsReview > 0
   const hasClaudeActive = (data.activeClaudeIssues?.length ?? 0) > 0
@@ -174,7 +187,9 @@ export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, on
     ? []
     : data.prs.filter((pr) => pr.headRefName?.startsWith('claude/'))
 
-  const statusClass = hasConflicts
+  const statusClass = isOffline
+    ? 'base-offline'
+    : hasConflicts
     ? 'base-conflict'
     : hasReviews
     ? 'base-review'
@@ -238,6 +253,11 @@ export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, on
       >
         {/* Status beacons */}
         <div className="base-beacons">
+          {isOffline && (
+            <span className="base-beacon beacon-offline" title={`Base unreachable: ${data.error}`}>
+              &#x2296;
+            </span>
+          )}
           {hasConflicts && (
             <span className="base-beacon beacon-conflict blink" title={`${stats.conflicts} conflict(s) — BASE UNDER ATTACK`}>
               &#x26a0;
@@ -283,9 +303,12 @@ export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, on
           )}
         </div>
 
-        {/* Building graphic — isometric PNG with repo-color overlay */}
+        {/* Building graphic — isometric PNG with repo-color overlay, or offline gif */}
         <div className="base-building">
-          <IsoBaseBuilding color={repo.color || '#00ff88'} />
+          {isOffline
+            ? <OfflineBaseBuilding />
+            : <IsoBaseBuilding color={repo.color || '#00ff88'} />
+          }
         </div>
 
         {/* Floating HUD toolbar — appears on hover */}
