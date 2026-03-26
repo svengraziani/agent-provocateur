@@ -1,4 +1,5 @@
 import { Hono } from 'hono'
+import { stream } from 'hono/streaming'
 import { db } from '../db'
 import { buildings, clawcomMessages, healthcheckResults, mailMessages } from '../db/schema'
 import { eq, desc, and } from 'drizzle-orm'
@@ -168,33 +169,165 @@ app.post('/:id/messages', async (c) => {
   }).returning()
 
   // Try to relay to the claw if configured
-  if (config.configured && config.host) {
-    try {
-      const clawUrl = `${config.host.replace(/\/$/, '')}/message`
-      const response = await fetch(clawUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: content, clawType: config.clawType }),
-        signal: AbortSignal.timeout(5000),
-      })
-
-      if (response.ok) {
-        const responseData = await response.json().catch(() => null)
-        const replyContent = responseData?.reply ?? responseData?.message ?? responseData?.response
-        if (replyContent) {
-          await db.insert(clawcomMessages).values({
-            buildingId: id,
-            direction: 'in',
-            content: String(replyContent),
-          })
-        }
+  if (config.configured) {
+    if (config.clawType === 'claudechannel' && config.mcpWebhookUrl) {
+      // Claude Channel: POST to the MCP server webhook
+      try {
+        const webhookUrl = `${String(config.mcpWebhookUrl).replace(/\/$/, '')}/`
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+        if (config.channelSecret) headers['x-channel-secret'] = String(config.channelSecret)
+        await fetch(webhookUrl, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ content }),
+          signal: AbortSignal.timeout(5000),
+        })
+      } catch {
+        // MCP server not reachable — message stored locally anyway
       }
-    } catch {
-      // Claw not reachable — message stored locally anyway
+    } else if (config.host) {
+      // OpenClaw / NanoClaw: POST to {host}/message and expect an immediate reply
+      try {
+        const clawUrl = `${config.host.replace(/\/$/, '')}/message`
+        const response = await fetch(clawUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: content, clawType: config.clawType }),
+          signal: AbortSignal.timeout(5000),
+        })
+
+        if (response.ok) {
+          const responseData = await response.json().catch(() => null)
+          const replyContent = responseData?.reply ?? responseData?.message ?? responseData?.response
+          if (replyContent) {
+            await db.insert(clawcomMessages).values({
+              buildingId: id,
+              direction: 'in',
+              content: String(replyContent),
+            })
+          }
+        }
+      } catch {
+        // Claw not reachable — message stored locally anyway
+      }
     }
   }
 
   return c.json(outMsg, 201)
+})
+
+// GET /:id/channel-events — proxy SSE from the MCP server to the frontend (Claude Channel only)
+app.get('/:id/channel-events', async (c) => {
+  const id = Number(c.req.param('id'))
+  const buildingResult = await db.select().from(buildings).where(eq(buildings.id, id))
+  if (buildingResult.length === 0) return c.json({ error: 'Building not found' }, 404)
+
+  const building = buildingResult[0]
+  let config: Record<string, any> = {}
+  try { config = JSON.parse(building.config ?? '{}') } catch { /* empty */ }
+
+  if (config.clawType !== 'claudechannel' || !config.mcpWebhookUrl) {
+    return c.json({ error: 'Building is not a configured Claude Channel' }, 400)
+  }
+
+  const mcpEventsUrl = `${String(config.mcpWebhookUrl).replace(/\/$/, '')}/events`
+  const headers: Record<string, string> = {}
+  if (config.channelSecret) headers['x-channel-secret'] = String(config.channelSecret)
+
+  c.header('Content-Type', 'text/event-stream')
+  c.header('Cache-Control', 'no-cache')
+  c.header('Connection', 'keep-alive')
+  c.header('Access-Control-Allow-Origin', '*')
+
+  return stream(c, async (s) => {
+    let mcpResponse: Response
+    try {
+      mcpResponse = await fetch(mcpEventsUrl, { headers })
+    } catch {
+      await s.write(new TextEncoder().encode(
+        `data: ${JSON.stringify({ type: 'error', message: 'MCP server not reachable' })}\n\n`
+      ))
+      return
+    }
+
+    if (!mcpResponse.ok || !mcpResponse.body) {
+      await s.write(new TextEncoder().encode(
+        `data: ${JSON.stringify({ type: 'error', message: `MCP server returned ${mcpResponse.status}` })}\n\n`
+      ))
+      return
+    }
+
+    const reader = mcpResponse.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        // Split on double-newline (SSE event boundaries)
+        const parts = buffer.split('\n\n')
+        buffer = parts.pop() ?? ''
+
+        for (const part of parts) {
+          if (!part.trim()) continue
+          // Parse and persist reply events in the database
+          const dataLine = part.split('\n').find((l) => l.startsWith('data: '))
+          if (dataLine) {
+            const data = dataLine.slice(6).trim()
+            try {
+              const event = JSON.parse(data)
+              if (event.type === 'reply' && event.content) {
+                await db.insert(clawcomMessages).values({
+                  buildingId: id,
+                  direction: 'in',
+                  content: String(event.content),
+                })
+              }
+            } catch { /* not JSON */ }
+          }
+          // Forward the raw SSE event to the frontend
+          await s.write(new TextEncoder().encode(`${part}\n\n`))
+        }
+      }
+    } catch {
+      // Client disconnected or MCP server closed the stream
+    }
+  })
+})
+
+// POST /:id/permission — forward a permission verdict to the MCP server (Claude Channel only)
+app.post('/:id/permission', async (c) => {
+  const id = Number(c.req.param('id'))
+  const buildingResult = await db.select().from(buildings).where(eq(buildings.id, id))
+  if (buildingResult.length === 0) return c.json({ error: 'Building not found' }, 404)
+
+  let config: Record<string, any> = {}
+  try { config = JSON.parse(buildingResult[0].config ?? '{}') } catch { /* empty */ }
+
+  if (config.clawType !== 'claudechannel' || !config.mcpWebhookUrl) {
+    return c.json({ error: 'Building is not a configured Claude Channel' }, 400)
+  }
+
+  const body = await c.req.json()
+  const permUrl = `${String(config.mcpWebhookUrl).replace(/\/$/, '')}/permission`
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (config.channelSecret) headers['x-channel-secret'] = String(config.channelSecret)
+
+  try {
+    const resp = await fetch(permUrl, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(5000),
+    })
+    const data = await resp.json().catch(() => ({ ok: false }))
+    return c.json(data, resp.status as any)
+  } catch {
+    return c.json({ error: 'MCP server not reachable' }, 503)
+  }
 })
 
 // ── Mailbox routes ────────────────────────────────────────────────────────────
@@ -302,5 +435,6 @@ app.post('/:id/mail/sync', async (c) => {
   scheduleMailbox(id, config as MailboxConfig)
   return c.json({ ok: true })
 })
+
 
 export default app
