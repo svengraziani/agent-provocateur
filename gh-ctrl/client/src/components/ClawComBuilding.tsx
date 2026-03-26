@@ -90,6 +90,34 @@ export function ClawComBuilding({
 
   const colorizedSrc = useColorizedImage('/buildings/clawcom.png', currentBuilding.color ?? '#00ff88')
 
+  // Idle animations: [src, durationMs]
+  const IDLE_ANIMS: [string, number][] = [
+    ['/buildings/idle_1_4s_clawcom.gif', 4000],
+    ['/buildings/idle_2_4s_clawcom.gif', 4000],
+    ['/buildings/idle_3_4s_clawcom.gif', 4000],
+    ['/buildings/idle_4_4s_clawcom.gif', 4000],
+    ['/buildings/idle_5_10s_clawcom.gif', 10000],
+    ['/buildings/idle_6_4s_clawcom.gif', 4000],
+  ]
+  const [idleAnimSrc, setIdleAnimSrc] = useState<string | null>(null)
+
+  useEffect(() => {
+    let timeout: ReturnType<typeof setTimeout>
+    function scheduleNext() {
+      const delay = 8000 + Math.random() * 12000 // 8–20s
+      timeout = setTimeout(() => {
+        const [src, duration] = IDLE_ANIMS[Math.floor(Math.random() * IDLE_ANIMS.length)]
+        setIdleAnimSrc(src)
+        timeout = setTimeout(() => {
+          setIdleAnimSrc(null)
+          scheduleNext()
+        }, duration)
+      }, delay)
+    }
+    scheduleNext()
+    return () => clearTimeout(timeout)
+  }, [])
+
   // Sync building prop changes (e.g., after store update)
   useEffect(() => {
     setCurrentBuilding(building)
@@ -187,7 +215,14 @@ export function ClawComBuilding({
       >
         {/* Building image */}
         <div className="clawcom-img-wrap" style={{ position: 'relative' }}>
-          {colorizedSrc ? (
+          {idleAnimSrc ? (
+            <img
+              src={idleAnimSrc}
+              alt={currentBuilding.name}
+              style={{ width: 100, height: 100, objectFit: 'contain' }}
+              draggable={false}
+            />
+          ) : colorizedSrc ? (
             <img
               src={colorizedSrc}
               alt={currentBuilding.name}
@@ -234,10 +269,15 @@ export function ClawComBuilding({
             right: 2,
             width: 8,
             height: 8,
-            borderRadius: '50%',
-            background: isConfigured ? 'var(--green-neon)' : '#888',
+            borderRadius: config.clawType === 'claudechannel' ? '2px' : '50%',
+            background: isConfigured
+              ? config.clawType === 'claudechannel' ? '#a78bfa' : 'var(--green-neon)'
+              : '#888',
             border: '1px solid var(--bg-darker)',
-          }} title={isConfigured ? 'Verbunden' : 'Nicht konfiguriert'} />
+          }} title={isConfigured
+            ? config.clawType === 'claudechannel' ? 'Claude Channel aktiv' : 'Verbunden'
+            : 'Nicht konfiguriert'
+          } />
         </div>
 
         {/* Name label */}
@@ -258,7 +298,9 @@ export function ClawComBuilding({
         {/* Status text */}
         <div style={{ fontSize: 9, color: 'var(--text-dim)', textAlign: 'center' }}>
           {isConfigured
-            ? `${config.clawType?.toUpperCase() ?? 'CLAW'} ● ONLINE`
+            ? config.clawType === 'claudechannel'
+              ? '✦ CLAUDE ● AKTIV'
+              : `${config.clawType?.toUpperCase() ?? 'CLAW'} ● ONLINE`
             : '⚙ SETUP ERFORDERLICH'}
         </div>
 

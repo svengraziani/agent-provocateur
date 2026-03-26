@@ -16,6 +16,11 @@ sqlite.exec(`
   )
 `)
 
+// Migrations: add provider and instance_url to repos (no-op if columns already exist)
+try { sqlite.exec(`ALTER TABLE repos ADD COLUMN provider TEXT NOT NULL DEFAULT 'github'`) } catch {}
+try { sqlite.exec(`ALTER TABLE repos ADD COLUMN instance_url TEXT`) } catch {}
+try { sqlite.exec(`ALTER TABLE repos ADD COLUMN gitlab_token TEXT`) } catch {}
+
 sqlite.exec(`
   CREATE TABLE IF NOT EXISTS maps (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -74,6 +79,19 @@ sqlite.exec(`
 `)
 
 sqlite.exec(`
+  CREATE TABLE IF NOT EXISTS healthcheck_results (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    building_id INTEGER NOT NULL REFERENCES buildings(id) ON DELETE CASCADE,
+    url TEXT NOT NULL,
+    ok INTEGER NOT NULL DEFAULT 0,
+    status_code INTEGER,
+    response_time_ms INTEGER,
+    error TEXT,
+    checked_at INTEGER DEFAULT (unixepoch())
+  )
+`)
+
+sqlite.exec(`
   CREATE TABLE IF NOT EXISTS placed_badges (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     badge_id INTEGER NOT NULL REFERENCES badges(id) ON DELETE CASCADE,
@@ -84,6 +102,69 @@ sqlite.exec(`
     map_id INTEGER REFERENCES maps(id) ON DELETE SET NULL,
     created_at INTEGER DEFAULT (unixepoch()),
     updated_at INTEGER DEFAULT (unixepoch())
+  )
+`)
+
+sqlite.exec(`
+  CREATE TABLE IF NOT EXISTS deadline_timers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    description TEXT DEFAULT '',
+    deadline TEXT NOT NULL,
+    color TEXT DEFAULT '#ff4444',
+    created_at INTEGER DEFAULT (unixepoch()),
+    updated_at INTEGER DEFAULT (unixepoch())
+  )
+`)
+
+sqlite.exec(`
+  CREATE TABLE IF NOT EXISTS mail_messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    building_id INTEGER NOT NULL REFERENCES buildings(id) ON DELETE CASCADE,
+    message_id TEXT NOT NULL,
+    folder TEXT NOT NULL DEFAULT 'INBOX',
+    subject TEXT,
+    from_address TEXT,
+    to_addresses TEXT,
+    cc_addresses TEXT,
+    bcc_addresses TEXT,
+    date INTEGER,
+    snippet TEXT,
+    body_text TEXT,
+    html_body TEXT,
+    in_reply_to TEXT,
+    is_read INTEGER DEFAULT 0,
+    is_starred INTEGER DEFAULT 0,
+    fetched_at INTEGER DEFAULT (unixepoch())
+  )
+`)
+
+const existingMailCols = sqlite.query("PRAGMA table_info('mail_messages')").all() as Array<{ name: string }>
+const existingMailColNames = new Set(existingMailCols.map((c) => c.name))
+const newMailCols: Array<[string, string]> = [
+  ['folder',       "TEXT NOT NULL DEFAULT 'INBOX'"],
+  ['cc_addresses', 'TEXT'],
+  ['bcc_addresses','TEXT'],
+  ['html_body',    'TEXT'],
+  ['in_reply_to',  'TEXT'],
+]
+for (const [col, def] of newMailCols) {
+  if (!existingMailColNames.has(col)) {
+    sqlite.exec(`ALTER TABLE mail_messages ADD COLUMN ${col} ${def}`)
+  }
+}
+
+sqlite.exec(`
+  CREATE TABLE IF NOT EXISTS mail_folders (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    building_id INTEGER NOT NULL REFERENCES buildings(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    display_name TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT 'custom',
+    unread_count INTEGER NOT NULL DEFAULT 0,
+    delimiter TEXT NOT NULL DEFAULT '/',
+    synced_at INTEGER,
+    UNIQUE(building_id, name)
   )
 `)
 

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { DashboardEntry, FeedItem } from '../types'
 import { api } from '../api'
+import { SidePanel } from './SidePanel'
 
 type FeedTab = 'mentions' | 'issues' | 'prs'
 
@@ -123,10 +124,10 @@ export function FeedPanel({ entries, isOpen, onClose }: FeedPanelProps) {
   if (!isOpen) return null
 
   return (
-    <div className="feed-panel" onMouseDown={(e) => e.stopPropagation()}>
+    <SidePanel className="feed-panel" onClose={onClose}>
       <div className="feed-panel-header">
         <span className="feed-panel-title">◈ INTEL FEED</span>
-        <button className="feed-panel-close" onClick={onClose} title="Close feed">✕</button>
+        <button className="feed-panel-close" onClick={onClose} title="Close [Esc]">✕</button>
       </div>
 
       <div className="feed-panel-tabs">
@@ -165,6 +166,6 @@ export function FeedPanel({ entries, isOpen, onClose }: FeedPanelProps) {
           <FeedItemRow key={`${item.repo}-${item.type}-${item.number}`} item={item} />
         ))}
       </div>
-    </div>
+    </SidePanel>
   )
 }

@@ -5,7 +5,21 @@ export interface Repo {
   fullName: string
   description: string | null
   color: string
+  provider: 'github' | 'gitlab'
+  instanceUrl?: string | null
+  gitlabToken?: string | null
   createdAt: string | number | null
+}
+
+export function getRepoUrl(repo: Repo, path?: string): string {
+  const base = repo.provider === 'gitlab'
+    ? (repo.instanceUrl ?? 'https://gitlab.com')
+    : 'https://github.com'
+  return `${base}/${repo.fullName}${path ?? ''}`
+}
+
+export function getMRLabel(repo: Repo): string {
+  return repo.provider === 'gitlab' ? 'MRs' : 'PRs'
 }
 
 export type AuthorAssociation = 'OWNER' | 'MEMBER' | 'COLLABORATOR' | 'CONTRIBUTOR' | 'FIRST_TIME_CONTRIBUTOR' | 'FIRST_TIMER' | 'NONE'
@@ -107,6 +121,7 @@ export interface RepoData {
   runningWorkflows: WorkflowRun[]
   branches: Branch[]
   defaultBranch: string
+  hasClaudeYml: boolean
   error: string | null
 }
 
@@ -210,9 +225,62 @@ export interface MapTile {
 }
 
 export interface ClawComConfig {
-  clawType: 'openclaw' | 'nanoclaw'
+  clawType: 'openclaw' | 'nanoclaw' | 'claudechannel'
   host: string
   configured: boolean
+  /** Claude Channel: URL of the MCP server webhook (default: http://localhost:8788) */
+  mcpWebhookUrl?: string
+  /** Claude Channel: shared secret sent in X-Channel-Secret header */
+  channelSecret?: string
+  /** Claude Channel: prompt the user before Claude runs destructive tools */
+  enablePermissionRelay?: boolean
+}
+
+export type ChannelEventType =
+  | 'connected'
+  | 'reply'
+  | 'permission_request'
+  | 'permission_resolved'
+  | 'error'
+
+export interface ChannelEvent {
+  type: ChannelEventType
+  /** Reply text (type === 'reply') */
+  content?: string
+  /** Permission request/resolved ID */
+  id?: string
+  /** Tool name being requested (type === 'permission_request') */
+  toolName?: string
+  /** Tool input (type === 'permission_request') */
+  input?: unknown
+  /** Verdict (type === 'permission_resolved') */
+  verdict?: 'allow' | 'deny'
+  /** Error message (type === 'error') */
+  message?: string
+  /** Assigned SSE client ID (type === 'connected') */
+  clientId?: string
+}
+
+export interface HealthcheckEndpoint {
+  url: string
+  label: string
+}
+
+export interface HealthcheckConfig {
+  endpoints: HealthcheckEndpoint[]
+  intervalMs: number
+  configured: boolean
+}
+
+export interface HealthcheckResult {
+  id: number
+  buildingId: number
+  url: string
+  ok: number
+  statusCode: number | null
+  responseTimeMs: number | null
+  error: string | null
+  checkedAt: string | number | null
 }
 
 export interface Building {
@@ -266,4 +334,47 @@ export interface PlacedBadge {
   mapId: number | null
   createdAt: string | number | null
   updatedAt: string | number | null
+}
+
+export interface DeadlineTimer {
+  id: number
+  name: string
+  description: string | null
+  deadline: string // ISO 8601 string
+  color: string
+  createdAt: string | number | null
+  updatedAt: string | number | null
+}
+
+export interface MailboxConfig {
+  imapHost: string
+  imapPort: number
+  smtpHost: string
+  smtpPort: number
+  username: string
+  password: string
+  folder: string
+  pollIntervalMs: number
+  configured: boolean
+}
+
+export interface MailMessage {
+  id: number
+  buildingId: number
+  messageId: string
+  subject: string | null
+  fromAddress: string | null
+  toAddresses: string | null  // JSON array of address strings
+  date: number | null         // Unix timestamp ms
+  snippet: string | null
+  bodyText: string | null
+  isRead: number
+  isStarred: number
+  fetchedAt: string | number | null
+}
+
+export interface BattlefieldUser {
+  login: string
+  avatarUrl: string
+  lastRepoId?: number
 }

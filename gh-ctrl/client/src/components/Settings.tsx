@@ -3,6 +3,7 @@ import type { Repo } from '../types'
 import { api, getServerUrl, setServerUrl } from '../api'
 import { useAppStore } from '../store'
 import type { GameMap } from '../types'
+import { GitHubIcon, GitLabIcon } from './Icons'
 
 const COLORS = ['#39d353', '#58a6ff', '#f0883e', '#f85149', '#bc8cff', '#ffa657', '#ff7b72', '#79c0ff']
 
@@ -132,6 +133,9 @@ export function Settings() {
   const [selectedColor, setSelectedColor] = useState(COLORS[0])
   const [adding, setAdding] = useState(false)
   const [formError, setFormError] = useState('')
+  const [provider, setProvider] = useState<'github' | 'gitlab'>('github')
+  const [instanceUrl, setInstanceUrl] = useState('')
+  const [gitlabToken, setGitlabToken] = useState('')
 
   // Browse tab state
   const [activeTab, setActiveTab] = useState<'manual' | 'browse'>('browse')
@@ -230,15 +234,16 @@ export function Settings() {
     setFormError('')
 
     if (!fullName.trim()) {
-      setFormError('Enter owner/repo or a GitHub URL')
+      setFormError(`Enter owner/repo or a ${provider === 'gitlab' ? 'GitLab' : 'GitHub'} URL`)
       return
     }
 
     setAdding(true)
     try {
-      await api.addRepo(fullName.trim(), selectedColor)
+      await api.addRepo(fullName.trim(), selectedColor, provider, instanceUrl.trim() || undefined, gitlabToken.trim() || undefined)
       addToast(`Added ${fullName}`, 'success')
       setFullName('')
+      setGitlabToken('')
       handleReposChange()
     } catch (err: any) {
       setFormError(err.message)
@@ -336,13 +341,87 @@ export function Settings() {
 
         {activeTab === 'manual' && (
           <form className="add-repo-form" onSubmit={handleAdd}>
+            <div className="form-row" style={{ marginBottom: '0.5rem' }}>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button
+                  type="button"
+                  className={`btn${provider === 'github' ? ' btn-primary' : ' btn-ghost'}`}
+                  style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.82rem' }}
+                  onClick={() => setProvider('github')}
+                >
+                  <GitHubIcon size={13} /> GitHub
+                </button>
+                <button
+                  type="button"
+                  className={`btn${provider === 'gitlab' ? ' btn-primary' : ' btn-ghost'}`}
+                  style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.82rem' }}
+                  onClick={() => setProvider('gitlab')}
+                >
+                  <GitLabIcon size={13} /> GitLab
+                </button>
+              </div>
+            </div>
+            {provider === 'gitlab' && (
+              <>
+                <div className="form-row" style={{ marginBottom: '0.5rem' }}>
+                  <input
+                    className="input"
+                    type="url"
+                    placeholder="Instance URL (leave blank for gitlab.com)"
+                    value={instanceUrl}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      // If user pastes a full URL with a project path, auto-split it
+                      if (val.startsWith('http://') || val.startsWith('https://')) {
+                        try {
+                          const parsed = new URL(val)
+                          const path = parsed.pathname.replace(/^\//, '').replace(/\.git$/, '')
+                          if (path) {
+                            setInstanceUrl(`${parsed.protocol}//${parsed.host}`)
+                            setFullName(path)
+                            return
+                          }
+                        } catch {
+                          // not a valid URL yet
+                        }
+                      }
+                      setInstanceUrl(val)
+                    }}
+                  />
+                </div>
+                <div className="form-row" style={{ marginBottom: '0.5rem' }}>
+                  <input
+                    className="input"
+                    type="password"
+                    placeholder="Personal Access Token (required for private repos)"
+                    value={gitlabToken}
+                    onChange={(e) => setGitlabToken(e.target.value)}
+                  />
+                </div>
+              </>
+            )}
             <div className="form-row">
               <input
                 className="input"
                 type="text"
-                placeholder="owner/repo or GitHub URL"
+                placeholder={provider === 'gitlab' ? 'group/project or GitLab URL' : 'owner/repo or GitHub URL'}
                 value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value
+                  setFullName(val)
+                  // Auto-detect custom GitLab instance URL from a pasted full URL
+                  if (provider === 'gitlab' && !instanceUrl && (val.startsWith('http://') || val.startsWith('https://'))) {
+                    try {
+                      const parsed = new URL(val)
+                      const detectedBase = `${parsed.protocol}//${parsed.host}`
+                      if (detectedBase !== 'https://gitlab.com') {
+                        setInstanceUrl(detectedBase)
+                      }
+                    } catch {
+                      // not a valid URL yet
+                    }
+                  }
+                }}
               />
               <button className="btn btn-primary" type="submit" disabled={adding}>
                 {adding ? 'Adding...' : 'Add'}
@@ -365,6 +444,9 @@ export function Settings() {
 
         {activeTab === 'browse' && (
           <div className="browse-repos">
+            <p style={{ color: 'var(--text-2)', fontSize: '0.82rem', margin: '0 0 0.75rem' }}>
+              Browse uses the GitHub CLI (<code>gh</code>). To add a GitLab repo use the <strong>Manual</strong> tab.
+            </p>
             {!ghAvailable ? (
               <div className="browse-fallback">
                 <p className="form-error">GitHub CLI (gh) not available. Use manual input instead.</p>
@@ -497,6 +579,15 @@ export function Settings() {
                     )}
                   </div>
                   <span>{repo.fullName}</span>
+                  {repo.provider === 'gitlab' ? (
+                    <span style={{ color: '#fc6d26', display: 'flex', alignItems: 'center' }}>
+                      <GitLabIcon size={13} title="GitLab" />
+                    </span>
+                  ) : (
+                    <span style={{ color: 'var(--text-2)', display: 'flex', alignItems: 'center' }}>
+                      <GitHubIcon size={13} title="GitHub" />
+                    </span>
+                  )}
                 </div>
                 <div className="repo-map-assignment" style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
                   {storeMaps.length > 0 && (repoMapIds[repo.id]?.size ?? 0) === 0 && (

@@ -3,6 +3,7 @@ import type { DashboardEntry, GHLabel } from '../types'
 import { api } from '../api'
 import { VoiceButton } from './VoiceButton'
 import { CloseIcon } from './Icons'
+import { BaseDialog } from './BaseDialog'
 
 interface Props {
   entry: DashboardEntry
@@ -43,7 +44,10 @@ export function ConstructDialog({ entry, onClose, onSuccess, onError }: Props) {
   }, [])
 
   useEffect(() => {
-    api.getLabels(entry.repo.owner, entry.repo.name)
+    const req = entry.repo.provider === 'gitlab'
+      ? api.getGitLabLabels(entry.repo.fullName)
+      : api.getLabels(entry.repo.owner, entry.repo.name)
+    req
       .then(setAvailableLabels)
       .catch(() => {/* labels optional */})
       .finally(() => setLabelsLoading(false))
@@ -63,12 +67,19 @@ export function ConstructDialog({ entry, onClose, onSuccess, onError }: Props) {
     if (!title.trim()) return
     setSubmitting(true)
     try {
-      const result = await api.createIssue({
-        fullName: entry.repo.fullName,
-        title: title.trim(),
-        issueBody: issueBody.trim() || undefined,
-        labels: selectedLabels.size > 0 ? [...selectedLabels] : undefined,
-      })
+      const result = entry.repo.provider === 'gitlab'
+        ? await api.createGitLabIssue({
+            fullName: entry.repo.fullName,
+            title: title.trim(),
+            issueBody: issueBody.trim() || undefined,
+            labels: selectedLabels.size > 0 ? [...selectedLabels] : undefined,
+          })
+        : await api.createIssue({
+            fullName: entry.repo.fullName,
+            title: title.trim(),
+            issueBody: issueBody.trim() || undefined,
+            labels: selectedLabels.size > 0 ? [...selectedLabels] : undefined,
+          })
       onSuccess(`ISSUE DEPLOYED: ${result.url || title}`)
     } catch (err: any) {
       onError(`DEPLOYMENT FAILED: ${err.message}`)
@@ -77,18 +88,8 @@ export function ConstructDialog({ entry, onClose, onSuccess, onError }: Props) {
     }
   }
 
-  useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
-    document.addEventListener('keydown', handleKey)
-    return () => document.removeEventListener('keydown', handleKey)
-  }, [onClose])
-
   return (
-    <div
-      className="construct-dialog"
-      onWheel={(e) => e.stopPropagation()}
-      onMouseDown={(e) => e.stopPropagation()}
-    >
+    <BaseDialog className="construct-dialog" onClose={onClose}>
         {/* Header */}
         <div className="construct-header">
           <div className="construct-title-bar">
@@ -179,6 +180,6 @@ export function ConstructDialog({ entry, onClose, onSuccess, onError }: Props) {
         <div className="construct-footer">
           &#x25a0; BASE: {entry.repo.fullName} &nbsp;·&nbsp; COMMAND CENTER READY
         </div>
-    </div>
+    </BaseDialog>
   )
 }

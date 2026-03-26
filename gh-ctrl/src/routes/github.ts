@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { streamSSE } from 'hono/streaming'
 import { db } from '../db'
 import { repos } from '../db/schema'
+import { fetchGitLabRepoData } from '../providers/gitlab'
 
 interface GHResult {
   data: any
@@ -170,6 +171,11 @@ async function fetchRunningWorkflows(fullName: string): Promise<RunningWorkflows
   return { activeClaudeIssues: Array.from(activeIssues), runningWorkflows }
 }
 
+async function checkClaudeYml(fullName: string): Promise<boolean> {
+  const result = await gh(['api', `repos/${fullName}/contents/.github/workflows/claude.yml`])
+  return result.error === null && result.data !== null
+}
+
 async function fetchRepoBranches(fullName: string): Promise<{ branches: { name: string; committedDate: string }[]; defaultBranch: string }> {
   const [owner, name] = fullName.split('/')
   const graphqlQuery = `{
@@ -236,6 +242,7 @@ async function fetchRepoData(fullName: string) {
       runningWorkflows: [],
       branches: [],
       defaultBranch: 'main',
+      hasClaudeYml: false,
       error: prResult.error || issueResult.error,
     }
   }
@@ -244,11 +251,12 @@ async function fetchRepoData(fullName: string) {
   const issues = issueResult.data || []
 
   // Netlify URLs depend on prs, but workflows and branches are independent
-  const [previewUrls, { activeClaudeIssues, runningWorkflows }, claudeIssueBranches, { branches, defaultBranch }] = await Promise.all([
+  const [previewUrls, { activeClaudeIssues, runningWorkflows }, claudeIssueBranches, { branches, defaultBranch }, hasClaudeYml] = await Promise.all([
     fetchNetlifyUrls(fullName, prs),
     fetchRunningWorkflows(fullName),
     fetchClaudeIssueBranches(fullName),
     fetchRepoBranches(fullName),
+    checkClaudeYml(fullName),
   ])
 
   const enrichedPrs = prs.map((pr: any) => ({
@@ -294,11 +302,19 @@ async function fetchRepoData(fullName: string) {
     runningWorkflows,
     branches,
     defaultBranch,
+    hasClaudeYml,
     error: null,
   }
 }
 
 const app = new Hono()
+
+function fetchAnyRepoData(repo: typeof repos.$inferSelect) {
+  if (repo.provider === 'gitlab') {
+    return fetchGitLabRepoData(repo.fullName, repo.instanceUrl, repo.gitlabToken)
+  }
+  return fetchRepoData(repo.fullName)
+}
 
 // GET /api/github/dashboard — fetch all repos in parallel (non-streaming)
 app.get('/dashboard', async (c) => {
@@ -307,7 +323,7 @@ app.get('/dashboard', async (c) => {
   const results = await Promise.all(
     allRepos.map(async (repo) => ({
       repo,
-      data: await fetchRepoData(repo.fullName),
+      data: await fetchAnyRepoData(repo),
     }))
   )
 
@@ -321,7 +337,7 @@ app.get('/dashboard/stream', (c) => {
 
     await Promise.all(
       allRepos.map(async (repo) => {
-        const data = await fetchRepoData(repo.fullName)
+        const data = await fetchAnyRepoData(repo)
         await stream.writeSSE({
           data: JSON.stringify({ repo, data }),
           event: 'repo',

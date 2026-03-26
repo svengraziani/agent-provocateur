@@ -1,4 +1,4 @@
-import type { Repo, DashboardEntry, RepoData, GHLabel, BranchesData, IssueDetail, PRDetail, GameMap, RepoMeta, FeedData, SetupStatus, Building, ClawComMessage, Badge, PlacedBadge } from './types'
+import type { Repo, DashboardEntry, RepoData, GHLabel, BranchesData, IssueDetail, PRDetail, GameMap, RepoMeta, FeedData, SetupStatus, Building, ClawComMessage, Badge, PlacedBadge, HealthcheckResult, DeadlineTimer, ChannelEvent, MailMessage } from './types'
 
 export function getServerUrl(): string {
   return localStorage.getItem('serverUrl')?.replace(/\/$/, '') ?? ''
@@ -18,9 +18,18 @@ function getBase(): string {
   return serverUrl ? `${serverUrl}/api` : '/api'
 }
 
+// Auth token provider — set by KeycloakProvider when Keycloak is enabled
+let _getToken: (() => string | undefined) | null = null
+
+export function setAuthTokenProvider(fn: () => string | undefined) {
+  _getToken = fn
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const token = _getToken?.()
+  const authHeader: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {}
   const res = await fetch(`${getBase()}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeader },
     ...options,
   })
   if (!res.ok) {
@@ -33,10 +42,10 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 export const api = {
   listRepos: () => request<Repo[]>('/repos'),
 
-  addRepo: (fullName: string, color?: string) =>
+  addRepo: (fullName: string, color?: string, provider?: 'github' | 'gitlab', instanceUrl?: string, gitlabToken?: string) =>
     request<Repo>('/repos', {
       method: 'POST',
-      body: JSON.stringify({ fullName, color }),
+      body: JSON.stringify({ fullName, color, provider, instanceUrl, gitlabToken }),
     }),
 
   updateRepo: (id: number, updates: { color?: string; description?: string }) =>
@@ -86,17 +95,6 @@ export const api = {
 
   getRepoMeta: (owner: string, name: string) =>
     request<RepoMeta>(`/github/meta/${owner}/${name}`),
-
-  triggerClaude: (params: {
-    fullName: string
-    number: number
-    type: 'pr' | 'issue'
-    message?: string
-  }) =>
-    request<{ ok: boolean }>('/github/trigger-claude', {
-      method: 'POST',
-      body: JSON.stringify(params),
-    }),
 
   postComment: (params: {
     fullName: string
@@ -240,6 +238,12 @@ export const api = {
       body: JSON.stringify(params),
     }),
 
+  importMap: (params: { name: string; width: number; height: number; tiles: string | Record<string, unknown> }) =>
+    request<GameMap>('/maps/import', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    }),
+
   getMap: (id: number) => request<GameMap>(`/maps/${id}`),
 
   saveMap: (id: number, updates: { name?: string; tiles?: string }) =>
@@ -290,13 +294,49 @@ export const api = {
       body: JSON.stringify({ content }),
     }),
 
+  /**
+   * Open an SSE connection to receive real-time events from the Claude Channel MCP server.
+   * Returns a cleanup function that closes the connection.
+   */
+  streamChannelEvents: (
+    buildingId: number,
+    onEvent: (event: ChannelEvent) => void,
+    onError?: () => void
+  ): (() => void) => {
+    const es = new EventSource(`${getBase()}/buildings/${buildingId}/channel-events`)
+    es.onmessage = (e: MessageEvent) => {
+      try {
+        onEvent(JSON.parse(e.data as string))
+      } catch { /* ignore non-JSON */ }
+    }
+    es.onerror = () => {
+      onError?.()
+    }
+    return () => es.close()
+  },
+
+  /** Submit a permission verdict (allow/deny) for a pending Claude tool call. */
+  submitPermissionVerdict: (buildingId: number, id: string, verdict: 'allow' | 'deny') =>
+    request<{ ok: boolean }>(`/buildings/${buildingId}/permission`, {
+      method: 'POST',
+      body: JSON.stringify({ id, verdict }),
+    }),
+
+  getBuildingHealthcheck: (id: number) =>
+    request<HealthcheckResult[]>(`/buildings/${id}/healthcheck`),
+
+  triggerBuildingHealthcheck: (id: number) =>
+    request<{ ok: boolean }>(`/buildings/${id}/healthcheck/trigger`, { method: 'POST' }),
+
   uploadBadge: (file: File, name: string): Promise<Badge> => {
     const serverUrl = getServerUrl()
     const base = serverUrl ? `${serverUrl}/api` : '/api'
     const formData = new FormData()
     formData.append('file', file)
     formData.append('name', name)
-    return fetch(`${base}/badges/upload`, { method: 'POST', body: formData })
+    const token = _getToken?.()
+    const uploadHeaders: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {}
+    return fetch(`${base}/badges/upload`, { method: 'POST', body: formData, headers: uploadHeaders })
       .then(async (res) => {
         if (!res.ok) {
           const err = await res.json().catch(() => ({ error: res.statusText }))
@@ -307,6 +347,9 @@ export const api = {
   },
 
   listBadges: () => request<Badge[]>('/badges'),
+
+  renameBadge: (id: number, name: string) =>
+    request<Badge>(`/badges/${id}`, { method: 'PATCH', body: JSON.stringify({ name }) }),
 
   deleteBadge: (id: number) =>
     request<{ ok: boolean }>(`/badges/${id}`, { method: 'DELETE' }),
@@ -327,4 +370,136 @@ export const api = {
 
   removePlacedBadge: (id: number) =>
     request<{ ok: boolean }>(`/badges/placed/${id}`, { method: 'DELETE' }),
+
+  listTimers: () => request<DeadlineTimer[]>('/timers'),
+
+  createTimer: (params: { name: string; deadline: string; description?: string; color?: string }) =>
+    request<DeadlineTimer>('/timers', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    }),
+
+  updateTimer: (id: number, updates: { name?: string; deadline?: string; description?: string; color?: string }) =>
+    request<DeadlineTimer>(`/timers/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(updates),
+    }),
+
+  deleteTimer: (id: number) =>
+    request<{ ok: boolean }>(`/timers/${id}`, { method: 'DELETE' }),
+
+  getMailMessages: (id: number) =>
+    request<MailMessage[]>(`/buildings/${id}/mail`),
+
+  getMailUnreadCount: (id: number) =>
+    request<{ count: number }>(`/buildings/${id}/mail/unread-count`),
+
+  markMailRead: (buildingId: number, msgId: number) =>
+    request<{ ok: boolean }>(`/buildings/${buildingId}/mail/${msgId}/read`, { method: 'POST' }),
+
+  toggleMailStar: (buildingId: number, msgId: number) =>
+    request<{ isStarred: number }>(`/buildings/${buildingId}/mail/${msgId}/star`, { method: 'POST' }),
+
+  deleteMailMessage: (buildingId: number, msgId: number) =>
+    request<{ ok: boolean }>(`/buildings/${buildingId}/mail/${msgId}`, { method: 'DELETE' }),
+
+  sendMail: (buildingId: number, params: { to: string; subject: string; body: string }) =>
+    request<{ ok: boolean }>(`/buildings/${buildingId}/mail/send`, {
+      method: 'POST',
+      body: JSON.stringify(params),
+    }),
+
+  syncMail: (buildingId: number) =>
+    request<{ ok: boolean }>(`/buildings/${buildingId}/mail/sync`, { method: 'POST' }),
+
+  testMailConnection: (params: { imapHost: string; imapPort: number; username: string; password: string }) =>
+    request<{ ok: boolean; error?: string }>('/buildings/mail/test-connection', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    }),
+
+  // ── GitLab API methods ──────────────────────────────────────────────────────
+
+  getGitLabRepoData: (fullName: string) =>
+    request<RepoData>(`/gitlab/repo?path=${encodeURIComponent(fullName)}`),
+
+  getGitLabLabels: (fullName: string) =>
+    request<GHLabel[]>(`/gitlab/labels?path=${encodeURIComponent(fullName)}`),
+
+  getGitLabBranches: (fullName: string) =>
+    request<BranchesData>(`/gitlab/branches?path=${encodeURIComponent(fullName)}`),
+
+  getGitLabBranchCompare: (fullName: string, branch: string, base: string) =>
+    request<{ ahead: number; behind: number }>(`/gitlab/branch-compare?path=${encodeURIComponent(fullName)}&branch=${encodeURIComponent(branch)}&base=${encodeURIComponent(base)}`),
+
+  deleteGitLabBranch: (fullName: string, branch: string) =>
+    request<{ ok: boolean }>(`/gitlab/branch?path=${encodeURIComponent(fullName)}&branch=${encodeURIComponent(branch)}`, { method: 'DELETE' }),
+
+  getGitLabRepoMeta: (fullName: string) =>
+    request<RepoMeta>(`/gitlab/meta?path=${encodeURIComponent(fullName)}`),
+
+  getGitLabMR: (fullName: string, number: number) =>
+    request<PRDetail>(`/gitlab/mr?path=${encodeURIComponent(fullName)}&number=${number}`),
+
+  getGitLabIssueDetail: (fullName: string, number: number) =>
+    request<IssueDetail>(`/gitlab/issue?path=${encodeURIComponent(fullName)}&number=${number}`),
+
+  postGitLabComment: (params: {
+    fullName: string
+    number: number
+    type: 'mr' | 'issue'
+    comment: string
+  }) =>
+    request<{ ok: boolean }>('/gitlab/comment', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    }),
+
+  addGitLabLabel: (params: {
+    fullName: string
+    number: number
+    type: 'mr' | 'issue'
+    label: string
+  }) =>
+    request<{ ok: boolean }>('/gitlab/label', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    }),
+
+  removeGitLabLabel: (params: {
+    fullName: string
+    number: number
+    type: 'mr' | 'issue'
+    label: string
+  }) =>
+    request<{ ok: boolean }>('/gitlab/label', {
+      method: 'DELETE',
+      body: JSON.stringify(params),
+    }),
+
+  createGitLabIssue: (params: {
+    fullName: string
+    title: string
+    issueBody?: string
+    labels?: string[]
+  }) =>
+    request<{ ok: boolean; url: string }>('/gitlab/create-issue', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    }),
+
+  createGitLabMR: (params: {
+    fullName: string
+    sourceBranch: string
+    targetBranch: string
+    title: string
+    description?: string
+  }) =>
+    request<{ ok: boolean; url: string }>('/gitlab/create-mr', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    }),
+
+  validateGitLabProject: (ns: string, project: string) =>
+    request<{ ok: boolean; projectId: number; name: string }>(`/gitlab/validate/${ns}/${project}`),
 }

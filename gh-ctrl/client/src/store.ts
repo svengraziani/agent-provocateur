@@ -1,6 +1,36 @@
 import { create } from 'zustand'
-import type { Repo, DashboardEntry, RepoData, GameMap, Building, Badge, PlacedBadge } from './types'
+import type { Repo, DashboardEntry, RepoData, GameMap, Building, Badge, PlacedBadge, DeadlineTimer, BattlefieldUser } from './types'
 import { api } from './api'
+
+function avatarUrlForLogin(login: string, provider: 'github' | 'gitlab', instanceUrl?: string | null): string {
+  if (provider === 'gitlab') {
+    const base = instanceUrl ?? 'https://gitlab.com'
+    return `${base}/${login}.png?size=40`
+  }
+  return `https://github.com/${login}.png?size=40`
+}
+
+export function selectBattlefieldUsers(entries: DashboardEntry[]): BattlefieldUser[] {
+  const seen = new Map<string, { login: string; avatarUrl: string; lastRepoId?: number; lastDate: string }>()
+  for (const entry of entries) {
+    const { provider, instanceUrl } = entry.repo
+    for (const pr of entry.data.prs) {
+      const login = pr.author.login
+      const existing = seen.get(login)
+      if (!existing || pr.updatedAt > existing.lastDate) {
+        seen.set(login, { login, avatarUrl: avatarUrlForLogin(login, provider, instanceUrl), lastRepoId: entry.repo.id, lastDate: pr.updatedAt })
+      }
+    }
+    for (const issue of entry.data.issues) {
+      const login = issue.author.login
+      const existing = seen.get(login)
+      if (!existing || issue.updatedAt > existing.lastDate) {
+        seen.set(login, { login, avatarUrl: avatarUrlForLogin(login, provider, instanceUrl), lastRepoId: entry.repo.id, lastDate: issue.updatedAt })
+      }
+    }
+  }
+  return Array.from(seen.values()).map(({ login, avatarUrl, lastRepoId }) => ({ login, avatarUrl, lastRepoId }))
+}
 
 type ToastType = 'success' | 'error' | 'info'
 
@@ -32,6 +62,7 @@ interface AppStore {
   buildings: Building[]
   badges: Badge[]
   placedBadges: PlacedBadge[]
+  deadlineTimers: DeadlineTimer[]
 
   // Toast
   addToast: (message: string, type?: ToastType) => void
@@ -53,12 +84,17 @@ interface AppStore {
   loadBadges: () => Promise<void>
   loadPlacedBadges: () => Promise<void>
   uploadBadge: (file: File, name: string) => Promise<Badge>
+  renameBadge: (id: number, name: string) => Promise<void>
   deleteBadge: (id: number) => Promise<void>
   placeBadge: (params: { badgeId: number; posX: number; posY: number; scale?: number; label?: string; mapId?: number | null }) => Promise<PlacedBadge>
   updatePlacedBadgePosition: (id: number, posX: number, posY: number) => Promise<void>
   updatePlacedBadgeScale: (id: number, scale: number) => Promise<void>
   updatePlacedBadgeLabel: (id: number, label: string) => Promise<void>
   removePlacedBadge: (id: number) => Promise<void>
+  loadTimers: () => Promise<void>
+  createTimer: (params: { name: string; deadline: string; description?: string; color?: string }) => Promise<DeadlineTimer>
+  updateTimer: (id: number, updates: { name?: string; deadline?: string; description?: string; color?: string }) => Promise<void>
+  deleteTimer: (id: number) => Promise<void>
 }
 
 export const useAppStore = create<AppStore>((set, get) => ({
@@ -72,6 +108,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   buildings: [],
   badges: [],
   placedBadges: [],
+  deadlineTimers: [],
 
   addToast: (message, type = 'info') => {
     const id = nextToastId++
@@ -116,8 +153,11 @@ export const useAppStore = create<AppStore>((set, get) => ({
   },
 
   loadSingleRepo: async (owner: string, name: string) => {
+    const repo = get().entries.find((e) => e.repo.owner === owner && e.repo.name === name)?.repo
     try {
-      const data: RepoData = await api.getRepoData(owner, name)
+      const data: RepoData = repo?.provider === 'gitlab'
+        ? await api.getGitLabRepoData(repo?.fullName ?? `${owner}/${name}`)
+        : await api.getRepoData(owner, name)
       set((state) => ({
         entries: state.entries.map((e) =>
           e.repo.owner === owner && e.repo.name === name ? { ...e, data } : e
@@ -245,6 +285,16 @@ export const useAppStore = create<AppStore>((set, get) => ({
     }
   },
 
+  renameBadge: async (id: number, name: string) => {
+    try {
+      const updated = await api.renameBadge(id, name)
+      set((state) => ({ badges: state.badges.map((b) => b.id === id ? updated : b) }))
+    } catch (err: any) {
+      get().addToast(`Failed to rename badge: ${err.message}`, 'error')
+      throw err
+    }
+  },
+
   deleteBadge: async (id: number) => {
     try {
       await api.deleteBadge(id)
@@ -310,6 +360,50 @@ export const useAppStore = create<AppStore>((set, get) => ({
       }))
     } catch (err: any) {
       get().addToast(`Failed to remove badge: ${err.message}`, 'error')
+      throw err
+    }
+  },
+
+  loadTimers: async () => {
+    try {
+      const data = await api.listTimers()
+      set({ deadlineTimers: data })
+    } catch (err: any) {
+      get().addToast(`Failed to load timers: ${err.message}`, 'error')
+    }
+  },
+
+  createTimer: async (params) => {
+    try {
+      const timer = await api.createTimer(params)
+      set((state) => ({ deadlineTimers: [...state.deadlineTimers, timer].sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime()) }))
+      return timer
+    } catch (err: any) {
+      get().addToast(`Failed to create timer: ${err.message}`, 'error')
+      throw err
+    }
+  },
+
+  updateTimer: async (id, updates) => {
+    try {
+      const updated = await api.updateTimer(id, updates)
+      set((state) => ({
+        deadlineTimers: state.deadlineTimers
+          .map((t) => t.id === id ? updated : t)
+          .sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime()),
+      }))
+    } catch (err: any) {
+      get().addToast(`Failed to update timer: ${err.message}`, 'error')
+      throw err
+    }
+  },
+
+  deleteTimer: async (id) => {
+    try {
+      await api.deleteTimer(id)
+      set((state) => ({ deadlineTimers: state.deadlineTimers.filter((t) => t.id !== id) }))
+    } catch (err: any) {
+      get().addToast(`Failed to delete timer: ${err.message}`, 'error')
       throw err
     }
   },

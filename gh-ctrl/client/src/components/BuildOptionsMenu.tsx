@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { PlusIcon, CloseIcon } from './Icons'
+import { SidePanel } from './SidePanel'
 
 interface BuildingDef {
   type: string
@@ -19,11 +20,27 @@ const AVAILABLE_BUILDINGS: BuildingDef[] = [
     defaultColor: '#00ff88',
   },
   {
+    type: 'healthcheck',
+    name: 'Healthcheck',
+    description:
+      'Überwache einen oder mehrere HTTP-Endpunkte und visualisiere deren Verfügbarkeit direkt auf dem Schlachtfeld. Konfiguriere Ping-Intervalle und Labels für jeden Endpunkt — das Gebäude leuchtet grün bei OK, rot bei Ausfall.',
+    buildImage: '/buildings/healthcheck.png',
+    defaultColor: '#00FF00',
+  },
+  {
+    type: 'snailbox',
+    name: 'Snailbox',
+    description:
+      'Interner E-Mail-Client — verbinde dein IMAP/SMTP-Postfach und verwalte E-Mails direkt vom Schlachtfeld. Zeigt ungelesene Nachrichten als Badge an.',
+    buildImage: '/buildings/build_snailbox.png',
+    defaultColor: '#4488ff',
+  },
+  {
     type: 'new-base',
-    name: 'New Base',
+    name: 'Repository',
     description:
       'Etabliere ein neues GitHub-Repository direkt vom Schlachtfeld. Konfiguriere Namen, Beschreibung und Sichtbarkeit — das neue Hauptquartier erscheint sofort in deiner Kommandozentrale.',
-    buildImage: '/buildings/build_clawcom.png',
+    buildImage: '/buildings/build_base.png',
     defaultColor: '#00ff88',
   },
 ]
@@ -35,11 +52,12 @@ export interface PlacementParams {
   buildImage: string
   repoDescription?: string
   repoVisibility?: 'public' | 'private'
+  repoId?: number
 }
 
 interface BuildOptionsMenuProps {
   onClose: () => void
-  onStartPlacement: (params: PlacementParams) => void
+  onStartPlacement: (params: PlacementParams) => Promise<void>
 }
 
 const REPO_NAME_RE = /^[a-zA-Z0-9._-]+$/
@@ -50,6 +68,7 @@ export function BuildOptionsMenu({ onClose, onStartPlacement }: BuildOptionsMenu
   const [color, setColor] = useState('#00ff88')
   const [repoDescription, setRepoDescription] = useState('')
   const [repoVisibility, setRepoVisibility] = useState<'public' | 'private'>('private')
+  const [creating, setCreating] = useState(false)
 
   function selectBuilding(b: BuildingDef) {
     setSelected(b)
@@ -63,27 +82,32 @@ export function BuildOptionsMenu({ onClose, onStartPlacement }: BuildOptionsMenu
   const repoNameValid = !isNewBase || REPO_NAME_RE.test(buildName.trim())
   const canSubmit = !!selected && (!isNewBase || (buildName.trim().length > 0 && repoNameValid))
 
-  function handlePlatzieren() {
-    if (!selected || !canSubmit) return
-    onStartPlacement({
-      type: selected.type,
-      name: buildName.trim() || selected.name,
-      color,
-      buildImage: selected.buildImage,
-      ...(isNewBase && {
-        repoDescription: repoDescription.trim() || undefined,
-        repoVisibility,
-      }),
-    })
+  async function handlePlatzieren() {
+    if (!selected || !canSubmit || creating) return
+    setCreating(true)
+    try {
+      await onStartPlacement({
+        type: selected.type,
+        name: buildName.trim() || selected.name,
+        color,
+        buildImage: selected.buildImage,
+        ...(isNewBase && {
+          repoDescription: repoDescription.trim() || undefined,
+          repoVisibility,
+        }),
+      })
+    } finally {
+      setCreating(false)
+    }
   }
 
   return (
-    <div className="cnc-sidebar" onWheel={(e) => e.stopPropagation()}>
+    <SidePanel className="cnc-sidebar" onClose={onClose}>
 
       {/* Header */}
       <div className="cnc-sidebar-header">
         <span>&#x25a0; BAU OPTIONEN</span>
-        <button className="cnc-close-btn" onClick={onClose} title="Schließen">
+        <button className="cnc-close-btn" onClick={onClose} title="Close [Esc]">
           <CloseIcon size={10} />
         </button>
       </div>
@@ -191,19 +215,22 @@ export function BuildOptionsMenu({ onClose, onStartPlacement }: BuildOptionsMenu
 
       {/* Footer */}
       <div className="cnc-footer">
-        <button className="hud-btn" onClick={onClose}>
+        <button className="hud-btn" onClick={onClose} disabled={creating}>
           <CloseIcon size={9} /> ABBRECHEN
         </button>
         <button
           className="hud-btn hud-btn-new-base"
           onClick={handlePlatzieren}
-          disabled={!canSubmit}
+          disabled={!canSubmit || creating}
           title={!selected ? 'Kein Gebäude ausgewählt' : isNewBase ? 'Repository erstellen' : 'Auf Karte platzieren'}
         >
-          <PlusIcon size={9} /> {isNewBase ? 'ERSTELLEN' : 'PLATZIEREN'}
+          {creating
+            ? <><span className="cnc-spinner" /> WIRD ERSTELLT...</>
+            : <><PlusIcon size={9} /> {isNewBase ? 'ERSTELLEN' : 'PLATZIEREN'}</>
+          }
         </button>
       </div>
 
-    </div>
+    </SidePanel>
   )
 }

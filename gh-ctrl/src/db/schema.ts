@@ -7,6 +7,9 @@ export const repos = sqliteTable('repos', {
   fullName:    text('full_name').notNull().unique(),
   description: text('description'),
   color:       text('color').default('#00ff88'),
+  provider:     text('provider').notNull().default('github'), // 'github' | 'gitlab'
+  instanceUrl:  text('instance_url'),                        // null = cloud, set for self-hosted GitLab
+  gitlabToken:  text('gitlab_token'),                        // per-repo GitLab PAT
   createdAt:   integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
 })
 
@@ -56,6 +59,17 @@ export const badges = sqliteTable('badges', {
   createdAt:        integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
 })
 
+export const healthcheckResults = sqliteTable('healthcheck_results', {
+  id:             integer('id').primaryKey({ autoIncrement: true }),
+  buildingId:     integer('building_id').notNull().references(() => buildings.id),
+  url:            text('url').notNull(),
+  ok:             integer('ok').notNull().default(0),
+  statusCode:     integer('status_code'),
+  responseTimeMs: integer('response_time_ms'),
+  error:          text('error'),
+  checkedAt:      integer('checked_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
+})
+
 export const placedBadges = sqliteTable('placed_badges', {
   id:        integer('id').primaryKey({ autoIncrement: true }),
   badgeId:   integer('badge_id').notNull().references(() => badges.id, { onDelete: 'cascade' }),
@@ -66,4 +80,45 @@ export const placedBadges = sqliteTable('placed_badges', {
   mapId:     integer('map_id').references(() => maps.id, { onDelete: 'set null' }),
   createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
+})
+
+export const deadlineTimers = sqliteTable('deadline_timers', {
+  id:          integer('id').primaryKey({ autoIncrement: true }),
+  name:        text('name').notNull(),
+  description: text('description').default(''),
+  deadline:    text('deadline').notNull(), // ISO 8601 date-time string
+  color:       text('color').default('#ff4444'),
+  createdAt:   integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
+  updatedAt:   integer('updated_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
+})
+
+export const mailMessages = sqliteTable('mail_messages', {
+  id:           integer('id').primaryKey({ autoIncrement: true }),
+  buildingId:   integer('building_id').notNull().references(() => buildings.id, { onDelete: 'cascade' }),
+  messageId:    text('message_id').notNull(),
+  folder:       text('folder').notNull().default('INBOX'),
+  subject:      text('subject'),
+  fromAddress:  text('from_address'),
+  toAddresses:  text('to_addresses'),
+  ccAddresses:  text('cc_addresses'),
+  bccAddresses: text('bcc_addresses'),
+  date:         integer('date'),
+  snippet:      text('snippet'),
+  bodyText:     text('body_text'),
+  htmlBody:     text('html_body'),
+  inReplyTo:    text('in_reply_to'),
+  isRead:       integer('is_read').default(0),
+  isStarred:    integer('is_starred').default(0),
+  fetchedAt:    integer('fetched_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
+})
+
+export const mailFolders = sqliteTable('mail_folders', {
+  id:          integer('id').primaryKey({ autoIncrement: true }),
+  buildingId:  integer('building_id').notNull().references(() => buildings.id, { onDelete: 'cascade' }),
+  name:        text('name').notNull(),
+  displayName: text('display_name').notNull(),
+  role:        text('role').notNull().default('custom'),
+  unreadCount: integer('unread_count').notNull().default(0),
+  delimiter:   text('delimiter').notNull().default('/'),
+  syncedAt:    integer('synced_at'),
 })

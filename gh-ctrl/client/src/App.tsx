@@ -7,7 +7,8 @@ import { MapEditor } from './components/MapEditor'
 import { ToastArea } from './components/Toast'
 import { SetupScreen } from './components/SetupScreen'
 import { ConnectionSetup } from './components/ConnectionSetup'
-import { api, getServerUrl } from './api'
+import { api, getServerUrl, setAuthTokenProvider } from './api'
+import { useAuth } from './auth/useAuth'
 import type { SetupStatus } from './types'
 
 export default function App() {
@@ -23,6 +24,12 @@ export default function App() {
   const [setupChecked, setSetupChecked] = useState(false)
   const [connectionChecked, setConnectionChecked] = useState(false)
   const [serverReachable, setServerReachable] = useState(false)
+  const auth = useAuth()
+
+  // Register Keycloak token provider so api.ts can attach Bearer tokens
+  useEffect(() => {
+    setAuthTokenProvider(() => auth.token)
+  }, [auth.token])
 
   const checkConnection = useCallback(async () => {
     try {
@@ -165,6 +172,17 @@ export default function App() {
 
         {appVersion && (
           <div className="sidebar-version">v{appVersion}</div>
+        )}
+
+        {auth.enabled && auth.user && (
+          <div className="sidebar-user">
+            <span className="sidebar-user-name">
+              {auth.user.name ?? auth.user.username ?? auth.user.email ?? 'User'}
+            </span>
+            <button className="sidebar-logout-btn" onClick={auth.logout} title="Logout">
+              ⏻
+            </button>
+          </div>
         )}
       </aside>
 

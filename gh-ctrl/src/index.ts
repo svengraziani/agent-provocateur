@@ -4,13 +4,18 @@ import { logger } from 'hono/logger'
 import { serveStatic } from 'hono/bun'
 import reposRouter from './routes/repos'
 import githubRouter from './routes/github'
+import gitlabRouter from './routes/gitlab'
 import mapsRouter from './routes/maps'
 import setupRouter from './routes/setup'
 import buildingsRouter from './routes/buildings'
 import badgesRouter from './routes/badges'
+import timersRouter from './routes/timers'
 import pkg from '../package.json'
 import { existsSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
+import { initHealthcheckService } from './healthcheck-service'
+import { initMailboxService } from './mailbox-service'
+import { authMiddleware } from './middleware/auth'
 
 // Ensure uploads directory exists on startup
 const uploadsDir = join(process.cwd(), 'uploads', 'badges')
@@ -40,13 +45,16 @@ app.use(
   })
 )
 app.use('*', logger())
+app.use('/api/*', authMiddleware)
 
 app.route('/api/repos', reposRouter)
 app.route('/api/github', githubRouter)
+app.route('/api/gitlab', gitlabRouter)
 app.route('/api/maps', mapsRouter)
 app.route('/api/setup', setupRouter)
 app.route('/api/buildings', buildingsRouter)
 app.route('/api/badges', badgesRouter)
+app.route('/api/timers', timersRouter)
 
 app.get('/api/health', (c) => c.json({ ok: true }))
 app.get('/api/version', (c) => c.json({ version: pkg.version }))
@@ -57,5 +65,9 @@ app.use('/uploads/*', serveStatic({ root: './' }))
 // Serve built React in production
 app.use('*', serveStatic({ root: './client/dist' }))
 app.get('*', serveStatic({ path: './client/dist/index.html' }))
+
+// Initialize background services
+initHealthcheckService().catch((err) => console.error('[healthcheck-service] init error:', err))
+initMailboxService().catch((err) => console.error('[mailbox-service] init error:', err))
 
 export default { port: 3001, hostname: '0.0.0.0', fetch: app.fetch }
