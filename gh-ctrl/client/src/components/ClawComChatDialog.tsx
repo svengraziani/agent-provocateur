@@ -210,7 +210,7 @@ export function ClawComChatDialog({ building, onClose, onReconfigure, onError }:
                 <div style={{ fontWeight: 700, marginBottom: 4, color: '#ff9900' }}>
                   ⚠ TOOL-ANFRAGE: {prompt.toolName}
                 </div>
-                {prompt.input && (
+                {!!prompt.input && (
                   <pre style={{ fontSize: 9, color: 'var(--text-dim)', whiteSpace: 'pre-wrap', marginBottom: 8 }}>
                     {formatPermissionInput(prompt.input)}
                   </pre>
