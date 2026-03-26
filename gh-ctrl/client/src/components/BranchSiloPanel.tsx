@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import type { DashboardEntry, Branch, GHPR } from '../types'
 import { getBranchState } from './BranchBuilding'
 import { api } from '../api'

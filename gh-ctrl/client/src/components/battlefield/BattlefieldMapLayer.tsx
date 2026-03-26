@@ -1,4 +1,5 @@
 import { useAppStore, selectBattlefieldUsers } from '../../store'
+import type { SoundName } from '../../hooks/useSound'
 import type { DashboardEntry, GameMap, Building, PlacedBadge } from '../../types'
 import type { ModalState } from '../ActionModal'
 import type { Position } from './battlefieldConstants'
@@ -33,10 +34,10 @@ interface BattlefieldMapLayerProps {
   detailEntry: DashboardEntry | null
   branchSiloEntry: DashboardEntry | null
   serverUrl: string
-  play: (sound: string) => void
+  play: (sound: SoundName) => void
   onConstruct: (entry: DashboardEntry) => void
   onStartRelocate: (id: number, mouseX: number, mouseY: number) => void
-  onRefreshRepo: (owner: string, repoName: string) => void
+  onRefreshRepo: (owner: string, repoName: string) => Promise<void>
   addToast: (msg: string, type?: 'success' | 'error' | 'info') => void
   onModalOpen: (state: ModalState) => void
   onBranchSiloClick: (entry: DashboardEntry) => void
@@ -144,7 +145,7 @@ export function BattlefieldMapLayer({
             onConstruct={() => { play('hydraulic'); onConstruct(entry) }}
             onStartRelocate={(mouseX, mouseY) => onStartRelocate(entry.repo.id, mouseX, mouseY)}
             onRefreshRepo={onRefreshRepo}
-            addToast={addToast}
+            onToast={addToast}
             onModalOpen={(state) => { play('peep'); onModalOpen(state) }}
             onBranchSiloClick={(e) => { play('peep'); onBranchSiloClick(e) }}
             onZoomToBase={() => onZoomToBase(pos)}
