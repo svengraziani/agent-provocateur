@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { PlusIcon, CloseIcon } from './Icons'
+import { SidePanel } from './SidePanel'
 
 interface BuildingDef {
   type: string
@@ -25,6 +26,14 @@ const AVAILABLE_BUILDINGS: BuildingDef[] = [
       'Überwache einen oder mehrere HTTP-Endpunkte und visualisiere deren Verfügbarkeit direkt auf dem Schlachtfeld. Konfiguriere Ping-Intervalle und Labels für jeden Endpunkt — das Gebäude leuchtet grün bei OK, rot bei Ausfall.',
     buildImage: '/buildings/healthcheck.png',
     defaultColor: '#00FF00',
+  },
+  {
+    type: 'snailbox',
+    name: 'Snailbox',
+    description:
+      'Interner E-Mail-Client — verbinde dein IMAP/SMTP-Postfach und verwalte E-Mails direkt vom Schlachtfeld. Zeigt ungelesene Nachrichten als Badge an.',
+    buildImage: '/buildings/build_snailbox.png',
+    defaultColor: '#4488ff',
   },
   {
     type: 'new-base',
@@ -93,12 +102,12 @@ export function BuildOptionsMenu({ onClose, onStartPlacement }: BuildOptionsMenu
   }
 
   return (
-    <div className="cnc-sidebar" onWheel={(e) => e.stopPropagation()}>
+    <SidePanel className="cnc-sidebar" onClose={onClose}>
 
       {/* Header */}
       <div className="cnc-sidebar-header">
         <span>&#x25a0; BAU OPTIONEN</span>
-        <button className="cnc-close-btn" onClick={onClose} title="Schließen">
+        <button className="cnc-close-btn" onClick={onClose} title="Close [Esc]">
           <CloseIcon size={10} />
         </button>
       </div>
@@ -222,6 +231,6 @@ export function BuildOptionsMenu({ onClose, onStartPlacement }: BuildOptionsMenu
         </button>
       </div>
 
-    </div>
+    </SidePanel>
   )
 }

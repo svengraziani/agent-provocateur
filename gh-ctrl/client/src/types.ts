@@ -346,6 +346,33 @@ export interface DeadlineTimer {
   updatedAt: string | number | null
 }
 
+export interface MailboxConfig {
+  imapHost: string
+  imapPort: number
+  smtpHost: string
+  smtpPort: number
+  username: string
+  password: string
+  folder: string
+  pollIntervalMs: number
+  configured: boolean
+}
+
+export interface MailMessage {
+  id: number
+  buildingId: number
+  messageId: string
+  subject: string | null
+  fromAddress: string | null
+  toAddresses: string | null  // JSON array of address strings
+  date: number | null         // Unix timestamp ms
+  snippet: string | null
+  bodyText: string | null
+  isRead: number
+  isStarred: number
+  fetchedAt: string | number | null
+}
+
 export interface BattlefieldUser {
   login: string
   avatarUrl: string

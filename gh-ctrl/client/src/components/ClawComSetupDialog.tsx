@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { api } from '../api'
 import { useAppStore } from '../store'
 import type { Building, ClawComConfig } from '../types'
+import { BaseDialog } from './BaseDialog'
 
 interface ClawComSetupDialogProps {
   building: Building
@@ -85,10 +86,7 @@ export function ClawComSetupDialog({ building, onClose, onConfigured, onError }:
   }
 
   return (
-    <div
-      className="map-dialog"
-      onWheel={(e) => e.stopPropagation()}
-    >
+    <BaseDialog className="map-dialog" onClose={onClose}>
         <div className="map-dialog-title">&#x25a0; {building.name.toUpperCase()} — SETUP</div>
 
         <div className="clawcom-setup-body">
@@ -220,6 +218,6 @@ export function ClawComSetupDialog({ building, onClose, onConfigured, onError }:
             {saving ? '◌ SPEICHERN...' : '✓ KONFIGURIEREN'}
           </button>
         </div>
-    </div>
+    </BaseDialog>
   )
 }
