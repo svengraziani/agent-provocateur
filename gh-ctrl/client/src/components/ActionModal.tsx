@@ -731,7 +731,7 @@ function AssignForm({ state, onClose, onSuccess, onError }: {
 
   useEffect(() => {
     api.getCollaborators(state.owner, state.repoName)
-      .then(setCollaborators)
+      .then(data => setCollaborators(data.map(c => c.login)))
       .catch((err) => onError(`Failed to load collaborators: ${err.message}`))
       .finally(() => setLoading(false))
   }, [state.owner, state.repoName])
