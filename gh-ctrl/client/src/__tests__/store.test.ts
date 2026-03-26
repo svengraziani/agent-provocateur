@@ -109,7 +109,7 @@ describe('updateRepoColor', () => {
     vi.useFakeTimers()
     resetStore()
     useAppStore.setState({
-      repos: [{ id: 1, fullName: 'org/repo', owner: 'org', name: 'repo', color: '#000000', createdAt: new Date(), description: null }],
+      repos: [{ id: 1, fullName: 'org/repo', owner: 'org', name: 'repo', color: '#000000', createdAt: new Date().toISOString(), description: null, provider: 'github' as const }],
       entries: [],
     })
   })
