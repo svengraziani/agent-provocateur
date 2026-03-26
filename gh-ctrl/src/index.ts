@@ -14,6 +14,8 @@ import pkg from '../package.json'
 import { existsSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { initHealthcheckService } from './healthcheck-service'
+import { initMailboxService } from './mailbox-service'
+import { authMiddleware } from './middleware/auth'
 
 // Ensure uploads directory exists on startup
 const uploadsDir = join(process.cwd(), 'uploads', 'badges')
@@ -43,6 +45,7 @@ app.use(
   })
 )
 app.use('*', logger())
+app.use('/api/*', authMiddleware)
 
 app.route('/api/repos', reposRouter)
 app.route('/api/github', githubRouter)
@@ -65,5 +68,6 @@ app.get('*', serveStatic({ path: './client/dist/index.html' }))
 
 // Initialize background services
 initHealthcheckService().catch((err) => console.error('[healthcheck-service] init error:', err))
+initMailboxService().catch((err) => console.error('[mailbox-service] init error:', err))
 
 export default { port: 3001, hostname: '0.0.0.0', fetch: app.fetch }

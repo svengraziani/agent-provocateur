@@ -1,4 +1,4 @@
-import type { Repo, DashboardEntry, RepoData, GHLabel, BranchesData, IssueDetail, PRDetail, GameMap, RepoMeta, FeedData, SetupStatus, Building, ClawComMessage, Badge, PlacedBadge, HealthcheckResult, DeadlineTimer } from './types'
+import type { Repo, DashboardEntry, RepoData, GHLabel, BranchesData, IssueDetail, PRDetail, GameMap, RepoMeta, FeedData, SetupStatus, Building, ClawComMessage, Badge, PlacedBadge, HealthcheckResult, DeadlineTimer, ChannelEvent, MailMessage } from './types'
 
 export function getServerUrl(): string {
   return localStorage.getItem('serverUrl')?.replace(/\/$/, '') ?? ''
@@ -18,9 +18,18 @@ function getBase(): string {
   return serverUrl ? `${serverUrl}/api` : '/api'
 }
 
+// Auth token provider — set by KeycloakProvider when Keycloak is enabled
+let _getToken: (() => string | undefined) | null = null
+
+export function setAuthTokenProvider(fn: () => string | undefined) {
+  _getToken = fn
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const token = _getToken?.()
+  const authHeader: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {}
   const res = await fetch(`${getBase()}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeader },
     ...options,
   })
   if (!res.ok) {
@@ -86,17 +95,6 @@ export const api = {
 
   getRepoMeta: (owner: string, name: string) =>
     request<RepoMeta>(`/github/meta/${owner}/${name}`),
-
-  triggerClaude: (params: {
-    fullName: string
-    number: number
-    type: 'pr' | 'issue'
-    message?: string
-  }) =>
-    request<{ ok: boolean }>('/github/trigger-claude', {
-      method: 'POST',
-      body: JSON.stringify(params),
-    }),
 
   postComment: (params: {
     fullName: string
@@ -296,6 +294,34 @@ export const api = {
       body: JSON.stringify({ content }),
     }),
 
+  /**
+   * Open an SSE connection to receive real-time events from the Claude Channel MCP server.
+   * Returns a cleanup function that closes the connection.
+   */
+  streamChannelEvents: (
+    buildingId: number,
+    onEvent: (event: ChannelEvent) => void,
+    onError?: () => void
+  ): (() => void) => {
+    const es = new EventSource(`${getBase()}/buildings/${buildingId}/channel-events`)
+    es.onmessage = (e: MessageEvent) => {
+      try {
+        onEvent(JSON.parse(e.data as string))
+      } catch { /* ignore non-JSON */ }
+    }
+    es.onerror = () => {
+      onError?.()
+    }
+    return () => es.close()
+  },
+
+  /** Submit a permission verdict (allow/deny) for a pending Claude tool call. */
+  submitPermissionVerdict: (buildingId: number, id: string, verdict: 'allow' | 'deny') =>
+    request<{ ok: boolean }>(`/buildings/${buildingId}/permission`, {
+      method: 'POST',
+      body: JSON.stringify({ id, verdict }),
+    }),
+
   getBuildingHealthcheck: (id: number) =>
     request<HealthcheckResult[]>(`/buildings/${id}/healthcheck`),
 
@@ -308,7 +334,9 @@ export const api = {
     const formData = new FormData()
     formData.append('file', file)
     formData.append('name', name)
-    return fetch(`${base}/badges/upload`, { method: 'POST', body: formData })
+    const token = _getToken?.()
+    const uploadHeaders: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {}
+    return fetch(`${base}/badges/upload`, { method: 'POST', body: formData, headers: uploadHeaders })
       .then(async (res) => {
         if (!res.ok) {
           const err = await res.json().catch(() => ({ error: res.statusText }))
@@ -359,6 +387,36 @@ export const api = {
 
   deleteTimer: (id: number) =>
     request<{ ok: boolean }>(`/timers/${id}`, { method: 'DELETE' }),
+
+  getMailMessages: (id: number) =>
+    request<MailMessage[]>(`/buildings/${id}/mail`),
+
+  getMailUnreadCount: (id: number) =>
+    request<{ count: number }>(`/buildings/${id}/mail/unread-count`),
+
+  markMailRead: (buildingId: number, msgId: number) =>
+    request<{ ok: boolean }>(`/buildings/${buildingId}/mail/${msgId}/read`, { method: 'POST' }),
+
+  toggleMailStar: (buildingId: number, msgId: number) =>
+    request<{ isStarred: number }>(`/buildings/${buildingId}/mail/${msgId}/star`, { method: 'POST' }),
+
+  deleteMailMessage: (buildingId: number, msgId: number) =>
+    request<{ ok: boolean }>(`/buildings/${buildingId}/mail/${msgId}`, { method: 'DELETE' }),
+
+  sendMail: (buildingId: number, params: { to: string; subject: string; body: string }) =>
+    request<{ ok: boolean }>(`/buildings/${buildingId}/mail/send`, {
+      method: 'POST',
+      body: JSON.stringify(params),
+    }),
+
+  syncMail: (buildingId: number) =>
+    request<{ ok: boolean }>(`/buildings/${buildingId}/mail/sync`, { method: 'POST' }),
+
+  testMailConnection: (params: { imapHost: string; imapPort: number; username: string; password: string }) =>
+    request<{ ok: boolean; error?: string }>('/buildings/mail/test-connection', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    }),
 
   // ── GitLab API methods ──────────────────────────────────────────────────────
 

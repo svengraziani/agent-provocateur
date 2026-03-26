@@ -1,4 +1,5 @@
 import { useAppStore, selectBattlefieldUsers } from '../../store'
+import type { SoundName } from '../../hooks/useSound'
 import type { DashboardEntry, GameMap, Building, PlacedBadge } from '../../types'
 import type { ModalState } from '../ActionModal'
 import type { Position } from './battlefieldConstants'
@@ -7,6 +8,7 @@ import { BattlefieldMapCanvas } from './BattlefieldMapCanvas'
 import { BaseNode } from '../BaseNode'
 import { ClawComBuilding } from '../ClawComBuilding'
 import { HealthcheckBuilding } from '../HealthcheckBuilding'
+import { MailboxBuilding } from '../MailboxBuilding'
 import { BadgeMarker } from '../BadgeMarker'
 import { UserUnit } from './UserUnit'
 import type { Repo } from '../../types'
@@ -32,10 +34,10 @@ interface BattlefieldMapLayerProps {
   detailEntry: DashboardEntry | null
   branchSiloEntry: DashboardEntry | null
   serverUrl: string
-  play: (sound: string) => void
+  play: (sound: SoundName) => void
   onConstruct: (entry: DashboardEntry) => void
   onStartRelocate: (id: number, mouseX: number, mouseY: number) => void
-  onRefreshRepo: (owner: string, repoName: string) => void
+  onRefreshRepo: (owner: string, repoName: string) => Promise<void>
   addToast: (msg: string, type?: 'success' | 'error' | 'info') => void
   onModalOpen: (state: ModalState) => void
   onBranchSiloClick: (entry: DashboardEntry) => void
@@ -143,7 +145,7 @@ export function BattlefieldMapLayer({
             onConstruct={() => { play('hydraulic'); onConstruct(entry) }}
             onStartRelocate={(mouseX, mouseY) => onStartRelocate(entry.repo.id, mouseX, mouseY)}
             onRefreshRepo={onRefreshRepo}
-            addToast={addToast}
+            onToast={addToast}
             onModalOpen={(state) => { play('peep'); onModalOpen(state) }}
             onBranchSiloClick={(e) => { play('peep'); onBranchSiloClick(e) }}
             onZoomToBase={() => onZoomToBase(pos)}
@@ -173,7 +175,9 @@ export function BattlefieldMapLayer({
         if (constructingBuildingIds.has(building.id)) {
           const constructGif = building.type === 'healthcheck'
             ? '/buildings/construct_4s_healthcheck.gif'
-            : '/buildings/construct_3s_clawcom.gif'
+            : building.type === 'snailbox'
+              ? '/buildings/construction_4s_snailbox.gif'
+              : '/buildings/construct_3s_clawcom.gif'
           return (
             <div
               key={`building-${building.id}`}
@@ -198,6 +202,9 @@ export function BattlefieldMapLayer({
         }
         if (building.type === 'healthcheck') {
           return <HealthcheckBuilding {...commonProps} />
+        }
+        if (building.type === 'snailbox') {
+          return <MailboxBuilding {...commonProps} />
         }
         return <ClawComBuilding {...commonProps} />
       })}

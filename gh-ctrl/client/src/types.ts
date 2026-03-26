@@ -225,9 +225,40 @@ export interface MapTile {
 }
 
 export interface ClawComConfig {
-  clawType: 'openclaw' | 'nanoclaw'
+  clawType: 'openclaw' | 'nanoclaw' | 'claudechannel'
   host: string
   configured: boolean
+  /** Claude Channel: URL of the MCP server webhook (default: http://localhost:8788) */
+  mcpWebhookUrl?: string
+  /** Claude Channel: shared secret sent in X-Channel-Secret header */
+  channelSecret?: string
+  /** Claude Channel: prompt the user before Claude runs destructive tools */
+  enablePermissionRelay?: boolean
+}
+
+export type ChannelEventType =
+  | 'connected'
+  | 'reply'
+  | 'permission_request'
+  | 'permission_resolved'
+  | 'error'
+
+export interface ChannelEvent {
+  type: ChannelEventType
+  /** Reply text (type === 'reply') */
+  content?: string
+  /** Permission request/resolved ID */
+  id?: string
+  /** Tool name being requested (type === 'permission_request') */
+  toolName?: string
+  /** Tool input (type === 'permission_request') */
+  input?: unknown
+  /** Verdict (type === 'permission_resolved') */
+  verdict?: 'allow' | 'deny'
+  /** Error message (type === 'error') */
+  message?: string
+  /** Assigned SSE client ID (type === 'connected') */
+  clientId?: string
 }
 
 export interface HealthcheckEndpoint {
@@ -313,6 +344,33 @@ export interface DeadlineTimer {
   color: string
   createdAt: string | number | null
   updatedAt: string | number | null
+}
+
+export interface MailboxConfig {
+  imapHost: string
+  imapPort: number
+  smtpHost: string
+  smtpPort: number
+  username: string
+  password: string
+  folder: string
+  pollIntervalMs: number
+  configured: boolean
+}
+
+export interface MailMessage {
+  id: number
+  buildingId: number
+  messageId: string
+  subject: string | null
+  fromAddress: string | null
+  toAddresses: string | null  // JSON array of address strings
+  date: number | null         // Unix timestamp ms
+  snippet: string | null
+  bodyText: string | null
+  isRead: number
+  isStarred: number
+  fetchedAt: string | number | null
 }
 
 export interface BattlefieldUser {
