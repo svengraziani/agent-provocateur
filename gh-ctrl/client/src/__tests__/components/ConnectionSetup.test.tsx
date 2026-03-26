@@ -31,7 +31,7 @@ describe('ConnectionSetup', () => {
   })
 
   it('disables the Connect button when input is empty', async () => {
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    const user = userEvent.setup()
     render(<ConnectionSetup onConnected={() => {}} />)
     const input = screen.getByRole('textbox')
     await user.clear(input)

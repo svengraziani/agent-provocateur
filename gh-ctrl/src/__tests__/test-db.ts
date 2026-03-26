@@ -17,6 +17,9 @@ export function createTestDb() {
       full_name TEXT NOT NULL UNIQUE,
       description TEXT,
       color TEXT DEFAULT '#00ff88',
+      provider TEXT NOT NULL DEFAULT 'github',
+      instance_url TEXT,
+      gitlab_token TEXT,
       created_at INTEGER DEFAULT (unixepoch())
     )
   `)

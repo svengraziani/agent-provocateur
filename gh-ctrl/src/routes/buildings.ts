@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import { stream } from 'hono/streaming'
 import { db } from '../db'
 import { buildings, clawcomMessages, healthcheckResults, mailMessages } from '../db/schema'
-import { eq, desc, and } from 'drizzle-orm'
+import { eq, desc, asc, and } from 'drizzle-orm'
 import { scheduleBuilding, unscheduleBuilding, getLatestResults } from '../healthcheck-service'
 import {
   scheduleMailbox,
@@ -138,9 +138,9 @@ app.get('/:id/messages', async (c) => {
     .select()
     .from(clawcomMessages)
     .where(eq(clawcomMessages.buildingId, id))
-    .orderBy(desc(clawcomMessages.createdAt))
+    .orderBy(asc(clawcomMessages.id))
     .limit(100)
-  return c.json(result.reverse())
+  return c.json(result)
 })
 
 // POST /:id/messages — send a message via ClawCom (stores it and optionally relays to claw)
