@@ -149,28 +149,46 @@ export function Settings() {
   const [browseTruncated, setBrowseTruncated] = useState(false)
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const PER_PAGE = 30
+  const [browseProvider, setBrowseProvider] = useState<string>('github')
+  const [gitlabInstances, setGitlabInstances] = useState<{ host: string; label: string }[]>([])
+  const [glabAvailable, setGlabAvailable] = useState(false)
 
-  const fetchBrowseRepos = async (page: number, search: string) => {
+  const fetchBrowseRepos = async (page: number, search: string, provider?: string) => {
+    const currentProvider = provider ?? browseProvider
     setBrowseLoading(true)
     setBrowseError('')
     try {
-      const result = await api.getUserRepos({ page, per_page: PER_PAGE, search: search || undefined })
-      if (!result.ghAvailable) {
-        setGhAvailable(false)
-        setBrowseError('GitHub CLI (gh) is not available or not authenticated.')
-        return
-      }
-      setGhAvailable(true)
-      if (page === 1) {
-        setBrowseRepos(result.repos)
+      if (currentProvider === 'github') {
+        const result = await api.getUserRepos({ page, per_page: PER_PAGE, search: search || undefined })
+        if (!result.ghAvailable) {
+          setGhAvailable(false)
+          setBrowseError('GitHub CLI (gh) is not available or not authenticated.')
+          return
+        }
+        setGhAvailable(true)
+        if (page === 1) {
+          setBrowseRepos(result.repos)
+        } else {
+          setBrowseRepos((prev) => [...prev, ...result.repos])
+        }
+        setBrowseHasMore(result.repos.length === PER_PAGE)
+        setBrowseTruncated(result.truncated ?? false)
       } else {
-        setBrowseRepos((prev) => [...prev, ...result.repos])
+        const result = await api.getGitLabUserRepos({ page, per_page: PER_PAGE, search: search || undefined, instance: currentProvider })
+        if (!result.glabAvailable) {
+          setBrowseError('GitLab CLI (glab) is not available or not authenticated for this instance.')
+          return
+        }
+        if (page === 1) {
+          setBrowseRepos(result.repos)
+        } else {
+          setBrowseRepos((prev) => [...prev, ...result.repos])
+        }
+        setBrowseHasMore(result.repos.length === PER_PAGE)
+        setBrowseTruncated(false)
       }
-      setBrowseHasMore(result.repos.length === PER_PAGE)
-      setBrowseTruncated(result.truncated ?? false)
     } catch (err: any) {
       setBrowseError(err.message || 'Failed to load repos')
-      setGhAvailable(false)
     } finally {
       setBrowseLoading(false)
     }
@@ -180,7 +198,7 @@ export function Settings() {
     if (activeTab === 'browse') {
       setBrowsePage(1)
       setBrowseRepos([])
-      fetchBrowseRepos(1, browseSearch)
+      fetchBrowseRepos(1, browseSearch, browseProvider)
     }
   }, [activeTab])
 
@@ -188,6 +206,13 @@ export function Settings() {
     return () => {
       if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
     }
+  }, [])
+
+  useEffect(() => {
+    api.getGitLabInstances().then((result) => {
+      setGitlabInstances(result.instances)
+      setGlabAvailable(result.glabAvailable)
+    }).catch(() => {})
   }, [])
 
   const handleBrowseSearchChange = (value: string) => {
@@ -206,12 +231,26 @@ export function Settings() {
     fetchBrowseRepos(nextPage, browseSearch)
   }
 
+  const handleBrowseProviderChange = (newProvider: string) => {
+    setBrowseProvider(newProvider)
+    setBrowseSearch('')
+    setBrowsePage(1)
+    setBrowseRepos([])
+    setBrowseError('')
+    fetchBrowseRepos(1, '', newProvider)
+  }
+
   const handleSelectBrowseRepo = async (repoFullName: string) => {
     setFullName(repoFullName)
     setFormError('')
     setAdding(true)
     try {
-      await api.addRepo(repoFullName, selectedColor)
+      if (browseProvider === 'github') {
+        await api.addRepo(repoFullName, selectedColor)
+      } else {
+        const instanceUrl = browseProvider === 'gitlab.com' ? undefined : `https://${browseProvider}`
+        await api.addRepo(repoFullName, selectedColor, 'gitlab', instanceUrl)
+      }
       addToast(`Added ${repoFullName}`, 'success')
       setFullName('')
       handleReposChange()
@@ -444,25 +483,34 @@ export function Settings() {
 
         {activeTab === 'browse' && (
           <div className="browse-repos">
-            <p style={{ color: 'var(--text-2)', fontSize: '0.82rem', margin: '0 0 0.75rem' }}>
-              Browse uses the GitHub CLI (<code>gh</code>). To add a GitLab repo use the <strong>Manual</strong> tab.
-            </p>
-            {!ghAvailable ? (
+            {!ghAvailable && !glabAvailable ? (
               <div className="browse-fallback">
-                <p className="form-error">GitHub CLI (gh) not available. Use manual input instead.</p>
+                <p className="form-error">Neither GitHub CLI (gh) nor GitLab CLI (glab) is available. Use manual input instead.</p>
                 <button className="btn btn-ghost" onClick={() => setActiveTab('manual')} type="button">
                   Switch to manual input
                 </button>
               </div>
             ) : (
               <>
-                <div className="form-row" style={{ marginBottom: '0.75rem' }}>
+                <div className="form-row" style={{ marginBottom: '0.75rem', display: 'flex', gap: '0.5rem' }}>
+                  <select
+                    className="input"
+                    value={browseProvider}
+                    onChange={(e) => handleBrowseProviderChange(e.target.value)}
+                    style={{ minWidth: '180px', maxWidth: '220px' }}
+                  >
+                    {ghAvailable && <option value="github">GitHub</option>}
+                    {gitlabInstances.map((inst) => (
+                      <option key={inst.host} value={inst.host}>{inst.label}</option>
+                    ))}
+                  </select>
                   <input
                     className="input"
                     type="text"
                     placeholder="Search repositories..."
                     value={browseSearch}
                     onChange={(e) => handleBrowseSearchChange(e.target.value)}
+                    style={{ flex: 1 }}
                   />
                 </div>
                 {browseError && !browseLoading && <div className="form-error">{browseError}</div>}
