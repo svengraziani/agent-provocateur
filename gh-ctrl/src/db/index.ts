@@ -21,6 +21,9 @@ try { sqlite.exec(`ALTER TABLE repos ADD COLUMN provider TEXT NOT NULL DEFAULT '
 try { sqlite.exec(`ALTER TABLE repos ADD COLUMN instance_url TEXT`) } catch {}
 try { sqlite.exec(`ALTER TABLE repos ADD COLUMN gitlab_token TEXT`) } catch {}
 
+try { sqlite.exec(`DROP INDEX IF EXISTS repos_full_name_unique`) } catch {}
+try { sqlite.exec(`CREATE UNIQUE INDEX IF NOT EXISTS repos_full_name_provider_unique ON repos(full_name, provider)`) } catch {}
+
 sqlite.exec(`
   CREATE TABLE IF NOT EXISTS maps (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -4,7 +4,7 @@ export const repos = sqliteTable('repos', {
   id:          integer('id').primaryKey({ autoIncrement: true }),
   owner:       text('owner').notNull(),
   name:        text('name').notNull(),
-  fullName:    text('full_name').notNull().unique(),
+  fullName:    text('full_name').notNull(),
   description: text('description'),
   color:       text('color').default('#00ff88'),
   provider:     text('provider').notNull().default('github'), // 'github' | 'gitlab'
