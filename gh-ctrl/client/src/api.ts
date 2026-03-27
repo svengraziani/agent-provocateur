@@ -521,6 +521,8 @@ export const api = {
       body: JSON.stringify(params),
     }),
 
+  getGitLabFeed: () => request<FeedData>('/gitlab/feed'),
+
   createGitLabMR: (params: {
     fullName: string
     sourceBranch: string

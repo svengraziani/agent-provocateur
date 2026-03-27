@@ -669,6 +669,60 @@ app.delete('/assignee', async (c) => {
   return c.json({ ok: true })
 })
 
+app.get('/feed', async (c) => {
+  const globalToken = process.env.GITLAB_TOKEN ?? null
+  const globalInstance = process.env.GITLAB_INSTANCE_URL ?? null
+  const opts = { instanceUrl: globalInstance, token: globalToken }
+
+  const userResult = await glabApi('/user', opts)
+  if (userResult.error) return c.json({ mentions: [], error: userResult.error })
+  const username = userResult.data?.username
+  if (!username) return c.json({ mentions: [], error: 'Could not determine GitLab user' })
+
+  const [reviewerMRs, assignedIssues] = await Promise.all([
+    glabApi(`/merge_requests?state=opened&scope=all&reviewer_username=${encodeURIComponent(username)}&per_page=50`, opts),
+    glabApi(`/issues?state=opened&scope=all&assignee_username=${encodeURIComponent(username)}&per_page=50`, opts),
+  ])
+
+  const mentions: any[] = []
+
+  for (const mr of reviewerMRs.data ?? []) {
+    const repoPath = mr.references?.full?.split('!')[0] ?? mr.web_url?.split('/-/')[0]?.replace(/^https?:\/\/[^/]+\//, '') ?? ''
+    mentions.push({
+      type: 'pr',
+      feedCategory: 'mention',
+      number: mr.iid,
+      title: mr.title,
+      url: mr.web_url,
+      repo: repoPath,
+      author: mr.author?.username ?? 'unknown',
+      updatedAt: mr.updated_at ?? '',
+      labels: (mr.labels ?? []).map((name: string) => ({ name, color: '6366f1' })),
+      isDraft: mr.draft ?? mr.work_in_progress ?? false,
+      state: mr.state ?? 'opened',
+    })
+  }
+
+  for (const issue of assignedIssues.data ?? []) {
+    const repoPath = issue.references?.full?.split('#')[0] ?? issue.web_url?.split('/-/')[0]?.replace(/^https?:\/\/[^/]+\//, '') ?? ''
+    mentions.push({
+      type: 'issue',
+      feedCategory: 'mention',
+      number: issue.iid,
+      title: issue.title,
+      url: issue.web_url,
+      repo: repoPath,
+      author: issue.author?.username ?? 'unknown',
+      updatedAt: issue.updated_at ?? '',
+      labels: (issue.labels ?? []).map((name: string) => ({ name, color: '6366f1' })),
+      state: issue.state ?? 'opened',
+    })
+  }
+
+  mentions.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+  return c.json({ mentions })
+})
+
 // ---------------------------------------------------------------------------
 // Setup validation — validate that a GitLab repo path is accessible
 // Used by the repos route when adding a GitLab repo

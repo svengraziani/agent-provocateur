@@ -64,8 +64,15 @@ export function FeedPanel({ entries, isOpen, onClose }: FeedPanelProps) {
   const fetchMentions = useCallback(() => {
     setMentionsLoading(true)
     setMentionsError(null)
-    api.getFeed()
-      .then((data) => setMentions(data.mentions))
+    Promise.all([
+      api.getFeed().catch(() => ({ mentions: [] })),
+      api.getGitLabFeed().catch(() => ({ mentions: [] })),
+    ])
+      .then(([ghData, glData]) => {
+        const all = [...(ghData.mentions || []), ...(glData.mentions || [])]
+        all.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+        setMentions(all)
+      })
       .catch((err) => setMentionsError(err.message ?? 'Failed to load mentions'))
       .finally(() => setMentionsLoading(false))
   }, [])
