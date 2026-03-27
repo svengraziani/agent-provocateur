@@ -73,8 +73,8 @@ function normalizeMRState(gl: any): NormalizedMR['mergeable'] {
 }
 
 function normalizeReviewState(gl: any): NormalizedMR['reviewState'] {
-  // GitLab approvals are fetched separately; without them we derive from merge_status
   if (gl.approved) return 'approved'
+  if (gl.blocking_discussions_resolved === false) return 'changes_requested'
   return 'pending'
 }
 
@@ -187,7 +187,7 @@ export async function fetchGitLabRepoData(
 
   // Fetch MRs, issues, and pipelines in parallel
   const [mrResult, issueResult, pipelineResult, projectResult] = await Promise.all([
-    glabApi(`/projects/${encoded}/merge_requests?state=opened&per_page=30`, opts),
+    glabApi(`/projects/${encoded}/merge_requests?state=opened&per_page=30&with_merge_status_recheck=true`, opts),
     glabApi(`/projects/${encoded}/issues?state=opened&per_page=30`, opts),
     glabApi(`/projects/${encoded}/pipelines?per_page=30`, opts),
     glabApi(`/projects/${encoded}`, opts),
