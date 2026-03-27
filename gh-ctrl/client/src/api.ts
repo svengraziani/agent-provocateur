@@ -63,7 +63,11 @@ export const api = {
     onEntry: (entry: DashboardEntry) => void,
     onDone: () => void
   ): (() => void) => {
-    const es = new EventSource(`${getBase()}/github/dashboard/stream`)
+    const token = _getToken?.()
+    const streamUrl = token
+      ? `${getBase()}/github/dashboard/stream?token=${encodeURIComponent(token)}`
+      : `${getBase()}/github/dashboard/stream`
+    const es = new EventSource(streamUrl)
     es.addEventListener('repo', (e: Event) => {
       onEntry(JSON.parse((e as MessageEvent).data))
     })
@@ -303,7 +307,11 @@ export const api = {
     onEvent: (event: ChannelEvent) => void,
     onError?: () => void
   ): (() => void) => {
-    const es = new EventSource(`${getBase()}/buildings/${buildingId}/channel-events`)
+    const token = _getToken?.()
+    const channelUrl = token
+      ? `${getBase()}/buildings/${buildingId}/channel-events?token=${encodeURIComponent(token)}`
+      : `${getBase()}/buildings/${buildingId}/channel-events`
+    const es = new EventSource(channelUrl)
     es.onmessage = (e: MessageEvent) => {
       try {
         onEvent(JSON.parse(e.data as string))

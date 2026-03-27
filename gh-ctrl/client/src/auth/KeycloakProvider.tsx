@@ -88,6 +88,14 @@ export function KeycloakProvider({ children }: { children: ReactNode }) {
     keycloak.logout()
   }
 
+  if (!initialized) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)', color: 'var(--text-2)', fontSize: '0.9rem' }}>
+        Authenticating…
+      </div>
+    )
+  }
+
   return (
     <AuthContext.Provider
       value={{
