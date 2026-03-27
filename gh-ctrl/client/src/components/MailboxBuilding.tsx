@@ -138,7 +138,7 @@ export function MailboxBuilding({
   }
 
   async function handleDelete() {
-    if (!confirm(`"${currentBuilding.name}" wirklich löschen?`)) return
+    if (!confirm(`Delete "${currentBuilding.name}"?`)) return
     try {
       await deleteBuilding(currentBuilding.id)
     } catch { /* toast shown by store */ }
@@ -224,7 +224,7 @@ export function MailboxBuilding({
             width: 8, height: 8, borderRadius: '50%',
             background: isConfigured ? 'var(--green-neon)' : '#888',
             border: '1px solid var(--bg-darker)',
-          }} title={isConfigured ? 'Verbunden' : 'Nicht konfiguriert'} />
+          }} title={isConfigured ? 'Connected' : 'Not configured'} />
         </div>
 
         {/* Name label */}
@@ -242,9 +242,9 @@ export function MailboxBuilding({
         <div style={{ fontSize: 9, color: 'var(--text-dim)', textAlign: 'center' }}>
           {isConfigured
             ? unreadCount > 0
-              ? `✉ ${unreadCount} UNGELESEN`
+              ? `✉ ${unreadCount} UNREAD`
               : '✉ MAIL ● ONLINE'
-            : '⚙ SETUP ERFORDERLICH'}
+            : '⚙ SETUP REQUIRED'}
         </div>
 
         {/* Action bar */}
@@ -258,7 +258,7 @@ export function MailboxBuilding({
               className="hud-btn"
               style={{ fontSize: 9, padding: '1px 5px' }}
               onClick={() => colorInputRef.current?.click()}
-              title="Farbe ändern"
+              title="Change color"
             >◈</button>
             <input
               ref={colorInputRef}
@@ -271,7 +271,7 @@ export function MailboxBuilding({
               className="hud-btn"
               style={{ fontSize: 9, padding: '1px 5px', color: '#ff6b6b' }}
               onClick={handleDelete}
-              title="Gebäude abreißen"
+              title="Demolish building"
             >✕</button>
           </div>
         )}
@@ -283,7 +283,7 @@ export function MailboxBuilding({
           onClose={() => onDeselect?.()}
           onConfigured={(updated) => {
             setCurrentBuilding(updated)
-            addToast(`${updated.name} erfolgreich konfiguriert!`, 'success')
+            addToast(`${updated.name} configured successfully!`, 'success')
           }}
           onError={(msg) => addToast(msg, 'error')}
         />,

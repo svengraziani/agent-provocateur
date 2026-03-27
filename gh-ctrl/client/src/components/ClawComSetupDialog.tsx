@@ -31,12 +31,12 @@ export function ClawComSetupDialog({ building, onClose, onConfigured, onError }:
   async function handleSave() {
     if (isChannel) {
       if (!mcpWebhookUrl.trim()) {
-        onError('MCP Webhook URL ist erforderlich')
+        onError('MCP Webhook URL is required')
         return
       }
     } else {
       if (!host.trim()) {
-        onError('Host-URL ist erforderlich')
+        onError('Host URL is required')
         return
       }
     }
@@ -58,7 +58,7 @@ export function ClawComSetupDialog({ building, onClose, onConfigured, onError }:
       await loadBuildings()
       onConfigured(updated)
     } catch (err: any) {
-      onError(`Konfiguration fehlgeschlagen: ${err.message}`)
+      onError(`Configuration failed: ${err.message}`)
     } finally {
       setSaving(false)
     }
@@ -74,12 +74,12 @@ export function ClawComSetupDialog({ building, onClose, onConfigured, onError }:
         signal: AbortSignal.timeout(5000),
       })
       if (res.ok) {
-        setTestResult('✓ Verbindung erfolgreich!')
+        setTestResult('✓ Connection successful!')
       } else {
-        setTestResult(`✗ Fehler: HTTP ${res.status}`)
+        setTestResult(`✗ Error: HTTP ${res.status}`)
       }
     } catch (err: any) {
-      setTestResult(`✗ Nicht erreichbar: ${err.message}`)
+      setTestResult(`✗ Unreachable: ${err.message}`)
     } finally {
       setTesting(false)
     }
@@ -98,12 +98,12 @@ export function ClawComSetupDialog({ building, onClose, onConfigured, onError }:
           <div className="clawcom-setup-form">
             <div className="clawcom-setup-desc">
               {isChannel
-                ? 'Verbinde ClawCom mit einer laufenden Claude Code Session über das Claude Channels MCP-Protokoll.'
-                : 'Konfiguriere die Verbindung zu einem Openclaw oder Nanoclaw. Nach der Einrichtung kannst du Befehle über das integrierte Chatfenster senden und empfangen.'}
+                ? 'Connect ClawCom to a running Claude Code session via the Claude Channels MCP protocol.'
+                : 'Configure the connection to an Openclaw or Nanoclaw. Once set up, you can send and receive commands via the integrated chat window.'}
             </div>
 
             <div className="clawcom-setup-group">
-              <label className="clawcom-setup-group-label">Claw Typ</label>
+              <label className="clawcom-setup-group-label">Claw Type</label>
               <div className="clawcom-setup-row">
                 {(['openclaw', 'nanoclaw', 'claudechannel'] as const).map((t) => (
                   <button
@@ -132,7 +132,7 @@ export function ClawComSetupDialog({ building, onClose, onConfigured, onError }:
                       className="hud-btn"
                       onClick={handleTest}
                       disabled={testing || !mcpWebhookUrl.trim()}
-                      title="Verbindung testen"
+                      title="Test connection"
                     >
                       {testing ? '◌' : 'TEST'}
                     </button>
@@ -152,7 +152,7 @@ export function ClawComSetupDialog({ building, onClose, onConfigured, onError }:
                       type="password"
                       value={channelSecret}
                       onChange={(e) => setChannelSecret(e.target.value)}
-                      placeholder="Freigelassen = kein Auth"
+                      placeholder="Leave blank = no auth"
                     />
                   </div>
                 </div>
@@ -165,15 +165,15 @@ export function ClawComSetupDialog({ building, onClose, onConfigured, onError }:
                       onChange={(e) => setEnablePermissionRelay(e.target.checked)}
                       style={{ accentColor: 'var(--green-neon)' }}
                     />
-                    Permission Relay aktivieren
+                    Enable Permission Relay
                   </label>
                   <div style={{ fontSize: 9, color: 'var(--text-dim)', marginTop: 2 }}>
-                    Tool-Aufrufe von Claude müssen im Chat bestätigt werden.
+                    Tool calls from Claude must be confirmed in the chat.
                   </div>
                 </div>
 
                 <div style={{ fontSize: 9, color: 'var(--text-dim)', marginTop: 4, lineHeight: 1.5 }}>
-                  Starte den MCP Server mit:<br />
+                  Start the MCP Server with:<br />
                   <code style={{ color: 'var(--green-neon)' }}>
                     claude --dangerously-load-development-channels server:./src/mcp/claude-channel-server.ts
                   </code>
@@ -209,13 +209,13 @@ export function ClawComSetupDialog({ building, onClose, onConfigured, onError }:
         </div>
 
         <div className="map-dialog-actions">
-          <button className="hud-btn" onClick={onClose}>ABBRECHEN</button>
+          <button className="hud-btn" onClick={onClose}>CANCEL</button>
           <button
             className="hud-btn hud-btn-new-base"
             onClick={handleSave}
             disabled={saving}
           >
-            {saving ? '◌ SPEICHERN...' : '✓ KONFIGURIEREN'}
+            {saving ? '◌ SAVING...' : '✓ CONFIGURE'}
           </button>
         </div>
     </BaseDialog>

@@ -16,7 +16,7 @@ const INTERVAL_PRESETS = [
   { label: '5 Min', ms: 5 * 60_000 },
   { label: '15 Min', ms: 15 * 60_000 },
   { label: '30 Min', ms: 30 * 60_000 },
-  { label: '1 Std', ms: 60 * 60_000 },
+  { label: '1 Hr', ms: 60 * 60_000 },
 ]
 
 export function HealthcheckSetupDialog({ building, onClose, onConfigured, onError }: HealthcheckSetupDialogProps) {
@@ -75,7 +75,7 @@ export function HealthcheckSetupDialog({ building, onClose, onConfigured, onErro
       await loadBuildings()
       onConfigured(updated)
     } catch (err: any) {
-      onError(`Konfiguration fehlgeschlagen: ${err.message}`)
+      onError(`Configuration failed: ${err.message}`)
     } finally {
       setSaving(false)
     }
@@ -95,19 +95,19 @@ export function HealthcheckSetupDialog({ building, onClose, onConfigured, onErro
         />
         <div className="clawcom-setup-form">
           <div className="clawcom-setup-desc">
-            Konfiguriere die zu überwachenden Endpunkte. Das Gebäude zeigt den aktuellen
-            Status jedes Endpunkts an und aktualisiert sich automatisch im konfigurierten Intervall.
+            Configure the endpoints to monitor. The building displays the current
+            status of each endpoint and updates automatically at the configured interval.
           </div>
 
           {/* Endpoints */}
           <div className="clawcom-setup-group">
             <label className="clawcom-setup-group-label">
-              ENDPUNKTE
+              ENDPOINTS
               <button
                 className="hud-btn"
                 style={{ fontSize: 9, padding: '1px 6px', marginLeft: 8 }}
                 onClick={addEndpoint}
-              >+ HINZUFÜGEN</button>
+              >+ ADD</button>
             </label>
             {endpoints.map((ep, i) => (
               <div key={i} className="clawcom-setup-row" style={{ marginBottom: 4, alignItems: 'flex-start', flexDirection: 'column', gap: 2 }}>
@@ -124,7 +124,7 @@ export function HealthcheckSetupDialog({ building, onClose, onConfigured, onErro
                       className="hud-btn"
                       style={{ fontSize: 9, padding: '1px 5px', color: '#ff6b6b', flexShrink: 0 }}
                       onClick={() => removeEndpoint(i)}
-                      title="Endpunkt entfernen"
+                      title="Remove endpoint"
                     >✕</button>
                   )}
                 </div>
@@ -141,7 +141,7 @@ export function HealthcheckSetupDialog({ building, onClose, onConfigured, onErro
 
           {/* Interval */}
           <div className="clawcom-setup-group">
-            <label className="clawcom-setup-group-label">PING INTERVALL</label>
+            <label className="clawcom-setup-group-label">PING INTERVAL</label>
             <div className="clawcom-setup-row" style={{ flexWrap: 'wrap', gap: 4 }}>
               {INTERVAL_PRESETS.map((preset) => (
                 <button
@@ -167,15 +167,15 @@ export function HealthcheckSetupDialog({ building, onClose, onConfigured, onErro
                   min={1}
                   value={customIntervalMin}
                   onChange={(e) => handleCustomIntervalChange(e.target.value)}
-                  placeholder="Minuten"
+                  placeholder="Minutes"
                   style={{ width: 80 }}
                 />
-                <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>Minuten (min. 1)</span>
+                <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>Minutes (min. 1)</span>
               </div>
             )}
             {!showCustom && activePreset && (
               <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 2 }}>
-                Alle {activePreset.label} wird jeder Endpunkt geprüft
+                Every {activePreset.label} each endpoint is checked
               </div>
             )}
           </div>
@@ -183,13 +183,13 @@ export function HealthcheckSetupDialog({ building, onClose, onConfigured, onErro
       </div>
 
       <div className="map-dialog-actions">
-        <button className="hud-btn" onClick={onClose}>ABBRECHEN</button>
+        <button className="hud-btn" onClick={onClose}>CANCEL</button>
         <button
           className="hud-btn hud-btn-new-base"
           onClick={handleSave}
           disabled={!canSave || saving}
         >
-          {saving ? '◌ SPEICHERN...' : '✓ KONFIGURIEREN'}
+          {saving ? '◌ SAVING...' : '✓ CONFIGURE'}
         </button>
       </div>
     </BaseDialog>

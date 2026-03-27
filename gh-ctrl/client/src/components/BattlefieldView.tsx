@@ -208,7 +208,7 @@ export function BattlefieldView() {
           return next
         })
       }, 4000)
-      addToast(`${placementMode.name} auf der Karte platziert!`, 'success')
+      addToast(`${placementMode.name} placed on the map!`, 'success')
       loadRepos()
       onRefresh()
     } else {
@@ -223,9 +223,9 @@ export function BattlefieldView() {
             return next
           })
         }, 3000)
-        addToast(`${placementMode.name} platziert!`, 'success')
+        addToast(`${placementMode.name} placed!`, 'success')
       } catch (err: any) {
-        addToast(`Bau fehlgeschlagen: ${err.message}`, 'error')
+        addToast(`Build failed: ${err.message}`, 'error')
       }
     }
     setPlacementMode(null)
@@ -468,7 +468,7 @@ export function BattlefieldView() {
                   description: params.repoDescription,
                   visibility: params.repoVisibility ?? 'private',
                 })
-                addToast(`Base "${params.name}" established! Wähle einen Platz auf der Karte.`, 'success')
+                addToast(`Base "${params.name}" established! Select a spot on the map.`, 'success')
                 setPlacementMode({ ...params, repoId: result.repo.id })
                 setGhostScreenPos({ x: window.innerWidth / 2, y: window.innerHeight / 2 })
               } catch (err) {
@@ -509,7 +509,7 @@ export function BattlefieldView() {
             <img src={placementMode.buildImage} alt={placementMode.name} />
           </div>
           <div className="battlefield-placement-banner">
-            &#x2295; PLATZIERUNGSMODUS — Klicke auf die Karte um <strong>{placementMode.name}</strong> zu setzen &nbsp;·&nbsp; ESC zum Abbrechen
+            &#x2295; PLACEMENT MODE — Click on the map to place <strong>{placementMode.name}</strong> &nbsp;·&nbsp; ESC to cancel
           </div>
         </>
       )}
