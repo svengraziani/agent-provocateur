@@ -131,6 +131,20 @@ app.get('/labels/:namespace/:project', async (c) => {
   return c.json(labels)
 })
 
+// GET /api/gitlab/members?path=namespace/project — list project members
+app.get('/members', async (c) => {
+  const resolved = await resolveProject(c)
+  if (!resolved) return c.json({ error: 'Could not resolve project' }, 400)
+  const encoded = encodeProjectPath(resolved.projectPath)
+  const result = await glabApi(`/projects/${encoded}/members/all?per_page=100`, {
+    instanceUrl: resolved.instanceUrl,
+    token: resolved.gitlabToken,
+  })
+  if (result.error) return c.json({ error: result.error }, 500)
+  const members = (result.data ?? []).map((m: any) => ({ login: m.username }))
+  return c.json(members)
+})
+
 // POST /api/gitlab/label — add a label to an MR or issue
 app.post('/label', async (c) => {
   const body = await c.req.json()
