@@ -25,6 +25,27 @@ import {
 
 const app = new Hono()
 
+interface GLResult {
+  data: any
+  error: string | null
+}
+
+async function glab(args: string[]): Promise<GLResult> {
+  const proc = Bun.spawn(['glab', ...args], { env: { ...process.env } })
+  const stdout = await new Response(proc.stdout).text()
+  const exitCode = await proc.exited
+  if (exitCode !== 0) {
+    const stderr = await new Response(proc.stderr).text()
+    return { data: null, error: stderr }
+  }
+  if (stdout.trim() === '') return { data: null, error: null }
+  try {
+    return { data: JSON.parse(stdout), error: null }
+  } catch {
+    return { data: null, error: 'Failed to parse glab output' }
+  }
+}
+
 /** Resolve project path, instanceUrl, and gitlabToken from request params + DB. */
 async function resolveProject(
   c: Parameters<Parameters<typeof app.get>[1]>[0]
@@ -42,7 +63,7 @@ async function resolveProject(
     .get()
 
   const instanceUrl = row?.instanceUrl ?? process.env.GITLAB_INSTANCE_URL ?? null
-  const gitlabToken = row?.gitlabToken ?? null
+  const gitlabToken = row?.gitlabToken ?? process.env.GITLAB_TOKEN ?? null
 
   return { projectPath, instanceUrl, gitlabToken }
 }
@@ -66,6 +87,54 @@ app.get('/repo/:namespace/:project', async (c) => {
 
   const data = await fetchGitLabRepoData(resolved.projectPath, resolved.instanceUrl, resolved.gitlabToken)
   return c.json(data)
+})
+
+app.post('/create-repo', async (c) => {
+  const body = await c.req.json()
+  const { name, description, visibility } = body
+
+  if (!name) {
+    return c.json({ error: 'Missing required field: name' }, 400)
+  }
+
+  if (visibility !== 'public' && visibility !== 'private') {
+    return c.json({ error: 'visibility must be "public" or "private"' }, 400)
+  }
+
+  // Get authenticated user to build fullName
+  const userResult = await glab(['api', 'user'])
+  if (userResult.error || !userResult.data?.username) {
+    return c.json({ error: 'Failed to get authenticated GitLab user' }, 500)
+  }
+  const owner = userResult.data.username
+  const fullName = `${owner}/${name}`
+
+  const args = ['repo', 'create', name, `--${visibility}`]
+  if (description) args.push('--description', description)
+
+  const proc = await glab(args)
+  if (proc.error) {
+    return c.json({ error: proc.error }, 500)
+  }
+
+  // Add the newly created repo to the tracked repos DB
+  try {
+    const result = await db.insert(repos).values({
+      owner,
+      name,
+      fullName,
+      description: description || null,
+      color: '#00ff88',
+      provider: 'gitlab',
+    }).returning()
+
+    return c.json({ ok: true, repo: result[0] }, 201)
+  } catch (err: any) {
+    if (err.message?.includes('UNIQUE')) {
+      return c.json({ error: 'Repository already tracked' }, 409)
+    }
+    return c.json({ error: 'Repository created but failed to track it' }, 500)
+  }
 })
 
 // ---------------------------------------------------------------------------
@@ -746,6 +815,83 @@ app.get('/validate', async (c) => {
     description: result.data?.description ?? '',
     defaultBranch: result.data?.default_branch ?? 'main',
   })
+})
+
+app.get('/instances', async (c) => {
+  try {
+    const proc = Bun.spawn(['glab', 'config', 'get', 'hosts'], { env: { ...process.env } })
+    const stdout = await new Response(proc.stdout).text()
+    const exitCode = await proc.exited
+    if (exitCode !== 0 || !stdout.trim()) {
+      return c.json({ instances: [], glabAvailable: false })
+    }
+    const hosts = stdout.trim().split('\n').map(h => h.trim()).filter(Boolean)
+    const instances = hosts.map(host => ({
+      host,
+      label: `GitLab (${host})`,
+    }))
+    return c.json({ instances, glabAvailable: true })
+  } catch {
+    return c.json({ instances: [], glabAvailable: false })
+  }
+})
+
+app.get('/user-repos', async (c) => {
+  const page = parseInt(c.req.query('page') || '1')
+  const perPage = parseInt(c.req.query('per_page') || '30')
+  const search = c.req.query('search') || ''
+  const instance = c.req.query('instance') || ''
+
+  try {
+    const args = ['api', '/projects', '-X', 'GET',
+      '-f', `membership=true`,
+      '-f', `per_page=${perPage}`,
+      '-f', `page=${page}`,
+      '-f', `order_by=updated_at`,
+      '-f', `sort=desc`,
+    ]
+    if (search) {
+      args.push('-f', `search=${search}`)
+    }
+    if (instance) {
+      args.push('--hostname', instance)
+    }
+
+    const proc = Bun.spawn(['glab', ...args], { env: { ...process.env } })
+    const stdout = await new Response(proc.stdout).text()
+    const stderr = await new Response(proc.stderr).text()
+    const exitCode = await proc.exited
+
+    if (exitCode !== 0) {
+      return c.json({ repos: [], page, perPage, total: null, truncated: false, glabAvailable: false })
+    }
+
+    let projects: any[] = []
+    try {
+      projects = JSON.parse(stdout)
+    } catch {
+      return c.json({ repos: [], page, perPage, total: null, truncated: false, glabAvailable: true })
+    }
+
+    const repos = projects.map((p: any) => ({
+      name: p.name,
+      fullName: p.path_with_namespace,
+      description: p.description || null,
+      url: p.web_url,
+      isPrivate: p.visibility === 'private',
+    }))
+
+    return c.json({
+      repos,
+      page,
+      perPage,
+      total: null,
+      truncated: false,
+      glabAvailable: true,
+    })
+  } catch {
+    return c.json({ repos: [], page, perPage, total: null, truncated: false, glabAvailable: false })
+  }
 })
 
 export default app
