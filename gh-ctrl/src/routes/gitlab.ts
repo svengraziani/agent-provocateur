@@ -270,32 +270,34 @@ app.get('/branch-compare', async (c) => {
   const base = c.req.query('base') || 'main'
   if (!branch) return c.json({ error: 'branch query param is required' }, 400)
   const encoded = encodeProjectPath(resolved.projectPath)
-  const result = await glabApi(
-    `/projects/${encoded}/repository/compare?from=${encodeURIComponent(base)}&to=${encodeURIComponent(branch)}`,
-    { instanceUrl: resolved.instanceUrl, token: resolved.gitlabToken }
-  )
-  if (result.error) return c.json({ error: result.error }, 500)
-  return c.json({ ahead: result.data?.commits?.length ?? 0, behind: 0 })
+  const opts = { instanceUrl: resolved.instanceUrl, token: resolved.gitlabToken }
+  const [aheadResult, behindResult] = await Promise.all([
+    glabApi(`/projects/${encoded}/repository/compare?from=${encodeURIComponent(base)}&to=${encodeURIComponent(branch)}`, opts),
+    glabApi(`/projects/${encoded}/repository/compare?from=${encodeURIComponent(branch)}&to=${encodeURIComponent(base)}`, opts),
+  ])
+  if (aheadResult.error) return c.json({ error: aheadResult.error }, 500)
+  return c.json({
+    ahead: aheadResult.data?.commits?.length ?? 0,
+    behind: behindResult.data?.commits?.length ?? 0,
+  })
 })
 
 // GET /api/gitlab/branch-compare/:namespace/:project/:branch — ahead/behind vs default branch
 app.get('/branch-compare/:namespace/:project/:branch', async (c) => {
   const resolved = await resolveProject(c)
   if (!resolved) return c.json({ error: 'Could not resolve project' }, 400)
-
   const branch = decodeURIComponent(c.req.param('branch'))
   const base = c.req.query('base') || 'main'
   const encoded = encodeProjectPath(resolved.projectPath)
-
-  const result = await glabApi(
-    `/projects/${encoded}/repository/compare?from=${encodeURIComponent(base)}&to=${encodeURIComponent(branch)}`,
-    { instanceUrl: resolved.instanceUrl, token: resolved.gitlabToken }
-  )
-  if (result.error) return c.json({ error: result.error }, 500)
-
+  const opts = { instanceUrl: resolved.instanceUrl, token: resolved.gitlabToken }
+  const [aheadResult, behindResult] = await Promise.all([
+    glabApi(`/projects/${encoded}/repository/compare?from=${encodeURIComponent(base)}&to=${encodeURIComponent(branch)}`, opts),
+    glabApi(`/projects/${encoded}/repository/compare?from=${encodeURIComponent(branch)}&to=${encodeURIComponent(base)}`, opts),
+  ])
+  if (aheadResult.error) return c.json({ error: aheadResult.error }, 500)
   return c.json({
-    ahead: result.data?.commits?.length ?? 0,
-    behind: 0, // GitLab compare does not return behind count directly
+    ahead: aheadResult.data?.commits?.length ?? 0,
+    behind: behindResult.data?.commits?.length ?? 0,
   })
 })
 
