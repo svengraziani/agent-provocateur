@@ -6,7 +6,7 @@
 
 # Vibe and Conquer
 
-**Your self-hosted GitHub Command Center** — monitor every repo, visualize team activity on an RTS-style battlefield, and command Claude AI directly from the UI.
+**Your self-hosted GitHub & GitLab Command Center** — monitor every repo, visualize team activity on an RTS-style battlefield, deploy buildings for AI chat, health monitoring, and email, and command Claude AI directly from the UI.
 
 ![Demo](docs/demo_presentation.gif)
 
@@ -42,13 +42,23 @@ Trigger Claude AI on any issue or PR with a single click, without leaving the da
 - Claude-generated branches auto-link back to their source issues
 - "Create a PR" links from Claude comments become one-click buttons in the UI
 
+### Deploy Buildings
+
+Place functional **buildings** on your battlefield — each one adds a new capability to your command center.
+
+- **ClawCom** — AI agent chat building with Claude Channel, OpenClaw, and NanoClaw backends. Real-time SSE streaming, message history, and tool-call permission handling
+- **Healthcheck** — Monitor HTTP endpoints with configurable intervals, response-time tracking, and ok/error/partial status visualization
+- **Snailbox (Mailbox)** — Full IMAP/SMTP email client: read, star, compose, send, and sync emails without leaving the battlefield
+
 ### Organize & Track
 
-The **Intel Feed Panel** pulls your GitHub @mentions, open issues, and open PRs across all tracked repos into a single sidebar — so nothing falls through the cracks.
+The **Intel Feed Panel** pulls your GitHub and GitLab @mentions, open issues, and open PRs across all tracked repos into a single sidebar — so nothing falls through the cracks.
 
 - Netlify deploy-preview URLs surface automatically in PR cards
-- Voice input for hands-free issue and PR creation
+- Voice input (browser Speech API) for hands-free issue and PR creation
 - Repo metadata at a glance: stars, forks, languages, top contributors, and a 26-week commit activity sparkline
+- **Deadline Timers** — countdown missions with urgency levels (critical / warning / ok / expired)
+- **Badge System** — upload custom badge images and place them on the map with labels and scaling
 
 ---
 
@@ -130,40 +140,72 @@ These workflows are the backbone of **ClawCom** — the dashboard's AI command l
 - Real-time SSE streaming — repos load as soon as they're ready
 - Conflict warnings, draft PRs, running actions, stale branches
 - Configurable auto-refresh (30s – 30 min)
+- Sidebar stats: repo count, open PRs, issues, merge conflicts, last refresh timestamp, app version
 
 ### Battlefield View
-- Infinite isometric canvas — pan, zoom, reposition bases freely
+- Infinite isometric canvas — pan, zoom (mouse wheel with cursor-centered zoom), reposition bases freely
 - HUD: active bases, conflicts, running processes, stale branches
-- Minimap, sound effects, Relocate Mode (drag & drop bases)
-- Intel Feed Panel: @mentions, open issues, open PRs across all repos
+- Minimap with viewport indicator and alert/stale status markers
+- Sound effects on scan complete and conflict detection
+- Relocate Mode (drag & drop bases and buildings)
+- Intel Feed Panel: @mentions, open issues, open PRs across all repos (with category filtering)
 
 ### Base Nodes (per-repo)
 - Open PRs with review status, draft status, and Netlify preview URLs
 - Open issues with labels and assignees
-- Branch staleness visualization
+- Branch staleness visualization (30-day and 90-day thresholds with color coding)
+- Branch deletion and commit comparison (ahead/behind)
 - Repo metadata popup: stars, forks, watchers, languages, topics, top contributors, 26-week commit sparkline
 - Construct Dialog: trigger Claude, post comments, add/remove labels, assign users, create PRs
+- Batch issue creation
+
+### Building System
+- **ClawCom** — AI agent chat with Claude Channel (real-time SSE), OpenClaw, and NanoClaw backends; message history; tool-call permission system
+- **Healthcheck** — monitor multiple HTTP endpoints per building; configurable intervals; response-time tracking; ok/error/partial status; trigger-on-demand
+- **Snailbox (Mailbox)** — full IMAP/SMTP email client; read, star, compose, send; background sync; unread count; connection testing
+- Buildings are draggable, color-customizable, and persist position on the map
+
+### Badge & Decoration System
+- Upload custom badge images (PNG, JPG, up to 5 MB)
+- Badge library management (rename, delete)
+- Place badges on any map with arbitrary position, scaling, and custom labels
+
+### Deadline Timers
+- Create countdown missions with name, description, deadline, and color
+- Real-time countdown (days / hours / minutes / seconds)
+- Urgency levels: OK (> 72 h), WARNING (24–72 h), CRITICAL (< 24 h), EXPIRED
+- Sorted by deadline
 
 ### Map Editor
-- Create isometric tile maps (up to 80×80 tiles) for battlefield backgrounds
-- Tile color painting with multi-select and flood fill
+- Create isometric tile maps (up to 256 × 256 tiles) for battlefield backgrounds
+- 10 tile types: ground, grass, water, sand, rock, forest, mountain, lava, snow, custom
+- Paint, erase, and flood-fill tools with zoom controls
+- Import / export maps as JSON
 - Save, load, delete named maps with mini-preview thumbnails
 
 ### Repository Management
+- **Multi-provider**: GitHub and GitLab (including self-hosted instances) in a single dashboard
 - Browse and search owned, collaborator, and org repos — add with one click
 - Manual `owner/repo` entry as fallback
 - Customizable per-repo color (preset palette + custom hex picker)
 - Create new GitHub repos directly from the dashboard
 
-### Claude AI Integration
+### Claude AI Integration (ClawCom)
 - Surfaces `claude`, `ai`, `ai-fix`, `ai-feature` labeled issues in a dedicated section
 - Detects `claude/issue-*` branches and links them to source issues
 - Parses Claude's "Create a PR" links into one-click buttons
 - Shows active Claude workflow runs per repo
+- Label-trigger automation endpoint
+
+### Authentication
+- Optional Keycloak (OAuth2 / OpenID Connect) integration
+- User profile display in sidebar
 
 ### Other
-- Voice input for hands-free issue and PR creation
-- Toast notifications for all actions
+- Voice input (browser Speech API) for hands-free issue and PR creation
+- Toast notifications (success / error / info) with auto-dismiss
+- Markdown rendering for descriptions and rich text
+- Setup screen with connection diagnostics (GitHub CLI, auth, database, GitLab token)
 
 </details>
 
@@ -178,7 +220,9 @@ These workflows are the backbone of **ClawCom** — the dashboard's AI command l
 | Frontend | React 18 + Vite (port 5173 in dev) |
 | Database | SQLite + [Drizzle ORM](https://orm.drizzle.team) |
 | GitHub API | GitHub CLI (`gh`) |
+| GitLab API | REST API (with self-hosted instance support) |
 | State Management | [Zustand](https://github.com/pmndrs/zustand) |
+| Auth (optional) | Keycloak (OAuth2 / OpenID Connect) |
 
 ## Project Structure
 
@@ -190,25 +234,36 @@ vibe-and-conquer/
     │   ├── db/               # Drizzle ORM schema & SQLite connection
     │   └── routes/
     │       ├── github.ts     # GitHub data fetching via gh CLI (SSE streaming, actions, PRs, issues)
+    │       ├── gitlab.ts     # GitLab REST API integration (parallel to github.ts)
     │       ├── repos.ts      # Repository CRUD endpoints
-    │       └── maps.ts       # Map CRUD endpoints (tile maps for Battlefield)
+    │       ├── maps.ts       # Map CRUD endpoints (tile maps for Battlefield)
+    │       ├── buildings.ts  # Building CRUD + ClawCom chat, Healthcheck, Mailbox endpoints
+    │       ├── badges.ts     # Badge upload, library, and placement endpoints
+    │       └── timers.ts     # Deadline timer CRUD endpoints
     └── client/
         └── src/
             ├── App.tsx               # Root app with view routing
             ├── store.ts              # Zustand global state
             ├── api.ts                # Frontend API client
             ├── types.ts              # Shared TypeScript types
-            ├── hooks/                # Custom hooks (sound, voice input)
+            ├── hooks/                # Custom hooks (sound, voice, camera, draggables, auth)
             └── components/
-                ├── Dashboard.tsx     # Grid view of all repos
-                ├── BattlefieldView.tsx # RTS-style isometric battlefield
-                ├── BaseNode.tsx      # Per-repo node on the battlefield
-                ├── MapEditor.tsx     # Tile map creation and editing
-                ├── FeedPanel.tsx     # Intel feed (@mentions, issues, PRs)
-                ├── ActionModal.tsx   # Claude trigger / issue action modal
-                ├── ConstructDialog.tsx # Construct / issue action dialog
-                ├── Settings.tsx      # Repo management and preferences
-                └── RepoCard.tsx      # Repo card for the dashboard grid
+                ├── Dashboard.tsx        # Grid view of all repos
+                ├── BattlefieldView.tsx  # RTS-style isometric battlefield
+                ├── BattlefieldHUD.tsx   # Heads-up display with map controls
+                ├── BattlefieldMinimap.tsx # Minimap with alert indicators
+                ├── BaseNode.tsx         # Per-repo node on the battlefield
+                ├── BranchBuilding.tsx   # Branch visualization with stale states
+                ├── ClawComBuilding.tsx   # AI agent chat building
+                ├── HealthcheckBuilding.tsx # HTTP endpoint monitor building
+                ├── MailboxBuilding.tsx   # IMAP/SMTP email building
+                ├── BadgeMarker.tsx       # Placed badge decoration
+                ├── DeadlineTimers.tsx    # Countdown mission timers
+                ├── MapEditor.tsx         # Tile map creation and editing
+                ├── FeedPanel.tsx         # Intel feed (@mentions, issues, PRs)
+                ├── ConstructDialog.tsx   # Construct / issue action dialog
+                ├── Settings.tsx          # Repo management and preferences
+                └── SetupScreen.tsx       # Initial setup and connection diagnostics
 ```
 
 ---
