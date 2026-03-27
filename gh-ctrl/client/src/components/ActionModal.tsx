@@ -234,18 +234,11 @@ function AssigneeForm({ state, onClose, onSuccess, onError }: {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
 
-  if (state.provider === 'gitlab') {
-    return (
-      <div>
-        <div className="modal-title">Assignees<span className="modal-subtitle">{state.fullName}</span></div>
-        <div className="modal-loading">Assignee management is not yet supported for GitLab — use the GitLab web UI.</div>
-        <div className="modal-actions"><button className="btn btn-primary btn-sm" onClick={onClose}>Close</button></div>
-      </div>
-    )
-  }
-
   useEffect(() => {
-    api.getCollaborators(state.owner, state.repoName)
+    const loadCollaborators = state.provider === 'gitlab'
+      ? api.getGitLabCollaborators(state.fullName)
+      : api.getCollaborators(state.owner, state.repoName)
+    loadCollaborators
       .then(setCollaborators)
       .catch((err) => onError(`Failed to load collaborators: ${err.message}`))
       .finally(() => setLoading(false))
@@ -268,10 +261,17 @@ function AssigneeForm({ state, onClose, onSuccess, onError }: {
       const toAdd = [...selected].filter((l) => !original.has(l))
       const toRemove = [...original].filter((l) => !selected.has(l))
 
-      await Promise.all([
-        ...toAdd.map((assignee) => api.addAssignee({ fullName: state.fullName, number: state.number, type: state.type, assignee })),
-        ...toRemove.map((assignee) => api.removeAssignee({ fullName: state.fullName, number: state.number, type: state.type, assignee })),
-      ])
+      if (state.provider === 'gitlab') {
+        await Promise.all([
+          ...toAdd.map((assignee) => api.addGitLabAssignee({ fullName: state.fullName, number: state.number, type: state.type === 'pr' ? 'mr' : state.type, assignee })),
+          ...toRemove.map((assignee) => api.removeGitLabAssignee({ fullName: state.fullName, number: state.number, type: state.type === 'pr' ? 'mr' : state.type, assignee })),
+        ])
+      } else {
+        await Promise.all([
+          ...toAdd.map((assignee) => api.addAssignee({ fullName: state.fullName, number: state.number, type: state.type, assignee })),
+          ...toRemove.map((assignee) => api.removeAssignee({ fullName: state.fullName, number: state.number, type: state.type, assignee })),
+        ])
+      }
 
       const changes = toAdd.length + toRemove.length
       onSuccess(`Assignees updated on ${state.type} #${state.number} (${changes} change${changes !== 1 ? 's' : ''})`)
@@ -719,18 +719,11 @@ function AssignForm({ state, onClose, onSuccess, onError }: {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
 
-  if (state.provider === 'gitlab') {
-    return (
-      <div>
-        <div className="modal-title">Assign {state.type} #{state.number}<span className="modal-subtitle">{state.fullName}</span></div>
-        <div className="modal-loading">Assignee management is not yet supported for GitLab — use the GitLab web UI.</div>
-        <div className="modal-actions"><button className="btn btn-primary btn-sm" onClick={onClose}>Close</button></div>
-      </div>
-    )
-  }
-
   useEffect(() => {
-    api.getCollaborators(state.owner, state.repoName)
+    const loadCollaborators = state.provider === 'gitlab'
+      ? api.getGitLabCollaborators(state.fullName)
+      : api.getCollaborators(state.owner, state.repoName)
+    loadCollaborators
       .then(data => setCollaborators(data.map(c => c.login)))
       .catch((err) => onError(`Failed to load collaborators: ${err.message}`))
       .finally(() => setLoading(false))
@@ -752,12 +745,23 @@ function AssignForm({ state, onClose, onSuccess, onError }: {
     if (toAdd.length === 0) { onClose(); return }
     setSubmitting(true)
     try {
-      await api.assignUser({
-        fullName: state.fullName,
-        number: state.number,
-        type: state.type,
-        assignees: toAdd,
-      })
+      if (state.provider === 'gitlab') {
+        await Promise.all(
+          toAdd.map((assignee) => api.addGitLabAssignee({
+            fullName: state.fullName,
+            number: state.number,
+            type: state.type === 'pr' ? 'mr' : state.type,
+            assignee,
+          }))
+        )
+      } else {
+        await api.assignUser({
+          fullName: state.fullName,
+          number: state.number,
+          type: state.type,
+          assignees: toAdd,
+        })
+      }
       onSuccess(`Assigned ${toAdd.join(', ')} to ${state.type} #${state.number}`)
       onClose()
     } catch (err: any) {
@@ -926,8 +930,7 @@ function PRDetailView({ state, onClose, onError, onTransition }: {
                 >
                   <LabelIcon size={12} />
                 </button>
-                {state.provider !== 'gitlab' && (
-                  <button
+                <button
                     type="button"
                     className="btn btn-ghost btn-sm"
                     onClick={() => onTransition({ mode: 'assign', fullName: state.fullName, owner: state.owner, repoName: state.repoName, number: state.number, type: 'pr', currentAssignees: pr.assignees.map((a) => a.login), provider: state.provider })}
@@ -935,7 +938,6 @@ function PRDetailView({ state, onClose, onError, onTransition }: {
                   >
                     Assign
                   </button>
-                )}
               </>
             )}
             <button type="button" className="btn btn-primary btn-sm" onClick={onClose}>Close</button>
@@ -1055,8 +1057,7 @@ function IssueDetailView({ state, onClose, onError, onTransition }: {
                 >
                   {state.provider === 'gitlab' ? '@mr' : '@pr'}
                 </button>
-                {state.provider !== 'gitlab' && (
-                  <button
+                <button
                     type="button"
                     className="btn btn-ghost btn-sm"
                     onClick={() => onTransition({ mode: 'assign', fullName: state.fullName, owner: state.owner, repoName: state.repoName, number: state.number, type: 'issue', currentAssignees: issue.assignees.map((a) => a.login), provider: state.provider })}
@@ -1064,7 +1065,6 @@ function IssueDetailView({ state, onClose, onError, onTransition }: {
                   >
                     Assign
                   </button>
-                )}
               </>
             )}
             <button type="button" className="btn btn-primary btn-sm" onClick={onClose}>Close</button>

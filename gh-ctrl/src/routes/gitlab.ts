@@ -595,6 +595,78 @@ app.post('/comment', async (c) => {
   return c.json({ ok: true })
 })
 
+app.post('/assignee', async (c) => {
+  const body = await c.req.json()
+  const { fullName, number, type, assignee, instanceUrl: bodyInstanceUrl } = body
+
+  if (!fullName || !number || !type || !assignee) {
+    return c.json({ error: 'Missing required fields: fullName, number, type, assignee' }, 400)
+  }
+
+  const row = await db.select().from(repos).where(eq(repos.fullName, fullName)).get()
+  const instanceUrl = bodyInstanceUrl ?? row?.instanceUrl ?? process.env.GITLAB_INSTANCE_URL ?? null
+  const token = row?.gitlabToken ?? null
+
+  const encoded = encodeProjectPath(fullName)
+  const resource = type === 'mr' || type === 'pr' ? 'merge_requests' : 'issues'
+
+  const currentResult = await glabApi(`/projects/${encoded}/${resource}/${number}`, { instanceUrl, token })
+  if (currentResult.error) return c.json({ error: currentResult.error }, 500)
+
+  const currentIds: number[] = (currentResult.data?.assignees ?? []).map((u: any) => u.id)
+  const userResult = await glabApi(`/users?username=${encodeURIComponent(assignee)}`, { instanceUrl, token })
+  const userId = userResult.data?.[0]?.id
+  if (!userId) return c.json({ error: `User '${assignee}' not found` }, 404)
+
+  if (!currentIds.includes(userId)) currentIds.push(userId)
+
+  const updateResult = await glabApi(`/projects/${encoded}/${resource}/${number}`, {
+    instanceUrl,
+    token,
+    method: 'PUT',
+    body: { assignee_ids: currentIds },
+  })
+  if (updateResult.error) return c.json({ error: updateResult.error }, 500)
+
+  return c.json({ ok: true })
+})
+
+app.delete('/assignee', async (c) => {
+  const body = await c.req.json()
+  const { fullName, number, type, assignee, instanceUrl: bodyInstanceUrl } = body
+
+  if (!fullName || !number || !type || !assignee) {
+    return c.json({ error: 'Missing required fields: fullName, number, type, assignee' }, 400)
+  }
+
+  const row = await db.select().from(repos).where(eq(repos.fullName, fullName)).get()
+  const instanceUrl = bodyInstanceUrl ?? row?.instanceUrl ?? process.env.GITLAB_INSTANCE_URL ?? null
+  const token = row?.gitlabToken ?? null
+
+  const encoded = encodeProjectPath(fullName)
+  const resource = type === 'mr' || type === 'pr' ? 'merge_requests' : 'issues'
+
+  const currentResult = await glabApi(`/projects/${encoded}/${resource}/${number}`, { instanceUrl, token })
+  if (currentResult.error) return c.json({ error: currentResult.error }, 500)
+
+  const userResult = await glabApi(`/users?username=${encodeURIComponent(assignee)}`, { instanceUrl, token })
+  const userId = userResult.data?.[0]?.id
+
+  const filteredIds = (currentResult.data?.assignees ?? [])
+    .map((u: any) => u.id)
+    .filter((id: number) => id !== userId)
+
+  const updateResult = await glabApi(`/projects/${encoded}/${resource}/${number}`, {
+    instanceUrl,
+    token,
+    method: 'PUT',
+    body: { assignee_ids: filteredIds },
+  })
+  if (updateResult.error) return c.json({ error: updateResult.error }, 500)
+
+  return c.json({ ok: true })
+})
+
 // ---------------------------------------------------------------------------
 // Setup validation — validate that a GitLab repo path is accessible
 // Used by the repos route when adding a GitLab repo
