@@ -44,6 +44,11 @@ COPY --from=builder /app/client/dist ./client/dist
 
 EXPOSE 3001
 
+# Document supported environment variables
+# GH_TOKEN          — GitHub Personal Access Token (required for GitHub repos)
+# GITLAB_TOKEN      — GitLab Personal Access Token (optional, for GitLab repos)
+# GITLAB_INSTANCE_URL — Self-hosted GitLab URL (optional, defaults to gitlab.com)
+
 CMD ["bun", "src/index.ts"]
 
 # ── Stage 3: dev ──────────────────────────────────────────────────────────────
