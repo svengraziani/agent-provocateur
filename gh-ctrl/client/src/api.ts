@@ -431,6 +431,9 @@ export const api = {
   getGitLabRepoData: (fullName: string) =>
     request<RepoData>(`/gitlab/repo?path=${encodeURIComponent(fullName)}`),
 
+  getGitLabCollaborators: (fullName: string) =>
+    request<{ login: string }[]>(`/gitlab/members?path=${encodeURIComponent(fullName)}`),
+
   getGitLabLabels: (fullName: string) =>
     request<GHLabel[]>(`/gitlab/labels?path=${encodeURIComponent(fullName)}`),
 
