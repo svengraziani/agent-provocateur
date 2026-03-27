@@ -55,7 +55,7 @@ export function MailboxSetupDialog({ building, onClose, onConfigured, onError }:
         setTestState('ok')
       } else {
         setTestState('error')
-        setTestError(res.error ?? 'Verbindung fehlgeschlagen')
+        setTestError(res.error ?? 'Connection failed')
       }
     } catch (err: any) {
       setTestState('error')
@@ -82,7 +82,7 @@ export function MailboxSetupDialog({ building, onClose, onConfigured, onError }:
       await loadBuildings()
       onConfigured(updated)
     } catch (err: any) {
-      onError(`Konfiguration fehlgeschlagen: ${err.message}`)
+      onError(`Configuration failed: ${err.message}`)
     } finally {
       setSaving(false)
     }
@@ -103,13 +103,13 @@ export function MailboxSetupDialog({ building, onClose, onConfigured, onError }:
 
         <div className="clawcom-setup-form">
           <div className="clawcom-setup-desc">
-            Verbinde dein IMAP/SMTP-Postfach. E-Mails werden automatisch abgerufen und
-            direkt auf dem Schlachtfeld angezeigt.
+            Connect your IMAP/SMTP mailbox. Emails are automatically fetched and
+            displayed directly on the battlefield.
           </div>
 
           {/* IMAP */}
           <div className="clawcom-setup-group">
-            <label className="clawcom-setup-group-label">IMAP (EMPFANGEN)</label>
+            <label className="clawcom-setup-group-label">IMAP (RECEIVE)</label>
             <div className="clawcom-setup-row" style={{ gap: 6 }}>
               <input
                 className="hud-input"
@@ -130,7 +130,7 @@ export function MailboxSetupDialog({ building, onClose, onConfigured, onError }:
 
           {/* SMTP */}
           <div className="clawcom-setup-group">
-            <label className="clawcom-setup-group-label">SMTP (SENDEN)</label>
+            <label className="clawcom-setup-group-label">SMTP (SEND)</label>
             <div className="clawcom-setup-row" style={{ gap: 6 }}>
               <input
                 className="hud-input"
@@ -151,7 +151,7 @@ export function MailboxSetupDialog({ building, onClose, onConfigured, onError }:
 
           {/* Credentials */}
           <div className="clawcom-setup-group">
-            <label className="clawcom-setup-group-label">ZUGANGSDATEN</label>
+            <label className="clawcom-setup-group-label">CREDENTIALS</label>
             <input
               className="hud-input"
               value={username}
@@ -165,7 +165,7 @@ export function MailboxSetupDialog({ building, onClose, onConfigured, onError }:
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Passwort"
+                placeholder="Password"
                 style={{ width: '100%', paddingRight: 28, boxSizing: 'border-box' }}
               />
               <button
@@ -176,7 +176,7 @@ export function MailboxSetupDialog({ building, onClose, onConfigured, onError }:
                   background: 'none', border: 'none', cursor: 'pointer',
                   color: 'var(--text-dim)', fontSize: 13, padding: '0 2px', lineHeight: 1,
                 }}
-                title={showPassword ? 'Passwort verbergen' : 'Passwort anzeigen'}
+                title={showPassword ? 'Hide password' : 'Show password'}
               >
                 {showPassword ? <Eye size={13} /> : <EyeOff size={13} />}
               </button>
@@ -185,7 +185,7 @@ export function MailboxSetupDialog({ building, onClose, onConfigured, onError }:
 
           {/* Folder + Poll interval */}
           <div className="clawcom-setup-group">
-            <label className="clawcom-setup-group-label">ORDNER</label>
+            <label className="clawcom-setup-group-label">FOLDER</label>
             <input
               className="hud-input"
               value={folder}
@@ -196,7 +196,7 @@ export function MailboxSetupDialog({ building, onClose, onConfigured, onError }:
           </div>
 
           <div className="clawcom-setup-group">
-            <label className="clawcom-setup-group-label">ABRUF-INTERVALL</label>
+            <label className="clawcom-setup-group-label">POLL INTERVAL</label>
             <div className="clawcom-setup-row" style={{ flexWrap: 'wrap', gap: 4 }}>
               {POLL_PRESETS.map((p) => (
                 <button
@@ -216,7 +216,7 @@ export function MailboxSetupDialog({ building, onClose, onConfigured, onError }:
       <div className="map-dialog-actions" style={{ flexDirection: 'column', gap: 6 }}>
         {testState === 'ok' && (
           <div style={{ fontSize: 10, color: 'var(--green-neon)', textAlign: 'center' }}>
-            ✓ IMAP-Verbindung erfolgreich
+            ✓ IMAP connection successful
           </div>
         )}
         {testState === 'error' && (
@@ -225,20 +225,20 @@ export function MailboxSetupDialog({ building, onClose, onConfigured, onError }:
           </div>
         )}
         <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-          <button className="hud-btn" onClick={onClose}>ABBRECHEN</button>
+          <button className="hud-btn" onClick={onClose}>CANCEL</button>
           <button
             className="hud-btn"
             onClick={handleTestConnection}
             disabled={!canTest || testState === 'testing'}
           >
-            {testState === 'testing' ? '◌ TESTE...' : '⚡ TEST'}
+            {testState === 'testing' ? '◌ TESTING...' : '⚡ TEST'}
           </button>
           <button
             className="hud-btn hud-btn-new-base"
             onClick={handleSave}
             disabled={!canSave || saving}
           >
-            {saving ? '◌ SPEICHERN...' : '✓ KONFIGURIEREN'}
+            {saving ? '◌ SAVING...' : '✓ CONFIGURE'}
           </button>
         </div>
       </div>

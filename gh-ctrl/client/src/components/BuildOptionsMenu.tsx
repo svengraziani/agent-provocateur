@@ -15,7 +15,7 @@ const AVAILABLE_BUILDINGS: BuildingDef[] = [
     type: 'clawcom',
     name: 'ClawCom',
     description:
-      'Kommunikationsstation für Openclaw oder Nanoclaw. Verbinde externe Roboter-Agenten und sende ihnen Befehle über ein integriertes Chatfenster. Eingehende Nachrichten werden direkt am Gebäude angezeigt.',
+      'Communication station for Openclaw or Nanoclaw. Connect external robot agents and send them commands via an integrated chat window. Incoming messages are displayed directly at the building.',
     buildImage: '/buildings/build_clawcom.png',
     defaultColor: '#00ff88',
   },
@@ -23,7 +23,7 @@ const AVAILABLE_BUILDINGS: BuildingDef[] = [
     type: 'healthcheck',
     name: 'Healthcheck',
     description:
-      'Überwache einen oder mehrere HTTP-Endpunkte und visualisiere deren Verfügbarkeit direkt auf dem Schlachtfeld. Konfiguriere Ping-Intervalle und Labels für jeden Endpunkt — das Gebäude leuchtet grün bei OK, rot bei Ausfall.',
+      'Monitor one or more HTTP endpoints and visualize their availability directly on the battlefield. Configure ping intervals and labels for each endpoint — the building lights up green for OK, red for failure.',
     buildImage: '/buildings/healthcheck.png',
     defaultColor: '#00FF00',
   },
@@ -31,7 +31,7 @@ const AVAILABLE_BUILDINGS: BuildingDef[] = [
     type: 'snailbox',
     name: 'Snailbox',
     description:
-      'Interner E-Mail-Client — verbinde dein IMAP/SMTP-Postfach und verwalte E-Mails direkt vom Schlachtfeld. Zeigt ungelesene Nachrichten als Badge an.',
+      'Internal email client — connect your IMAP/SMTP mailbox and manage emails directly from the battlefield. Displays unread messages as a badge.',
     buildImage: '/buildings/build_snailbox.png',
     defaultColor: '#4488ff',
   },
@@ -39,7 +39,7 @@ const AVAILABLE_BUILDINGS: BuildingDef[] = [
     type: 'new-base',
     name: 'Repository',
     description:
-      'Etabliere ein neues GitHub-Repository direkt vom Schlachtfeld. Konfiguriere Namen, Beschreibung und Sichtbarkeit — das neue Hauptquartier erscheint sofort in deiner Kommandozentrale.',
+      'Establish a new GitHub repository directly from the battlefield. Configure name, description and visibility — the new headquarters appears immediately in your command center.',
     buildImage: '/buildings/build_base.png',
     defaultColor: '#00ff88',
   },
@@ -106,7 +106,7 @@ export function BuildOptionsMenu({ onClose, onStartPlacement }: BuildOptionsMenu
 
       {/* Header */}
       <div className="cnc-sidebar-header">
-        <span>&#x25a0; BAU OPTIONEN</span>
+        <span>&#x25a0; BUILD OPTIONS</span>
         <button className="cnc-close-btn" onClick={onClose} title="Close [Esc]">
           <CloseIcon size={10} />
         </button>
@@ -164,7 +164,7 @@ export function BuildOptionsMenu({ onClose, onStartPlacement }: BuildOptionsMenu
             ) : (
               <>
                 <div className="cnc-field">
-                  <label>BEZEICHNUNG</label>
+                  <label>DESIGNATION</label>
                   <input
                     className="hud-input cnc-input"
                     value={buildName}
@@ -173,7 +173,7 @@ export function BuildOptionsMenu({ onClose, onStartPlacement }: BuildOptionsMenu
                   />
                 </div>
                 <div className="cnc-field">
-                  <label>FARBE</label>
+                  <label>COLOR</label>
                   <div className="cnc-color-row">
                     <input
                       type="color"
@@ -188,7 +188,7 @@ export function BuildOptionsMenu({ onClose, onStartPlacement }: BuildOptionsMenu
           </>
         ) : (
           <div className="cnc-preview-empty">
-            &#x25a6; Wähle ein<br />Gebäude zum Platzieren
+            &#x25a6; Select a<br />building to place
           </div>
         )}
       </div>
@@ -205,7 +205,7 @@ export function BuildOptionsMenu({ onClose, onStartPlacement }: BuildOptionsMenu
             <div className="cnc-card-img-wrap">
               <img src={b.buildImage} alt={b.name} />
               {selected?.type === b.type && (
-                <span className="cnc-ready">BEREIT</span>
+                <span className="cnc-ready">READY</span>
               )}
             </div>
             <div className="cnc-card-label">{b.name}</div>
@@ -216,17 +216,17 @@ export function BuildOptionsMenu({ onClose, onStartPlacement }: BuildOptionsMenu
       {/* Footer */}
       <div className="cnc-footer">
         <button className="hud-btn" onClick={onClose} disabled={creating}>
-          <CloseIcon size={9} /> ABBRECHEN
+          <CloseIcon size={9} /> CANCEL
         </button>
         <button
           className="hud-btn hud-btn-new-base"
           onClick={handlePlatzieren}
           disabled={!canSubmit || creating}
-          title={!selected ? 'Kein Gebäude ausgewählt' : isNewBase ? 'Repository erstellen' : 'Auf Karte platzieren'}
+          title={!selected ? 'No building selected' : isNewBase ? 'Create repository' : 'Place on map'}
         >
           {creating
-            ? <><span className="cnc-spinner" /> WIRD ERSTELLT...</>
-            : <><PlusIcon size={9} /> {isNewBase ? 'ERSTELLEN' : 'PLATZIEREN'}</>
+            ? <><span className="cnc-spinner" /> CREATING...</>
+            : <><PlusIcon size={9} /> {isNewBase ? 'CREATE' : 'PLACE'}</>
           }
         </button>
       </div>

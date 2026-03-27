@@ -179,7 +179,7 @@ export function ClawComBuilding({
   }
 
   async function handleDelete() {
-    if (!confirm(`"${currentBuilding.name}" wirklich löschen?`)) return
+    if (!confirm(`Delete "${currentBuilding.name}"?`)) return
     try {
       await deleteBuilding(currentBuilding.id)
     } catch { /* toast shown by store */ }
@@ -275,8 +275,8 @@ export function ClawComBuilding({
               : '#888',
             border: '1px solid var(--bg-darker)',
           }} title={isConfigured
-            ? config.clawType === 'claudechannel' ? 'Claude Channel aktiv' : 'Verbunden'
-            : 'Nicht konfiguriert'
+            ? config.clawType === 'claudechannel' ? 'Claude Channel active' : 'Connected'
+            : 'Not configured'
           } />
         </div>
 
@@ -299,9 +299,9 @@ export function ClawComBuilding({
         <div style={{ fontSize: 9, color: 'var(--text-dim)', textAlign: 'center' }}>
           {isConfigured
             ? config.clawType === 'claudechannel'
-              ? '✦ CLAUDE ● AKTIV'
+              ? '✦ CLAUDE ● ACTIVE'
               : `${config.clawType?.toUpperCase() ?? 'CLAW'} ● ONLINE`
-            : '⚙ SETUP ERFORDERLICH'}
+            : '⚙ SETUP REQUIRED'}
         </div>
 
         {/* Action bar (visible on hover via CSS) */}
@@ -315,7 +315,7 @@ export function ClawComBuilding({
               className="hud-btn"
               style={{ fontSize: 9, padding: '1px 5px' }}
               onClick={() => colorInputRef.current?.click()}
-              title="Farbe ändern"
+              title="Change color"
             >
               ◈
             </button>
@@ -330,7 +330,7 @@ export function ClawComBuilding({
               className="hud-btn"
               style={{ fontSize: 9, padding: '1px 5px', color: '#ff6b6b' }}
               onClick={handleDelete}
-              title="Gebäude abreißen"
+              title="Demolish building"
             >
               ✕
             </button>
@@ -345,7 +345,7 @@ export function ClawComBuilding({
           onClose={() => onDeselect?.()}
           onConfigured={(updated) => {
             setCurrentBuilding(updated)
-            addToast(`${updated.name} erfolgreich konfiguriert!`, 'success')
+            addToast(`${updated.name} configured successfully!`, 'success')
           }}
           onError={(msg) => addToast(msg, 'error')}
         />,
