@@ -1,6 +1,6 @@
 {
   "name": "gh-ctrl",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "scripts": {
     "dev": "concurrently \"bun run dev:server\" \"bun run dev:client\"",
