@@ -819,13 +819,26 @@ app.get('/validate', async (c) => {
 
 app.get('/instances', async (c) => {
   try {
-    const proc = Bun.spawn(['glab', 'config', 'get', 'hosts'], { env: { ...process.env } })
+    const proc = Bun.spawn(['glab', 'auth', 'status', '--all'], {
+      env: { ...process.env },
+    })
     const stdout = await new Response(proc.stdout).text()
     const exitCode = await proc.exited
     if (exitCode !== 0 || !stdout.trim()) {
       return c.json({ instances: [], glabAvailable: false })
     }
-    const hosts = stdout.trim().split('\n').map(h => h.trim()).filter(Boolean)
+    const hosts: string[] = []
+    for (const line of stdout.split('\n')) {
+      const trimmed = line.trim()
+      if (trimmed && !trimmed.startsWith('✓') && !trimmed.startsWith('✗') && !trimmed.startsWith('-') && trimmed.length > 0) {
+        if (trimmed.includes('.') && !trimmed.includes(' ')) {
+          hosts.push(trimmed)
+        }
+      }
+    }
+    if (hosts.length === 0) {
+      return c.json({ instances: [], glabAvailable: false })
+    }
     const instances = hosts.map(host => ({
       host,
       label: `GitLab (${host})`,

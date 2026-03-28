@@ -14,7 +14,7 @@ export function createTestDb() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       owner TEXT NOT NULL,
       name TEXT NOT NULL,
-      full_name TEXT NOT NULL UNIQUE,
+      full_name TEXT NOT NULL,
       description TEXT,
       color TEXT DEFAULT '#00ff88',
       provider TEXT NOT NULL DEFAULT 'github',
@@ -23,6 +23,7 @@ export function createTestDb() {
       created_at INTEGER DEFAULT (unixepoch())
     )
   `)
+  sqlite.exec(`CREATE UNIQUE INDEX IF NOT EXISTS repos_full_name_provider_unique ON repos(full_name, provider)`)
 
   sqlite.exec(`
     CREATE TABLE IF NOT EXISTS maps (

@@ -143,6 +143,209 @@ describe('POST /', () => {
   })
 })
 
+describe('POST / (gitlab provider)', () => {
+  beforeEach(clearRepos)
+
+  it('creates repo when glab CLI succeeds', async () => {
+    const original = Bun.spawnSync
+    ;(Bun as any).spawnSync = () => ({
+      exitCode: 0,
+      stdout: Buffer.from(JSON.stringify({ path_with_namespace: 'mygroup/myproject' })),
+      stderr: Buffer.from(''),
+    })
+
+    const res = await app.request('/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fullName: 'mygroup/myproject', provider: 'gitlab' }),
+    })
+    expect(res.status).toBe(201)
+    const body = await res.json()
+    expect(body.fullName).toBe('mygroup/myproject')
+    expect(body.owner).toBe('mygroup')
+    expect(body.name).toBe('myproject')
+    expect(body.provider).toBe('gitlab')
+
+    ;(Bun as any).spawnSync = original
+  })
+
+  it('creates repo with nested namespace', async () => {
+    const original = Bun.spawnSync
+    ;(Bun as any).spawnSync = () => ({
+      exitCode: 0,
+      stdout: Buffer.from(JSON.stringify({ path_with_namespace: 'org/team/subteam/project' })),
+      stderr: Buffer.from(''),
+    })
+
+    const res = await app.request('/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fullName: 'org/team/subteam/project', provider: 'gitlab' }),
+    })
+    expect(res.status).toBe(201)
+    const body = await res.json()
+    expect(body.fullName).toBe('org/team/subteam/project')
+    expect(body.owner).toBe('org/team/subteam')
+    expect(body.name).toBe('project')
+
+    ;(Bun as any).spawnSync = original
+  })
+
+  it('returns 404 when glab CLI cannot find the project', async () => {
+    const original = Bun.spawnSync
+    ;(Bun as any).spawnSync = () => ({
+      exitCode: 1,
+      stdout: Buffer.from(''),
+      stderr: Buffer.from('project not found'),
+    })
+
+    const res = await app.request('/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fullName: 'nonexistent/project', provider: 'gitlab' }),
+    })
+    expect(res.status).toBe(404)
+
+    ;(Bun as any).spawnSync = original
+  })
+
+  it('normalizes GitLab URL to namespace/project', async () => {
+    const original = Bun.spawnSync
+    ;(Bun as any).spawnSync = () => ({
+      exitCode: 0,
+      stdout: Buffer.from(JSON.stringify({ path_with_namespace: 'mygroup/myproject' })),
+      stderr: Buffer.from(''),
+    })
+
+    const res = await app.request('/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fullName: 'https://gitlab.com/mygroup/myproject', provider: 'gitlab' }),
+    })
+    expect(res.status).toBe(201)
+    const body = await res.json()
+    expect(body.fullName).toBe('mygroup/myproject')
+
+    ;(Bun as any).spawnSync = original
+  })
+
+  it('detects self-hosted instance URL from full URL', async () => {
+    const original = Bun.spawnSync
+    ;(Bun as any).spawnSync = () => ({
+      exitCode: 0,
+      stdout: Buffer.from(JSON.stringify({ path_with_namespace: 'team/project' })),
+      stderr: Buffer.from(''),
+    })
+
+    const res = await app.request('/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fullName: 'https://gitlab.example.com/team/project', provider: 'gitlab' }),
+    })
+    expect(res.status).toBe(201)
+    const body = await res.json()
+    expect(body.fullName).toBe('team/project')
+    expect(body.instanceUrl).toBe('https://gitlab.example.com')
+
+    ;(Bun as any).spawnSync = original
+  })
+
+  it('strips .git suffix from fullName', async () => {
+    const original = Bun.spawnSync
+    ;(Bun as any).spawnSync = () => ({
+      exitCode: 0,
+      stdout: Buffer.from(JSON.stringify({ path_with_namespace: 'mygroup/myproject' })),
+      stderr: Buffer.from(''),
+    })
+
+    const res = await app.request('/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fullName: 'https://gitlab.com/mygroup/myproject.git', provider: 'gitlab' }),
+    })
+    expect(res.status).toBe(201)
+    const body = await res.json()
+    expect(body.fullName).toBe('mygroup/myproject')
+
+    ;(Bun as any).spawnSync = original
+  })
+
+  it('stores custom color and gitlabToken', async () => {
+    const original = Bun.spawnSync
+    ;(Bun as any).spawnSync = () => ({
+      exitCode: 0,
+      stdout: Buffer.from(JSON.stringify({ path_with_namespace: 'mygroup/myproject' })),
+      stderr: Buffer.from(''),
+    })
+
+    const res = await app.request('/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fullName: 'mygroup/myproject',
+        provider: 'gitlab',
+        color: '#ff0000',
+        gitlabToken: 'glpat-xxxxxxxxxxxx',
+      }),
+    })
+    expect(res.status).toBe(201)
+    const body = await res.json()
+    expect(body.color).toBe('#ff0000')
+    expect(body.gitlabToken).toBe('glpat-xxxxxxxxxxxx')
+
+    ;(Bun as any).spawnSync = original
+  })
+
+  it('returns 409 when gitlab repo already exists', async () => {
+    await testDb.insert(repos).values({
+      owner: 'mygroup',
+      name: 'myproject',
+      fullName: 'mygroup/myproject',
+      provider: 'gitlab',
+    })
+
+    const original = Bun.spawnSync
+    ;(Bun as any).spawnSync = () => ({
+      exitCode: 0,
+      stdout: Buffer.from(JSON.stringify({ path_with_namespace: 'mygroup/myproject' })),
+      stderr: Buffer.from(''),
+    })
+
+    const res = await app.request('/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fullName: 'mygroup/myproject', provider: 'gitlab' }),
+    })
+    expect(res.status).toBe(409)
+
+    ;(Bun as any).spawnSync = original
+  })
+
+  it('uses explicit instanceUrl over URL-detected one', async () => {
+    const original = Bun.spawnSync
+    ;(Bun as any).spawnSync = () => ({
+      exitCode: 0,
+      stdout: Buffer.from(JSON.stringify({ path_with_namespace: 'team/project' })),
+      stderr: Buffer.from(''),
+    })
+
+    const res = await app.request('/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fullName: 'https://gitlab.example.com/team/project',
+        provider: 'gitlab',
+        instanceUrl: 'https://custom.gitlab.com',
+      }),
+    })
+    expect(res.status).toBe(201)
+    const body = await res.json()
+    expect(body.instanceUrl).toBe('https://custom.gitlab.com')
+
+    ;(Bun as any).spawnSync = original
+  })
+})
+
 describe('PATCH /:id', () => {
   beforeEach(clearRepos)
 

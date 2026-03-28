@@ -54,12 +54,14 @@ app.post('/', async (c) => {
     normalized = normalized.replace(/\.git$/, '')
 
     // Validate project exists via GitLab API
-    const { data, error } = await glabApi(
-      `/projects/${encodeProjectPath(normalized)}`,
-      { instanceUrl, token: gitlabToken }
-    )
-    if (error || !data) {
-      return c.json({ error: error ?? 'GitLab project not found' }, 404)
+    const check = Bun.spawnSync(['glab', 'repo', 'view', normalized, '-F','json'])
+    if (check.exitCode !== 0) {
+      return c.json({ error: check.stderr.toString() ?? 'GitLab project not found' }, 404)
+    }
+
+    const data = JSON.parse(check.stdout.toString())
+    if (!data ) {
+      return c.json({ error: 'GitLab project not found' }, 404)
     }
 
     canonicalFullName = data.path_with_namespace ?? normalized
