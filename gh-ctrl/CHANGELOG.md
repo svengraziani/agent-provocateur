@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0](https://github.com/svengraziani/vibe-and-conquer/compare/v1.1.0...v1.2.0) (2026-03-28)
+
+
+### ### Added
+
+* add keyboard shortcuts to battlefield ([b8f0dfc](https://github.com/svengraziani/vibe-and-conquer/commit/b8f0dfcf61b8fe8f0410b3a3a634876a470f0c64))
+* add keyboard shortcuts to battlefield ([0222a31](https://github.com/svengraziani/vibe-and-conquer/commit/0222a31760ad62f9161a7bbe6e17a22c80057af8)), closes [#300](https://github.com/svengraziani/vibe-and-conquer/issues/300)
+* default maps shipped with the application ([58a4bc6](https://github.com/svengraziani/vibe-and-conquer/commit/58a4bc6c4695e248a291be4c786ada7881fb79e8))
+* seed default maps on startup when no maps exist ([dbe3d23](https://github.com/svengraziani/vibe-and-conquer/commit/dbe3d23d789cee598ccfd6b9a60f92925cd93bec))
+
 ## [1.1.0](https://github.com/svengraziani/vibe-and-conquer/compare/v1.0.0...v1.1.0) (2026-03-28)
 
 
