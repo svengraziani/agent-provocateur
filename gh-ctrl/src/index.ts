@@ -16,6 +16,7 @@ import { join } from 'node:path'
 import { initHealthcheckService } from './healthcheck-service'
 import { initMailboxService } from './mailbox-service'
 import { authMiddleware } from './middleware/auth'
+import { seedDefaultMaps } from './seed'
 
 // Ensure uploads directory exists on startup
 const uploadsDir = join(process.cwd(), 'uploads', 'badges')
@@ -66,7 +67,8 @@ app.use('/uploads/*', serveStatic({ root: './' }))
 app.use('*', serveStatic({ root: './client/dist' }))
 app.get('*', serveStatic({ path: './client/dist/index.html' }))
 
-// Initialize background services
+// Seed default data and initialize background services
+seedDefaultMaps().catch((err) => console.error('[seed] error:', err))
 initHealthcheckService().catch((err) => console.error('[healthcheck-service] init error:', err))
 initMailboxService().catch((err) => console.error('[mailbox-service] init error:', err))
 
