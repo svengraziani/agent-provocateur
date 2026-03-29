@@ -122,3 +122,13 @@ export const mailFolders = sqliteTable('mail_folders', {
   delimiter:   text('delimiter').notNull().default('/'),
   syncedAt:    integer('synced_at'),
 })
+
+export const contacts = sqliteTable('contacts', {
+  id:          integer('id').primaryKey({ autoIncrement: true }),
+  username:    text('username').notNull().unique(),
+  email:       text('email').notNull(),
+  displayName: text('display_name'),
+  notes:       text('notes').default(''),
+  createdAt:   integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
+  updatedAt:   integer('updated_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
+})

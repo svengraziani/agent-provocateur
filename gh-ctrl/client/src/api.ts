@@ -1,4 +1,4 @@
-import type { Repo, DashboardEntry, RepoData, GHLabel, BranchesData, IssueDetail, PRDetail, GameMap, RepoMeta, FeedData, SetupStatus, Building, ClawComMessage, Badge, PlacedBadge, HealthcheckResult, DeadlineTimer, ChannelEvent, MailMessage } from './types'
+import type { Repo, DashboardEntry, RepoData, GHLabel, BranchesData, IssueDetail, PRDetail, GameMap, RepoMeta, FeedData, SetupStatus, Building, ClawComMessage, Badge, PlacedBadge, HealthcheckResult, DeadlineTimer, ChannelEvent, MailMessage, Contact } from './types'
 
 export function getServerUrl(): string {
   return localStorage.getItem('serverUrl')?.replace(/\/$/, '') ?? ''
@@ -537,4 +537,26 @@ export const api = {
 
   validateGitLabProject: (ns: string, project: string) =>
     request<{ ok: boolean; projectId: number; name: string }>(`/gitlab/validate/${ns}/${project}`),
+
+  // ── Contacts API ─────────────────────────────────────────────────────────────
+
+  listContacts: () => request<Contact[]>('/contacts'),
+
+  lookupContact: (username: string) =>
+    request<Contact>(`/contacts/lookup/${encodeURIComponent(username)}`),
+
+  createContact: (params: { username: string; email: string; displayName?: string; notes?: string }) =>
+    request<Contact>('/contacts', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    }),
+
+  updateContact: (id: number, updates: { username?: string; email?: string; displayName?: string; notes?: string }) =>
+    request<Contact>(`/contacts/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(updates),
+    }),
+
+  deleteContact: (id: number) =>
+    request<{ ok: boolean }>(`/contacts/${id}`, { method: 'DELETE' }),
 }

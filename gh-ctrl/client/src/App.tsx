@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Routes, Route, NavLink } from 'react-router-dom'
 import { useAppStore } from './store'
 import { Settings } from './components/Settings'
+import { ContactsManager } from './components/ContactsManager'
 import { BattlefieldView } from './components/BattlefieldView'
 import { MapEditor } from './components/MapEditor'
 import { ToastArea } from './components/Toast'
@@ -19,6 +20,7 @@ export default function App() {
   const toasts = useAppStore((s) => s.toasts)
   const loadRepos = useAppStore((s) => s.loadRepos)
   const loadDashboard = useAppStore((s) => s.loadDashboard)
+  const loadContacts = useAppStore((s) => s.loadContacts)
   const [appVersion, setAppVersion] = useState<string | null>(null)
   const [setupStatus, setSetupStatus] = useState<SetupStatus | null>(null)
   const [setupChecked, setSetupChecked] = useState(false)
@@ -64,8 +66,9 @@ export default function App() {
     if (!setupStatus?.ready) return
     loadRepos()
     loadDashboard()
+    loadContacts()
     api.getVersion().then((r) => setAppVersion(r.version)).catch(() => {})
-  }, [setupStatus?.ready, loadRepos, loadDashboard])
+  }, [setupStatus?.ready, loadRepos, loadDashboard, loadContacts])
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -140,6 +143,12 @@ export default function App() {
           >
             <span className="nav-icon">&#x2699;</span><span className="nav-label"> Repositories</span>
           </NavLink>
+          <NavLink
+            to="/contacts"
+            className={({ isActive }) => `nav-btn${isActive ? ' active' : ''}`}
+          >
+            <span className="nav-icon">&#x2602;</span><span className="nav-label"> Contacts</span>
+          </NavLink>
         </nav>
 
         <div className="sidebar-stats">
@@ -191,6 +200,7 @@ export default function App() {
           <Route path="/" element={<BattlefieldView />} />
           <Route path="/map-editor" element={<MapEditor />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/contacts" element={<ContactsManager />} />
         </Routes>
       </main>
 

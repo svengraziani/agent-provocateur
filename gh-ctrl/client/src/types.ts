@@ -378,3 +378,13 @@ export interface BattlefieldUser {
   avatarUrl: string
   lastRepoId?: number
 }
+
+export interface Contact {
+  id: number
+  username: string
+  email: string
+  displayName: string | null
+  notes: string | null
+  createdAt: string | number | null
+  updatedAt: string | number | null
+}

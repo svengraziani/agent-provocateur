@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Repo, DashboardEntry, RepoData, GameMap, Building, Badge, PlacedBadge, DeadlineTimer, BattlefieldUser } from './types'
+import type { Repo, DashboardEntry, RepoData, GameMap, Building, Badge, PlacedBadge, DeadlineTimer, BattlefieldUser, Contact } from './types'
 import { api } from './api'
 
 function avatarUrlForLogin(login: string, provider: 'github' | 'gitlab', instanceUrl?: string | null): string {
@@ -63,6 +63,7 @@ interface AppStore {
   badges: Badge[]
   placedBadges: PlacedBadge[]
   deadlineTimers: DeadlineTimer[]
+  contacts: Contact[]
 
   // Toast
   addToast: (message: string, type?: ToastType) => void
@@ -95,6 +96,10 @@ interface AppStore {
   createTimer: (params: { name: string; deadline: string; description?: string; color?: string }) => Promise<DeadlineTimer>
   updateTimer: (id: number, updates: { name?: string; deadline?: string; description?: string; color?: string }) => Promise<void>
   deleteTimer: (id: number) => Promise<void>
+  loadContacts: () => Promise<void>
+  createContact: (params: { username: string; email: string; displayName?: string; notes?: string }) => Promise<Contact>
+  updateContact: (id: number, updates: { username?: string; email?: string; displayName?: string; notes?: string }) => Promise<void>
+  deleteContact: (id: number) => Promise<void>
 }
 
 export const useAppStore = create<AppStore>((set, get) => ({
@@ -109,6 +114,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   badges: [],
   placedBadges: [],
   deadlineTimers: [],
+  contacts: [],
 
   addToast: (message, type = 'info') => {
     const id = nextToastId++
@@ -404,6 +410,50 @@ export const useAppStore = create<AppStore>((set, get) => ({
       set((state) => ({ deadlineTimers: state.deadlineTimers.filter((t) => t.id !== id) }))
     } catch (err: any) {
       get().addToast(`Failed to delete timer: ${err.message}`, 'error')
+      throw err
+    }
+  },
+
+  loadContacts: async () => {
+    try {
+      const data = await api.listContacts()
+      set({ contacts: data })
+    } catch (err: any) {
+      get().addToast(`Failed to load contacts: ${err.message}`, 'error')
+    }
+  },
+
+  createContact: async (params) => {
+    try {
+      const contact = await api.createContact(params)
+      set((state) => ({ contacts: [...state.contacts, contact].sort((a, b) => a.username.localeCompare(b.username)) }))
+      return contact
+    } catch (err: any) {
+      get().addToast(`Failed to create contact: ${err.message}`, 'error')
+      throw err
+    }
+  },
+
+  updateContact: async (id, updates) => {
+    try {
+      const updated = await api.updateContact(id, updates)
+      set((state) => ({
+        contacts: state.contacts
+          .map((c) => c.id === id ? updated : c)
+          .sort((a, b) => a.username.localeCompare(b.username)),
+      }))
+    } catch (err: any) {
+      get().addToast(`Failed to update contact: ${err.message}`, 'error')
+      throw err
+    }
+  },
+
+  deleteContact: async (id) => {
+    try {
+      await api.deleteContact(id)
+      set((state) => ({ contacts: state.contacts.filter((c) => c.id !== id) }))
+    } catch (err: any) {
+      get().addToast(`Failed to delete contact: ${err.message}`, 'error')
       throw err
     }
   },
