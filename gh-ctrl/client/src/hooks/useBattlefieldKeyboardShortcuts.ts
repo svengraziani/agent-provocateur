@@ -1,6 +1,7 @@
-import { useEffect, useCallback, useState } from 'react'
+import { useEffect, useCallback, useState, useRef } from 'react'
 import type { DashboardEntry, Building } from '../types'
 import type { Position } from '../components/battlefield/battlefieldConstants'
+import { api } from '../api'
 
 const STORAGE_KEY = 'battlefield-shortcuts'
 
@@ -19,6 +20,7 @@ function loadShortcuts(): ShortcutConfig {
 
 function saveShortcuts(config: ShortcutConfig) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(config))
+  api.putSetting(STORAGE_KEY, JSON.stringify(config)).catch(() => {})
 }
 
 interface UseBattlefieldKeyboardShortcutsOptions {
@@ -56,6 +58,18 @@ export function useBattlefieldKeyboardShortcuts({
 }: UseBattlefieldKeyboardShortcutsOptions) {
   const [shortcuts, setShortcuts] = useState<ShortcutConfig>(loadShortcuts)
   const [assigningFor, setAssigningFor] = useState<{ type: 'base' | 'building'; id: number } | null>(null)
+
+  // Load shortcuts from API (DB) on mount — primary source for portability
+  useEffect(() => {
+    api.getSetting(STORAGE_KEY).then(({ value }) => {
+      if (value !== null) {
+        try {
+          const parsed: ShortcutConfig = JSON.parse(value)
+          setShortcuts(parsed)
+        } catch {}
+      }
+    }).catch(() => {})
+  }, [])
 
   const assignShortcut = useCallback((type: 'base' | 'building', id: number, key: string) => {
     setShortcuts(prev => {

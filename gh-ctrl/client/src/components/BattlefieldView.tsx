@@ -27,7 +27,7 @@ import { useBattlefieldPositions } from '../hooks/useBattlefieldPositions'
 import { useBattlefieldDraggables } from '../hooks/useBattlefieldDraggables'
 import { useBattlefieldKeyboardShortcuts } from '../hooks/useBattlefieldKeyboardShortcuts'
 import type { Position } from './battlefield/battlefieldConstants'
-import { savePositions, loadActiveMapId, saveActiveMapId } from './battlefield/battlefieldStorage'
+import { savePositions, saveActiveMapId, loadActiveMapIdFromApi } from './battlefield/battlefieldStorage'
 
 export function BattlefieldView() {
   const repos = useAppStore((s) => s.repos)
@@ -127,12 +127,13 @@ export function BattlefieldView() {
   useEffect(() => { loadBuildings() }, [loadBuildings])
   useEffect(() => { loadBadges(); loadPlacedBadges() }, [loadBadges, loadPlacedBadges])
 
-  // Load persisted active map on mount
+  // Load persisted active map on mount — reads from DB (API) with localStorage fallback
   useEffect(() => {
-    const savedId = loadActiveMapId()
-    if (savedId !== null) {
-      api.getMap(savedId).then(setActiveMap).catch(() => saveActiveMapId(null))
-    }
+    loadActiveMapIdFromApi().then(savedId => {
+      if (savedId !== null) {
+        api.getMap(savedId).then(setActiveMap).catch(() => saveActiveMapId(null))
+      }
+    }).catch(() => {})
   }, [])
 
   // Load assigned repos whenever activeMap changes

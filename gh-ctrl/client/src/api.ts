@@ -234,6 +234,20 @@ export const api = {
 
   getVersion: () => request<{ version: string }>('/version'),
 
+  getAllSettings: () => request<Record<string, string>>('/settings'),
+
+  getSetting: (key: string) =>
+    request<{ key: string; value: string | null }>(`/settings/${encodeURIComponent(key)}`),
+
+  putSetting: (key: string, value: string) =>
+    request<{ key: string; value: string }>(`/settings/${encodeURIComponent(key)}`, {
+      method: 'PUT',
+      body: JSON.stringify({ value }),
+    }),
+
+  deleteSetting: (key: string) =>
+    request<{ ok: boolean }>(`/settings/${encodeURIComponent(key)}`, { method: 'DELETE' }),
+
   listMaps: () => request<GameMap[]>('/maps'),
 
   createMap: (params: { name: string; width: number; height: number }) =>

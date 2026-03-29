@@ -112,6 +112,12 @@ export const mailMessages = sqliteTable('mail_messages', {
   fetchedAt:    integer('fetched_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
 })
 
+export const settings = sqliteTable('settings', {
+  key:       text('key').primaryKey(),
+  value:     text('value').notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
+})
+
 export const mailFolders = sqliteTable('mail_folders', {
   id:          integer('id').primaryKey({ autoIncrement: true }),
   buildingId:  integer('building_id').notNull().references(() => buildings.id, { onDelete: 'cascade' }),
