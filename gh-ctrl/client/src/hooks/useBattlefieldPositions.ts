@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import type { DashboardEntry } from '../types'
 import type { Position } from '../components/battlefield/battlefieldConstants'
-import { loadPositions, savePositions, getDefaultPositions } from '../components/battlefield/battlefieldStorage'
+import { loadPositions, savePositions, loadPositionsFromApi, getDefaultPositions } from '../components/battlefield/battlefieldStorage'
 
 interface UseBattlefieldPositionsOptions {
   entries: DashboardEntry[]
@@ -18,12 +18,26 @@ export function useBattlefieldPositions({ entries, loading }: UseBattlefieldPosi
   const [relocatingStart, setRelocatingStart] = useState<{ mouseX: number; mouseY: number; nodeX: number; nodeY: number } | null>(null)
 
   const hasAutoCenteredRef = useRef(false)
+  // Track API-loaded positions so entry-change effect can merge them correctly
+  const apiPositionsRef = useRef<Record<number, Position> | null>(null)
+
+  // Load positions from the API (DB) on mount — primary source for portability
+  useEffect(() => {
+    loadPositionsFromApi().then(stored => {
+      apiPositionsRef.current = stored
+      setPositions(prev => {
+        const defaults = getDefaultPositions(entries)
+        return { ...defaults, ...stored, ...prev }
+      })
+    }).catch(() => {})
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Update positions when entries change (new repos arriving via SSE stream).
   useEffect(() => {
     if (entries.length === 0) return
     setPositions(prev => {
-      const stored = loadPositions()
+      const stored = apiPositionsRef.current ?? loadPositions()
       const defaults = getDefaultPositions(entries)
       return { ...defaults, ...stored, ...prev }
     })

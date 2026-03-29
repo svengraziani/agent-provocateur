@@ -139,6 +139,14 @@ sqlite.exec(`
   )
 `)
 
+sqlite.exec(`
+  CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at INTEGER DEFAULT (unixepoch())
+  )
+`)
+
 const existingMailCols = sqlite.query("PRAGMA table_info('mail_messages')").all() as Array<{ name: string }>
 const existingMailColNames = new Set(existingMailCols.map((c) => c.name))
 const newMailCols: Array<[string, string]> = [

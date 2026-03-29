@@ -1,6 +1,7 @@
 import type { DashboardEntry } from '../../types'
 import type { Position } from './battlefieldConstants'
 import { COLS, ISO_MAP_CENTER_X, ISO_MAP_OFFSET_Y, ISO_HALF_W, ISO_HALF_H } from './battlefieldConstants'
+import { api } from '../../api'
 
 export function loadActiveMapId(): number | null {
   try {
@@ -14,9 +15,20 @@ export function loadActiveMapId(): number | null {
 export function saveActiveMapId(id: number | null) {
   if (id === null) {
     localStorage.removeItem('battlefield-active-map-id')
+    api.deleteSetting('battlefield-active-map-id').catch(() => {})
   } else {
     localStorage.setItem('battlefield-active-map-id', String(id))
+    api.putSetting('battlefield-active-map-id', String(id)).catch(() => {})
   }
+}
+
+export async function loadActiveMapIdFromApi(): Promise<number | null> {
+  try {
+    const { value } = await api.getSetting('battlefield-active-map-id')
+    if (value !== null) return parseInt(value, 10)
+  } catch {}
+  // Fall back to localStorage
+  return loadActiveMapId()
 }
 
 export function loadPositions(): Record<number, Position> {
@@ -30,6 +42,16 @@ export function loadPositions(): Record<number, Position> {
 
 export function savePositions(positions: Record<number, Position>) {
   localStorage.setItem('battlefield-positions', JSON.stringify(positions))
+  api.putSetting('battlefield-positions', JSON.stringify(positions)).catch(() => {})
+}
+
+export async function loadPositionsFromApi(): Promise<Record<number, Position>> {
+  try {
+    const { value } = await api.getSetting('battlefield-positions')
+    if (value !== null) return JSON.parse(value)
+  } catch {}
+  // Fall back to localStorage
+  return loadPositions()
 }
 
 export function getDefaultPositions(entries: DashboardEntry[]): Record<number, Position> {
