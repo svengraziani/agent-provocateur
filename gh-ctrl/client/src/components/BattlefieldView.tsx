@@ -22,6 +22,7 @@ import { BattlefieldMapLayer } from './battlefield/BattlefieldMapLayer'
 import { BattlefieldMinimap } from './battlefield/BattlefieldMinimap'
 import { LoadBattlefieldMapDialog } from './battlefield/LoadBattlefieldMapDialog'
 import { BattlefieldShortcutsOverlay } from './battlefield/BattlefieldShortcutsOverlay'
+import { CommandPalette } from './battlefield/CommandPalette'
 import { useBattlefieldCamera } from '../hooks/useBattlefieldCamera'
 import { useBattlefieldPositions } from '../hooks/useBattlefieldPositions'
 import { useBattlefieldDraggables } from '../hooks/useBattlefieldDraggables'
@@ -77,6 +78,7 @@ export function BattlefieldView() {
   const [showTimers, setShowTimers] = useState(false)
   const [placingBadge, setPlacingBadge] = useState<Badge | null>(null)
   const [showShortcuts, setShowShortcuts] = useState(false)
+  const [showCommandPalette, setShowCommandPalette] = useState(false)
 
   const autoScanTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -89,6 +91,11 @@ export function BattlefieldView() {
   const handleToggleShortcuts = useCallback(() => {
     play('peep')
     setShowShortcuts(v => !v)
+  }, [play])
+
+  const handleToggleCommandPalette = useCallback(() => {
+    play('peep')
+    setShowCommandPalette(v => !v)
   }, [play])
 
   const keyboardShortcuts = useBattlefieldKeyboardShortcuts({
@@ -105,6 +112,7 @@ export function BattlefieldView() {
     onToggleTimers: () => { play('peep'); setShowTimers(v => !v) },
     onPan: handlePan,
     onToggleShortcutsOverlay: handleToggleShortcuts,
+    onToggleCommandPalette: handleToggleCommandPalette,
     enabled: !placementMode && !placingBadge,
   })
 
@@ -566,6 +574,23 @@ export function BattlefieldView() {
           onStartAssigning={keyboardShortcuts.startAssigning}
           onClearShortcut={keyboardShortcuts.clearShortcut}
           onCancelAssigning={keyboardShortcuts.cancelAssigning}
+        />
+      )}
+
+      {showCommandPalette && (
+        <CommandPalette
+          entries={visibleEntries}
+          buildings={storeBuildings}
+          positions={positions}
+          buildingPositions={buildingPositions}
+          onZoomToBase={handleZoomToBase}
+          onScan={() => { play('peep'); onRefresh() }}
+          onToggleFeed={() => { play('peep'); setShowFeedPanel(v => !v); setBranchSiloEntry(null); setDetailEntry(null); setSelectedBuildingId(null) }}
+          onToggleTimers={() => { play('peep'); setShowTimers(v => !v) }}
+          onZoomReset={() => handleZoomReset(positions)}
+          onCreateIssue={(entry) => setModalState({ mode: 'create-issue', fullName: entry.repo.fullName, owner: entry.repo.owner, repoName: entry.repo.name, provider: entry.repo.provider })}
+          onConstructBuilding={() => setShowBuildMenu(true)}
+          onClose={() => setShowCommandPalette(false)}
         />
       )}
 

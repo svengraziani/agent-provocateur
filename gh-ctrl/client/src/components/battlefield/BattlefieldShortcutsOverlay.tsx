@@ -21,6 +21,7 @@ const BUILT_IN_SHORTCUTS = [
   { key: 'F', description: 'Toggle Intel Feed' },
   { key: 'T', description: 'Toggle Timers' },
   { key: '?', description: 'Toggle this overlay' },
+  { key: 'Ctrl+K', description: 'Open Command Palette' },
 ]
 
 function KeyBadge({ keyStr }: { keyStr: string }) {
@@ -40,15 +41,21 @@ export function BattlefieldShortcutsOverlay({
   onCancelAssigning,
 }: BattlefieldShortcutsOverlayProps) {
   return (
-    <div className="shortcuts-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
+    <div
+      className="shortcuts-overlay"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Keyboard Shortcuts"
+    >
       <div className="shortcuts-panel">
         <div className="shortcuts-panel-header">
           <span className="shortcuts-panel-title">⌨ KEYBOARD SHORTCUTS</span>
-          <button className="shortcuts-panel-close" onClick={onClose} title="Close">✕</button>
+          <button className="shortcuts-panel-close" onClick={onClose} aria-label="Close shortcuts overlay">✕</button>
         </div>
 
         {assigningFor && (
-          <div className="shortcuts-assigning-banner">
+          <div className="shortcuts-assigning-banner" role="status" aria-live="polite">
             Press any key to assign — <kbd>Esc</kbd> to cancel
           </div>
         )}
@@ -94,7 +101,7 @@ export function BattlefieldShortcutsOverlay({
                         </td>
                         <td className="shortcuts-action-cell">
                           {isAssigning ? (
-                            <button className="shortcuts-btn shortcuts-btn-cancel" onClick={onCancelAssigning}>
+                            <button className="shortcuts-btn shortcuts-btn-cancel" onClick={onCancelAssigning} aria-label={`Cancel assigning shortcut for ${entry.repo.name}`}>
                               Cancel
                             </button>
                           ) : (
@@ -102,7 +109,7 @@ export function BattlefieldShortcutsOverlay({
                               <button
                                 className="shortcuts-btn"
                                 onClick={() => onStartAssigning('base', entry.repo.id)}
-                                title="Assign shortcut key"
+                                aria-label={`${assignedKey ? 'Change' : 'Assign'} shortcut for ${entry.repo.name}`}
                               >
                                 {assignedKey ? 'Change' : 'Assign'}
                               </button>
@@ -110,7 +117,7 @@ export function BattlefieldShortcutsOverlay({
                                 <button
                                   className="shortcuts-btn shortcuts-btn-clear"
                                   onClick={() => onClearShortcut('base', entry.repo.id)}
-                                  title="Remove shortcut"
+                                  aria-label={`Remove shortcut for ${entry.repo.name}`}
                                 >
                                   ✕
                                 </button>
@@ -150,7 +157,7 @@ export function BattlefieldShortcutsOverlay({
                         </td>
                         <td className="shortcuts-action-cell">
                           {isAssigning ? (
-                            <button className="shortcuts-btn shortcuts-btn-cancel" onClick={onCancelAssigning}>
+                            <button className="shortcuts-btn shortcuts-btn-cancel" onClick={onCancelAssigning} aria-label={`Cancel assigning shortcut for ${building.name}`}>
                               Cancel
                             </button>
                           ) : (
@@ -158,7 +165,7 @@ export function BattlefieldShortcutsOverlay({
                               <button
                                 className="shortcuts-btn"
                                 onClick={() => onStartAssigning('building', building.id)}
-                                title="Assign shortcut key"
+                                aria-label={`${assignedKey ? 'Change' : 'Assign'} shortcut for ${building.name}`}
                               >
                                 {assignedKey ? 'Change' : 'Assign'}
                               </button>
@@ -166,7 +173,7 @@ export function BattlefieldShortcutsOverlay({
                                 <button
                                   className="shortcuts-btn shortcuts-btn-clear"
                                   onClick={() => onClearShortcut('building', building.id)}
-                                  title="Remove shortcut"
+                                  aria-label={`Remove shortcut for ${building.name}`}
                                 >
                                   ✕
                                 </button>

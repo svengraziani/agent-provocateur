@@ -90,6 +90,7 @@ export function BattlefieldHUD({
           onClick={onScan}
           disabled={loading}
           title="Scan all bases"
+          aria-label={loading ? 'Scanning bases' : 'Scan all bases'}
         >
           {loading ? <span className="spinning-process">&#x2699;</span> : <ScanIcon size={11} />}
           <span className="hud-label"> {loading ? 'SCANNING' : 'SCAN'}</span>
@@ -98,6 +99,8 @@ export function BattlefieldHUD({
           className={`hud-btn${isRelocateMode ? ' active' : ''}`}
           onClick={onToggleRelocate}
           title={isRelocateMode ? 'Cancel relocate' : 'Relocate a base'}
+          aria-label={isRelocateMode ? 'Cancel relocate mode' : 'Relocate a base'}
+          aria-pressed={isRelocateMode}
         >
           {isRelocateMode ? <CloseIcon size={10} /> : <RelocateIcon size={11} />}
           <span className="hud-label"> {isRelocateMode ? 'CANCEL' : 'RELOCATE'}</span>
@@ -105,7 +108,8 @@ export function BattlefieldHUD({
         <button
           className="hud-btn"
           onClick={onShowBuildMenu}
-          title="Bau Optionen (ClawCom, etc.)"
+          title="Build options (ClawCom, etc.)"
+          aria-label="Open build options"
         >
           <BuildIcon size={11} /><span className="hud-label"> BUILD</span>
         </button>
@@ -113,6 +117,8 @@ export function BattlefieldHUD({
           className={`hud-btn${showBadgeLibrary ? ' active' : ''}`}
           onClick={onToggleBadgeLibrary}
           title="Badge Library — place custom markers on the battlefield"
+          aria-label="Open badge library"
+          aria-pressed={showBadgeLibrary}
         >
           ◈<span className="hud-label"> BADGES</span>
         </button>
@@ -138,6 +144,8 @@ export function BattlefieldHUD({
           className={`hud-btn${showFeedPanel ? ' active' : ''}`}
           onClick={onToggleFeed}
           title="Toggle Intel Feed"
+          aria-label="Toggle Intel Feed"
+          aria-pressed={showFeedPanel}
         >
           <FeedIcon size={11} /><span className="hud-label"> FEED</span>
         </button>
@@ -145,18 +153,22 @@ export function BattlefieldHUD({
           className={`hud-btn${showTimers ? ' active' : ''}`}
           onClick={onToggleTimers}
           title="Mission Timers — Deadline countdown for all maps"
+          aria-label="Toggle mission timers"
+          aria-pressed={showTimers}
         >
           ⏱<span className="hud-label"> TIMERS</span>
         </button>
         <span className="hud-zoom-sep" />
-        <button className="hud-btn hud-zoom-btn" onClick={onZoomOut} disabled={zoom <= ZOOM_MIN} title="Zoom out [−]">−</button>
-        <span className="hud-zoom-level" title="Click to reset zoom [0]" onClick={onZoomReset}>{Math.round(zoom * 100)}%</span>
-        <button className="hud-btn hud-zoom-btn" onClick={onZoomIn} disabled={zoom >= ZOOM_MAX} title="Zoom in [+]">+</button>
+        <button className="hud-btn hud-zoom-btn" onClick={onZoomOut} disabled={zoom <= ZOOM_MIN} title="Zoom out [−]" aria-label="Zoom out">−</button>
+        <span className="hud-zoom-level" title="Click to reset zoom [0]" onClick={onZoomReset} role="button" aria-label={`Current zoom ${Math.round(zoom * 100)}%, click to reset`}>{Math.round(zoom * 100)}%</span>
+        <button className="hud-btn hud-zoom-btn" onClick={onZoomIn} disabled={zoom >= ZOOM_MAX} title="Zoom in [+]" aria-label="Zoom in">+</button>
         <span className="hud-zoom-sep" />
         <button
           className={`hud-btn${showShortcuts ? ' active' : ''}`}
           onClick={onToggleShortcuts}
           title="Keyboard Shortcuts [?]"
+          aria-label="Toggle keyboard shortcuts overlay"
+          aria-pressed={showShortcuts}
         >
           ⌨<span className="hud-label"> KEYS</span>
         </button>

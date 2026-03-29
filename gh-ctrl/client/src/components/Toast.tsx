@@ -28,9 +28,13 @@ export function ToastArea({ toasts }: { toasts: Toast[] }) {
   if (toasts.length === 0) return null
 
   return (
-    <div className="toast-area">
+    <div className="toast-area" aria-live="polite" aria-atomic="false">
       {toasts.map((toast) => (
-        <div key={toast.id} className={`toast ${toast.type}`}>
+        <div
+          key={toast.id}
+          className={`toast ${toast.type}`}
+          role={toast.type === 'error' ? 'alert' : 'status'}
+        >
           {toast.message}
         </div>
       ))}

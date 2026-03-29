@@ -35,6 +35,7 @@ interface UseBattlefieldKeyboardShortcutsOptions {
   onToggleTimers: () => void
   onPan: (dx: number, dy: number) => void
   onToggleShortcutsOverlay: () => void
+  onToggleCommandPalette?: () => void
   enabled: boolean
 }
 
@@ -51,6 +52,7 @@ export function useBattlefieldKeyboardShortcuts({
   onToggleTimers,
   onPan,
   onToggleShortcutsOverlay,
+  onToggleCommandPalette,
   onZoomToBase,
   enabled,
 }: UseBattlefieldKeyboardShortcutsOptions) {
@@ -123,6 +125,13 @@ export function useBattlefieldKeyboardShortcuts({
         e.preventDefault()
         const key = e.key.toLowerCase()
         assignShortcut(assigningFor.type, assigningFor.id, key)
+        return
+      }
+
+      // Ctrl+K / Cmd+K — Command Palette
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault()
+        onToggleCommandPalette?.()
         return
       }
 
@@ -218,7 +227,7 @@ export function useBattlefieldKeyboardShortcuts({
   }, [
     enabled, assigningFor, shortcuts, entries, buildings, positions, buildingPositions,
     onZoomIn, onZoomOut, onZoomReset, onZoomToBase, onScan, onToggleFeed, onToggleTimers,
-    onPan, onToggleShortcutsOverlay, assignShortcut,
+    onPan, onToggleShortcutsOverlay, onToggleCommandPalette, assignShortcut,
   ])
 
   return { shortcuts, assigningFor, startAssigning, cancelAssigning, clearShortcut, assignShortcut }
