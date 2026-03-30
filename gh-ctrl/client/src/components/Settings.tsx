@@ -148,6 +148,7 @@ export function Settings() {
   const [ghAvailable, setGhAvailable] = useState(true)
   const [browseTruncated, setBrowseTruncated] = useState(false)
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const fetchIdRef = useRef(0)
   const PER_PAGE = 30
   const [browseProvider, setBrowseProvider] = useState<string>('github')
   const [gitlabInstances, setGitlabInstances] = useState<{ host: string; label: string }[]>([])
@@ -155,11 +156,13 @@ export function Settings() {
 
   const fetchBrowseRepos = async (page: number, search: string, provider?: string) => {
     const currentProvider = provider ?? browseProvider
+    const fetchId = ++fetchIdRef.current
     setBrowseLoading(true)
     setBrowseError('')
     try {
       if (currentProvider === 'github') {
-        const result = await api.getUserRepos({ page, per_page: PER_PAGE, search: search || undefined })
+        const result = await api.getGithubUserRepos({ page, per_page: PER_PAGE, search: search || undefined })
+        if (fetchId !== fetchIdRef.current) return
         if (!result.ghAvailable) {
           setGhAvailable(false)
           setBrowseError('GitHub CLI (gh) is not available or not authenticated.')
@@ -175,6 +178,7 @@ export function Settings() {
         setBrowseTruncated(result.truncated ?? false)
       } else {
         const result = await api.getGitLabUserRepos({ page, per_page: PER_PAGE, search: search || undefined, instance: currentProvider })
+        if (fetchId !== fetchIdRef.current) return
         if (!result.glabAvailable) {
           setBrowseError('GitLab CLI (glab) is not available or not authenticated for this instance.')
           return
@@ -188,9 +192,10 @@ export function Settings() {
         setBrowseTruncated(false)
       }
     } catch (err: any) {
+      if (fetchId !== fetchIdRef.current) return
       setBrowseError(err.message || 'Failed to load repos')
     } finally {
-      setBrowseLoading(false)
+      if (fetchId === fetchIdRef.current) setBrowseLoading(false)
     }
   }
 

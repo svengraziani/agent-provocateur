@@ -868,6 +868,10 @@ app.post('/create-pr', async (c) => {
 
 // GET /api/github/user-repos?page=1&per_page=30&search=
 app.get('/user-repos', async (c) => {
+  if (!Bun.which('gh')) {
+    return c.json({ error: 'gh CLI not installed', ghAvailable: false }, 503)
+  }
+
   const page = Math.max(1, parseInt(c.req.query('page') || '1', 10))
   const perPage = Math.min(100, Math.max(1, parseInt(c.req.query('per_page') || '30', 10)))
   const search = c.req.query('search')?.trim() || ''

@@ -20,31 +20,10 @@ import {
   fetchGitLabRepoData,
   fetchGitLabRepoMeta,
   normalizeMR,
-  normalizeIssue,
+  normalizeIssue, glab, glabAuthToken,
 } from '../providers/gitlab'
 
 const app = new Hono()
-
-interface GLResult {
-  data: any
-  error: string | null
-}
-
-async function glab(args: string[]): Promise<GLResult> {
-  const proc = Bun.spawn(['glab', ...args], { env: { ...process.env } })
-  const stdout = await new Response(proc.stdout).text()
-  const exitCode = await proc.exited
-  if (exitCode !== 0) {
-    const stderr = await new Response(proc.stderr).text()
-    return { data: null, error: stderr }
-  }
-  if (stdout.trim() === '') return { data: null, error: null }
-  try {
-    return { data: JSON.parse(stdout), error: null }
-  } catch {
-    return { data: null, error: 'Failed to parse glab output' }
-  }
-}
 
 /** Resolve project path, instanceUrl, and gitlabToken from request params + DB. */
 async function resolveProject(
@@ -570,7 +549,7 @@ app.post('/create-issue', async (c) => {
 
   const row = await db.select().from(repos).where(eq(repos.fullName, fullName)).get()
   const instanceUrl = bodyInstanceUrl ?? row?.instanceUrl ?? process.env.GITLAB_INSTANCE_URL ?? null
-  const token = row?.gitlabToken ?? null
+  const token = await glabAuthToken(instanceUrl);
 
   const encoded = encodeProjectPath(fullName)
   const result = await glabApi(`/projects/${encoded}/issues`, {
@@ -821,14 +800,15 @@ app.get('/instances', async (c) => {
   try {
     const proc = Bun.spawn(['glab', 'auth', 'status', '--all'], {
       env: { ...process.env },
+      stdio: ['inherit', 'pipe', 'pipe'],
     })
-    const stdout = await new Response(proc.stdout).text()
+    const stderr = await new Response(proc.stderr).text()
     const exitCode = await proc.exited
-    if (exitCode !== 0 || !stdout.trim()) {
+    if (exitCode !== 0 || !stderr.trim()) {
       return c.json({ instances: [], glabAvailable: false })
     }
     const hosts: string[] = []
-    for (const line of stdout.split('\n')) {
+    for (const line of stderr.split('\n')) {
       const trimmed = line.trim()
       if (trimmed && !trimmed.startsWith('✓') && !trimmed.startsWith('✗') && !trimmed.startsWith('-') && trimmed.length > 0) {
         if (trimmed.includes('.') && !trimmed.includes(' ')) {
@@ -870,7 +850,7 @@ app.get('/user-repos', async (c) => {
       args.push('--hostname', instance)
     }
 
-    const proc = Bun.spawn(['glab', ...args], { env: { ...process.env } })
+    const proc = Bun.spawn(['glab', ...args], { env: { ...process.env }, stdio: ['inherit', 'pipe', 'pipe'] })
     const stdout = await new Response(proc.stdout).text()
     const stderr = await new Response(proc.stderr).text()
     const exitCode = await proc.exited

@@ -37,12 +37,12 @@ export interface GHPR {
   reviewDecision: 'APPROVED' | 'REVIEW_REQUIRED' | 'CHANGES_REQUESTED' | null
   mergeable: 'MERGEABLE' | 'CONFLICTING' | 'UNKNOWN'
   headRefName: string
-  author: { login: string }
+  author: { login: string; avatarUrl?: string }
   createdAt: string
   updatedAt: string
   labels: { name: string; color: string }[]
   isDraft: boolean
-  assignees: { login: string }[]
+  assignees: { login: string; avatarUrl?: string }[]
   authorAssociation?: AuthorAssociation
   previewUrl?: string | null
 }
@@ -52,9 +52,9 @@ export interface GHIssue {
   title: string
   state: string
   labels: { name: string; color: string }[]
-  assignees: { login: string }[]
+  assignees: { login: string; avatarUrl?: string }[]
   updatedAt: string
-  author: { login: string }
+  author: { login: string; avatarUrl?: string }
 }
 
 export interface GHLabel {

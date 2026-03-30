@@ -224,7 +224,7 @@ export const api = {
       body: JSON.stringify(params),
     }),
 
-  getUserRepos: (params: { page?: number; per_page?: number; search?: string }) => {
+  getGithubUserRepos: (params: { page?: number; per_page?: number; search?: string }) => {
     const qs = new URLSearchParams()
     if (params.page) qs.set('page', String(params.page))
     if (params.per_page) qs.set('per_page', String(params.per_page))

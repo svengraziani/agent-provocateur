@@ -2,7 +2,8 @@ import { create } from 'zustand'
 import type { Repo, DashboardEntry, RepoData, GameMap, Building, Badge, PlacedBadge, DeadlineTimer, BattlefieldUser } from './types'
 import { api } from './api'
 
-function avatarUrlForLogin(login: string, provider: 'github' | 'gitlab', instanceUrl?: string | null): string {
+function avatarUrlForLogin(login: string, provider: 'github' | 'gitlab', instanceUrl?: string | null, knownAvatarUrl?: string): string {
+  if (knownAvatarUrl) return knownAvatarUrl
   if (provider === 'gitlab') {
     const base = instanceUrl ?? 'https://gitlab.com'
     return `${base}/${login}.png?size=40`
@@ -18,14 +19,14 @@ export function selectBattlefieldUsers(entries: DashboardEntry[]): BattlefieldUs
       const login = pr.author.login
       const existing = seen.get(login)
       if (!existing || pr.updatedAt > existing.lastDate) {
-        seen.set(login, { login, avatarUrl: avatarUrlForLogin(login, provider, instanceUrl), lastRepoId: entry.repo.id, lastDate: pr.updatedAt })
+        seen.set(login, { login, avatarUrl: avatarUrlForLogin(login, provider, instanceUrl, pr.author.avatarUrl), lastRepoId: entry.repo.id, lastDate: pr.updatedAt })
       }
     }
     for (const issue of entry.data.issues) {
       const login = issue.author.login
       const existing = seen.get(login)
       if (!existing || issue.updatedAt > existing.lastDate) {
-        seen.set(login, { login, avatarUrl: avatarUrlForLogin(login, provider, instanceUrl), lastRepoId: entry.repo.id, lastDate: issue.updatedAt })
+        seen.set(login, { login, avatarUrl: avatarUrlForLogin(login, provider, instanceUrl, issue.author.avatarUrl), lastRepoId: entry.repo.id, lastDate: issue.updatedAt })
       }
     }
   }

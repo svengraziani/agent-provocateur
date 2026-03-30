@@ -13,6 +13,10 @@ import type {
   NormalizedRepoMeta,
   NormalizedRepoStats,
 } from './types'
+import {db} from "../db";
+import {repos} from "../db/schema";
+import {eq} from "drizzle-orm";
+import app from "../routes/gitlab";
 
 const CLAUDE_LABELS = ['claude', 'ai', 'ai-fix', 'ai-feature']
 
@@ -21,44 +25,76 @@ export function encodeProjectPath(path: string): string {
   return encodeURIComponent(path)
 }
 
-/** Low-level GitLab REST API v4 fetch helper. */
+export interface GLResult {
+  data: any
+  error: string | null
+}
+
+export async function glab(args: string[]): Promise<GLResult> {
+  const proc = Bun.spawn(['glab', ...args], { env: { ...process.env }, stdio: ['inherit', 'pipe', 'pipe'] })
+  const stdout = await new Response(proc.stdout).text()
+  const exitCode = await proc.exited
+  if (exitCode !== 0) {
+    const stderr = await new Response(proc.stderr).text()
+    return { data: null, error: stderr }
+  }
+  if (stdout.trim() === '') return { data: null, error: null }
+  try {
+    return { data: JSON.parse(stdout), error: null }
+  } catch {
+    return { data: null, error: 'Failed to parse glab output' }
+  }
+}
+
+export async function glabAuthToken(instanceUrl?: string | null): Promise<string | null> {
+  return null
+}
+
+/** Low-level GitLab REST API v4 fetch helper — proxies through `glab api` to handle OAuth refresh. */
 export async function glabApi(
   path: string,
   options: { instanceUrl?: string | null; token?: string | null; method?: string; body?: unknown } = {}
 ): Promise<{ data: any; error: string | null }> {
-  const base = (options.instanceUrl ?? 'https://gitlab.com').replace(/\/$/, '')
-  const token = options.token ?? process.env.GITLAB_TOKEN
+  const hostname = options.instanceUrl
+    ? new URL(options.instanceUrl.replace(/\/$/, '')).hostname
+    : 'gitlab.com'
 
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+  const args = ['api', path, '--hostname', hostname]
+
+  if (options.method && options.method !== 'GET') {
+    args.push('--method', options.method)
   }
-  if (token) headers['PRIVATE-TOKEN'] = token
+
+  if (options.body !== undefined) {
+    for (const [key, value] of Object.entries(options.body as Record<string, unknown>)) {
+      if (value !== undefined && value !== null) {
+        args.push('-f', `${key}=${value}`)
+      }
+    }
+  }
 
   try {
-    const res = await fetch(`${base}/api/v4${path}`, {
-      method: options.method ?? 'GET',
-      headers,
-      ...(options.body !== undefined ? { body: JSON.stringify(options.body) } : {}),
+    const proc = Bun.spawn(['glab', ...args], {
+      env: { ...process.env },
+      stdio: ['inherit', 'pipe', 'pipe'],
     })
 
-    if (res.status === 204) return { data: null, error: null }
+    const [stdout, stderr, exitCode] = await Promise.all([
+      Bun.readableStreamToText(proc.stdout),
+      Bun.readableStreamToText(proc.stderr),
+      proc.exited,
+    ])
 
-    const text = await res.text()
-    if (!res.ok) {
-      let msg: string
-      try {
-        const parsed = JSON.parse(text)
-        msg = parsed.message || parsed.error || text
-      } catch {
-        msg = text
-      }
-      return { data: null, error: `GitLab API ${res.status}: ${msg}` }
+    if (exitCode !== 0) {
+      return { data: null, error: stderr.trim() || 'glab api call failed' }
     }
 
+    if (!stdout.trim()) return { data: null, error: null }
+
     try {
-      return { data: JSON.parse(text), error: null }
+      return { data: JSON.parse(stdout), error: null }
     } catch {
-      return { data: null, error: 'Failed to parse GitLab response' }
+      return { data: null, error: 'Failed to parse glab output' }
     }
   } catch (err: any) {
     return { data: null, error: err?.message ?? 'Network error' }
