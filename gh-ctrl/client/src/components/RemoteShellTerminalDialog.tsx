@@ -21,10 +21,11 @@ export function RemoteShellTerminalDialog({
   onReconfigure,
   addToast,
 }: RemoteShellTerminalDialogProps) {
-  const [connections, setConnections] = useState<SshConnection[]>([])
-  const [tabs, setTabs]               = useState<TabSession[]>([])
-  const [activeTabId, setActiveTabId] = useState<string>('')
-  const [loading, setLoading]         = useState(true)
+  const [connections, setConnections]     = useState<SshConnection[]>([])
+  const [tabs, setTabs]                   = useState<TabSession[]>([])
+  const [activeTabId, setActiveTabId]     = useState<string>('')
+  const [loading, setLoading]             = useState(true)
+  const [showNewTabMenu, setShowNewTabMenu] = useState(false)
 
   const config: Partial<RemoteShellConfig> = (() => {
     try { return JSON.parse(building.config) } catch { return {} }
@@ -46,6 +47,14 @@ export function RemoteShellTerminalDialog({
       .finally(() => setLoading(false))
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [building.id])
+
+  // Close the new-tab dropdown when clicking outside
+  useEffect(() => {
+    if (!showNewTabMenu) return
+    const handler = () => setShowNewTabMenu(false)
+    window.addEventListener('click', handler)
+    return () => window.removeEventListener('click', handler)
+  }, [showNewTabMenu])
 
   function openNewTab(connection: SshConnection) {
     const newTab: TabSession = { id: `tab-${Date.now()}`, connection }
@@ -133,26 +142,44 @@ export function RemoteShellTerminalDialog({
 
         {/* Add tab button */}
         {connections.length > 0 && (
-          <div style={{ position: 'relative' }}>
-            <select
-              style={{
-                background: 'transparent', border: '1px solid #333',
-                color: '#888', fontSize: 11, cursor: 'pointer', borderRadius: 3,
-                padding: '2px 6px', marginLeft: 4,
-              }}
-              value=""
-              onChange={(e) => {
-                const conn = connections.find((c) => String(c.id) === e.target.value)
-                if (conn) openNewTab(conn)
-                e.target.value = ''
-              }}
-              title="Open new tab"
-            >
-              <option value="" disabled>+ New Tab</option>
-              {connections.map((c) => (
-                <option key={c.id} value={String(c.id)}>{c.label}</option>
-              ))}
-            </select>
+          <div style={{ position: 'relative', marginLeft: 4 }}>
+            {connections.length === 1 ? (
+              <button
+                className="hud-btn"
+                style={{ fontSize: 11, padding: '2px 8px' }}
+                onClick={() => openNewTab(connections[0])}
+                title={`New tab: ${connections[0].label}`}
+              >+ TAB</button>
+            ) : (
+              <>
+                <button
+                  className="hud-btn"
+                  style={{ fontSize: 11, padding: '2px 8px', color: showNewTabMenu ? '#00ff88' : '#888' }}
+                  title="Open new tab"
+                  onClick={(e) => { e.stopPropagation(); setShowNewTabMenu((v) => !v) }}
+                >+ TAB ▾</button>
+                {showNewTabMenu && (
+                  <div style={{
+                    position: 'absolute', top: '100%', left: 0, marginTop: 2,
+                    background: '#111', border: '1px solid #333', borderRadius: 3,
+                    zIndex: 200, minWidth: 160,
+                  }}>
+                    {connections.map((c) => (
+                      <div
+                        key={c.id}
+                        style={{
+                          padding: '5px 10px', cursor: 'pointer',
+                          fontSize: 11, color: '#aaa', whiteSpace: 'nowrap',
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = '#222'; e.currentTarget.style.color = '#00ff88' }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#aaa' }}
+                        onClick={() => { openNewTab(c); setShowNewTabMenu(false) }}
+                      >▸ {c.label}</div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
           </div>
         )}
       </div>

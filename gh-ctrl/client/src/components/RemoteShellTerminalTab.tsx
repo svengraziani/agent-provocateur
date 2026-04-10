@@ -110,6 +110,10 @@ export function RemoteShellTerminalTab({
   const [status, setStatus] = useState<ShellStatus>('connecting')
   const [statusMsg, setStatusMsg] = useState('')
 
+  // Local font size override (per-tab, starts from prop, changed via +/- buttons)
+  const [localFontSize, setLocalFontSize] = useState(fontSize)
+  const isFontSizeInit = useRef(true)
+
   // Search bar state
   const [searchVisible, setSearchVisible] = useState(false)
   const [searchQuery, setSearchQuery]     = useState('')
@@ -307,6 +311,23 @@ export function RemoteShellTerminalTab({
     }
   }, [searchVisible])
 
+  // Sync localFontSize when the prop changes (e.g. user saved new value in setup dialog)
+  useEffect(() => {
+    setLocalFontSize(fontSize)
+  }, [fontSize])
+
+  // Dynamically update terminal font size without recreating it
+  useEffect(() => {
+    if (isFontSizeInit.current) {
+      isFontSizeInit.current = false
+      return
+    }
+    const term = termRef.current
+    if (!term) return
+    term.options.fontSize = localFontSize
+    setTimeout(() => fitAddonRef.current?.fit(), 50)
+  }, [localFontSize])
+
   function handleSearchKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === 'Escape') {
       setSearchVisible(false)
@@ -324,6 +345,12 @@ export function RemoteShellTerminalTab({
     wsRef.current?.close()
     wsRef.current = null
     connectWS()
+  }
+
+  // ── Clear terminal buffer ──────────────────────────────────────────────────
+  function handleClear() {
+    termRef.current?.clear()
+    termRef.current?.focus()
   }
 
   // ── Send tmux sequence ─────────────────────────────────────────────────────
@@ -394,6 +421,27 @@ export function RemoteShellTerminalTab({
             title="Reconnect"
           >⟳ RECONNECT</button>
         )}
+        {/* Font size controls */}
+        <button
+          className="hud-btn"
+          style={{ fontSize: 9, padding: '0 5px' }}
+          onClick={() => setLocalFontSize((s) => Math.max(8, s - 1))}
+          title="Decrease font size"
+        >A−</button>
+        <span style={{ fontSize: 9, color: '#555', minWidth: 18, textAlign: 'center' }}>{localFontSize}</span>
+        <button
+          className="hud-btn"
+          style={{ fontSize: 9, padding: '0 5px' }}
+          onClick={() => setLocalFontSize((s) => Math.min(32, s + 1))}
+          title="Increase font size"
+        >A+</button>
+        {/* Clear buffer */}
+        <button
+          className="hud-btn"
+          style={{ fontSize: 9, padding: '1px 6px', color: '#666' }}
+          onClick={handleClear}
+          title="Clear terminal buffer"
+        >⌫</button>
         {/* Search toggle */}
         <button
           className="hud-btn"
