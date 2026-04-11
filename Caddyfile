@@ -1,0 +1,25 @@
+# Domain is read from the DOMAIN env var (set in .env)
+{env.DOMAIN} {
+
+    # SSE + WebSocket: disable buffering and extend timeouts
+    @streaming {
+        path /api/github/stream* /api/gitlab/stream* /api/buildings/*/clawcom/stream*
+    }
+    reverse_proxy @streaming app:3001 {
+        flush_interval -1
+        transport http {
+            read_timeout 1h
+        }
+    }
+
+    # WebSocket for the shell route
+    @websocket {
+        path /api/shell*
+        header Connection *Upgrade*
+        header Upgrade websocket
+    }
+    reverse_proxy @websocket app:3001
+
+    # Everything else
+    reverse_proxy app:3001
+}
