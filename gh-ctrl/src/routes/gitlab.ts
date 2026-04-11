@@ -12,7 +12,7 @@
 
 import { Hono } from 'hono'
 import { db } from '../db'
-import { repos } from '../db/schema'
+import { repos, settings } from '../db/schema'
 import { eq } from 'drizzle-orm'
 import {
   glabApi,
@@ -45,8 +45,12 @@ async function resolveProject(
     .where(eq(repos.fullName, projectPath))
     .get()
 
+  // Check settings table for a global GitLab token configured via the UI
+  const settingsRow = await db.select().from(settings).where(eq(settings.key, 'GITLAB_TOKEN')).get()
+  const globalToken = settingsRow?.value ?? process.env.GITLAB_TOKEN ?? null
+
   const instanceUrl = row?.instanceUrl ?? process.env.GITLAB_INSTANCE_URL ?? null
-  const gitlabToken = row?.gitlabToken ?? process.env.GITLAB_TOKEN ?? null
+  const gitlabToken = row?.gitlabToken ?? globalToken
 
   return { projectPath, instanceUrl, gitlabToken }
 }

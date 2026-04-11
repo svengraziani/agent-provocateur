@@ -36,6 +36,73 @@ export function Settings() {
   const [connStatus, setConnStatus] = useState<'idle' | 'ok' | 'error'>('idle')
   const [connError, setConnError] = useState('')
 
+  // API Credentials state
+  const [githubTokenInput, setGithubTokenInput] = useState('')
+  const [gitlabTokenInput, setGitlabTokenInput] = useState('')
+  const [githubTokenSet, setGithubTokenSet] = useState(false)
+  const [gitlabTokenSet, setGitlabTokenSet] = useState(false)
+  const [savingGithubToken, setSavingGithubToken] = useState(false)
+  const [savingGitlabToken, setSavingGitlabToken] = useState(false)
+
+  useEffect(() => {
+    api.getAllSettings().then((s) => {
+      setGithubTokenSet(!!s['GITHUB_TOKEN'])
+      setGitlabTokenSet(!!s['GITLAB_TOKEN'])
+    }).catch(() => {})
+  }, [])
+
+  const handleSaveGithubToken = async () => {
+    if (!githubTokenInput.trim()) return
+    setSavingGithubToken(true)
+    try {
+      await api.putSetting('GITHUB_TOKEN', githubTokenInput.trim())
+      setGithubTokenSet(true)
+      setGithubTokenInput('')
+      addToast('GitHub token saved', 'success')
+    } catch (err: any) {
+      addToast(`Failed to save GitHub token: ${err.message}`, 'error')
+    } finally {
+      setSavingGithubToken(false)
+    }
+  }
+
+  const handleClearGithubToken = async () => {
+    try {
+      await api.deleteSetting('GITHUB_TOKEN')
+      setGithubTokenSet(false)
+      setGithubTokenInput('')
+      addToast('GitHub token cleared', 'info')
+    } catch (err: any) {
+      addToast(`Failed to clear GitHub token: ${err.message}`, 'error')
+    }
+  }
+
+  const handleSaveGitlabToken = async () => {
+    if (!gitlabTokenInput.trim()) return
+    setSavingGitlabToken(true)
+    try {
+      await api.putSetting('GITLAB_TOKEN', gitlabTokenInput.trim())
+      setGitlabTokenSet(true)
+      setGitlabTokenInput('')
+      addToast('GitLab token saved', 'success')
+    } catch (err: any) {
+      addToast(`Failed to save GitLab token: ${err.message}`, 'error')
+    } finally {
+      setSavingGitlabToken(false)
+    }
+  }
+
+  const handleClearGitlabToken = async () => {
+    try {
+      await api.deleteSetting('GITLAB_TOKEN')
+      setGitlabTokenSet(false)
+      setGitlabTokenInput('')
+      addToast('GitLab token cleared', 'info')
+    } catch (err: any) {
+      addToast(`Failed to clear GitLab token: ${err.message}`, 'error')
+    }
+  }
+
   const handleSaveServerUrl = async () => {
     setTestingConn(true)
     setConnStatus('idle')
@@ -344,6 +411,105 @@ export function Settings() {
           {connStatus === 'error' && (
             <span className="form-error">{connError}</span>
           )}
+        </div>
+      </div>
+
+      <div className="settings-section">
+        <h2>API Credentials</h2>
+        <p style={{ color: 'var(--text-2)', fontSize: '0.85rem', margin: '0 0 1rem' }}>
+          Store your Personal Access Tokens securely in the database. These override environment variables.
+        </p>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          {/* GitHub PAT */}
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem' }}>
+              <GitHubIcon size={14} />
+              <span style={{ fontSize: '0.88rem', fontWeight: 600 }}>GitHub Personal Access Token</span>
+              {githubTokenSet && (
+                <span style={{ fontSize: '0.75rem', color: 'var(--green)', background: 'rgba(0,255,136,0.1)', padding: '1px 7px', borderRadius: '10px' }}>
+                  configured
+                </span>
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <input
+                className="input"
+                type="password"
+                placeholder={githubTokenSet ? '●●●●●●●●●●●● (token stored — enter new to replace)' : 'ghp_xxxxxxxxxxxxxxxxxxxx'}
+                value={githubTokenInput}
+                onChange={(e) => setGithubTokenInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSaveGithubToken()}
+                style={{ flex: 1 }}
+                autoComplete="off"
+              />
+              <button
+                className="btn btn-primary"
+                onClick={handleSaveGithubToken}
+                disabled={savingGithubToken || !githubTokenInput.trim()}
+                style={{ whiteSpace: 'nowrap' }}
+              >
+                {savingGithubToken ? 'Saving…' : 'Save'}
+              </button>
+              {githubTokenSet && (
+                <button
+                  className="btn btn-danger"
+                  onClick={handleClearGithubToken}
+                  style={{ whiteSpace: 'nowrap' }}
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-2)', margin: '0.3rem 0 0' }}>
+              Used by the <code>gh</code> CLI for GitHub API calls. Requires <code>repo</code> scope.
+            </p>
+          </div>
+
+          {/* GitLab PAT */}
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem' }}>
+              <GitLabIcon size={14} />
+              <span style={{ fontSize: '0.88rem', fontWeight: 600 }}>GitLab Personal Access Token</span>
+              {gitlabTokenSet && (
+                <span style={{ fontSize: '0.75rem', color: 'var(--green)', background: 'rgba(0,255,136,0.1)', padding: '1px 7px', borderRadius: '10px' }}>
+                  configured
+                </span>
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <input
+                className="input"
+                type="password"
+                placeholder={gitlabTokenSet ? '●●●●●●●●●●●● (token stored — enter new to replace)' : 'glpat-xxxxxxxxxxxxxxxxxxxx'}
+                value={gitlabTokenInput}
+                onChange={(e) => setGitlabTokenInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSaveGitlabToken()}
+                style={{ flex: 1 }}
+                autoComplete="off"
+              />
+              <button
+                className="btn btn-primary"
+                onClick={handleSaveGitlabToken}
+                disabled={savingGitlabToken || !gitlabTokenInput.trim()}
+                style={{ whiteSpace: 'nowrap' }}
+              >
+                {savingGitlabToken ? 'Saving…' : 'Save'}
+              </button>
+              {gitlabTokenSet && (
+                <button
+                  className="btn btn-danger"
+                  onClick={handleClearGitlabToken}
+                  style={{ whiteSpace: 'nowrap' }}
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-2)', margin: '0.3rem 0 0' }}>
+              Global GitLab token — used when no per-repository token is set. Requires <code>read_api</code> scope.
+            </p>
+          </div>
         </div>
       </div>
 
