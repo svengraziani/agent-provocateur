@@ -66,6 +66,7 @@ export function RemoteShellSetupDialog({ building, onClose, onConfigured, onOpen
   const [fontSize, setFontSize]             = useState(String(existingConfig.fontSize ?? 14))
   const [fontFamily, setFontFamily]         = useState(existingConfig.fontFamily ?? 'monospace')
   const [theme, setTheme]                   = useState<RemoteShellConfig['theme']>(existingConfig.theme ?? 'dark')
+  const [defaultConnectionId, setDefaultConnectionId] = useState<number | undefined>(existingConfig.defaultConnectionId)
 
   // Test state
   const [testState, setTestState]           = useState<'idle' | 'testing' | 'ok' | 'error'>('idle')
@@ -212,8 +213,30 @@ export function RemoteShellSetupDialog({ building, onClose, onConfigured, onOpen
         fontSize: Number(fontSize) || 14,
         fontFamily: fontFamily.trim() || 'monospace',
         theme,
+        ...(defaultConnectionId !== undefined ? { defaultConnectionId } : {}),
       }
       await api.updateBuilding(building.id, { config: newConfig })
+      await loadBuildings()
+    } catch (err: any) {
+      onError(err.message)
+    }
+  }
+
+  async function handleSetDefault(id: number) {
+    try {
+      const existing: Record<string, unknown> = (() => {
+        try { return JSON.parse(building.config) } catch { return {} }
+      })()
+      const newConfig: RemoteShellConfig = {
+        ...existing,
+        configured: connections.length > 0,
+        fontSize: Number(fontSize) || 14,
+        fontFamily: fontFamily.trim() || 'monospace',
+        theme,
+        defaultConnectionId: id,
+      }
+      await api.updateBuilding(building.id, { config: newConfig })
+      setDefaultConnectionId(id)
       await loadBuildings()
     } catch (err: any) {
       onError(err.message)
@@ -286,7 +309,15 @@ export function RemoteShellSetupDialog({ building, onClose, onConfigured, onOpen
                 }}
               >
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ color: '#00ff88', fontSize: 12, fontWeight: 700 }}>{conn.label}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ color: '#00ff88', fontSize: 12, fontWeight: 700 }}>{conn.label}</span>
+                    {defaultConnectionId === conn.id && (
+                      <span style={{
+                        fontSize: 9, color: '#ffcc00', background: '#ffcc0022',
+                        border: '1px solid #ffcc0044', borderRadius: 2, padding: '0 4px',
+                      }}>DEFAULT</span>
+                    )}
+                  </div>
                   <div style={{ color: 'var(--text-dim)', fontSize: 10 }}>
                     {conn.username}@{conn.host}:{conn.port ?? 22}
                     {conn.authType && <> · {conn.authType}</>}
@@ -294,6 +325,16 @@ export function RemoteShellSetupDialog({ building, onClose, onConfigured, onOpen
                     {!conn.hasCredentials && <span style={{ color: '#ff4444' }}> · no creds</span>}
                   </div>
                 </div>
+                <button
+                  className="hud-btn"
+                  style={{
+                    fontSize: 11,
+                    padding: '1px 5px',
+                    color: defaultConnectionId === conn.id ? '#ffcc00' : '#555',
+                  }}
+                  title={defaultConnectionId === conn.id ? 'Default connection' : 'Set as default'}
+                  onClick={() => handleSetDefault(conn.id)}
+                >★</button>
                 <button
                   className="hud-btn"
                   style={{ fontSize: 9 }}
