@@ -86,13 +86,14 @@ export function BackupPanel() {
     try {
       const result = await importBackup(importFile)
       const totalRows = Object.values(result.stats).reduce((a, b) => a + b, 0)
-      addToast(`Restore complete — ${totalRows} records restored`, 'success')
+      addToast(`Restore complete — ${totalRows} records restored. Reloading…`, 'success')
       if (result.badgeFileErrors?.length) {
         addToast(`Some badge files could not be restored: ${result.badgeFileErrors.join(', ')}`, 'error')
       }
       setImportFile(null)
       setManifest(null)
       if (fileInputRef.current) fileInputRef.current.value = ''
+      setTimeout(() => window.location.reload(), 300)
     } catch (err: any) {
       addToast(`Restore failed: ${err.message}`, 'error')
     } finally {
@@ -163,10 +164,14 @@ export function BackupPanel() {
 
         {/* Drag-and-drop zone */}
         <div
+          role="button"
+          tabIndex={0}
+          aria-label="Drop a .zip backup file here, or press Enter to browse"
           onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
           onDragLeave={() => setDragOver(false)}
           onDrop={handleDrop}
           onClick={() => !importFile && fileInputRef.current?.click()}
+          onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && !importFile) fileInputRef.current?.click() }}
           style={{
             border: `2px dashed ${dragOver ? 'var(--green-neon, #00ff88)' : 'var(--border)'}`,
             borderRadius: '8px',
@@ -203,8 +208,10 @@ export function BackupPanel() {
           ref={fileInputRef}
           type="file"
           accept=".zip"
-          style={{ display: 'none' }}
+          style={{ position: 'absolute', width: 0, height: 0, opacity: 0, overflow: 'hidden' }}
           onChange={handleFileInputChange}
+          tabIndex={-1}
+          aria-hidden="true"
         />
 
         {previewLoading && (

@@ -1,11 +1,22 @@
 import { Hono } from 'hono'
 import { sqliteDb } from '../db'
-import { join } from 'node:path'
-import { existsSync, readFileSync, mkdirSync, writeFileSync } from 'node:fs'
+import { join, resolve, sep } from 'node:path'
+import { existsSync, readFileSync, mkdirSync, writeFileSync, renameSync, rmSync } from 'node:fs'
 import JSZip from 'jszip'
 import pkg from '../../package.json'
 
 const UPLOAD_DIR = join(process.cwd(), 'uploads', 'badges')
+const BACKUP_VERSION = 1
+
+// Validate that a filename resolves safely within a given base directory
+function resolveBadgePath(baseDir: string, filename: string): string {
+  const resolvedRoot = resolve(baseDir)
+  const resolvedPath = resolve(baseDir, filename)
+  if (!resolvedPath.startsWith(resolvedRoot + sep)) {
+    throw new Error('Invalid badge filename')
+  }
+  return resolvedPath
+}
 
 const router = new Hono()
 
@@ -34,11 +45,14 @@ const TABLE_DELETE_ORDER = [...TABLE_INSERT_ORDER].reverse()
 // GET /export — download a full backup as ZIP
 router.get('/export', async (c) => {
   try {
-    // 1. Read all table data using raw SQL (preserves integer timestamps as-is)
-    const data: Record<string, unknown[]> = {}
-    for (const table of TABLE_INSERT_ORDER) {
-      data[table] = sqliteDb.query(`SELECT * FROM ${table}`).all()
-    }
+    // 1. Read all table data in a single transaction snapshot to avoid inconsistent state
+    const data = sqliteDb.transaction(() => {
+      const snapshot: Record<string, unknown[]> = {}
+      for (const table of TABLE_INSERT_ORDER) {
+        snapshot[table] = sqliteDb.query(`SELECT * FROM ${table}`).all()
+      }
+      return snapshot
+    })()
 
     // 2. Build manifest
     const manifest = {
@@ -59,9 +73,13 @@ router.get('/export', async (c) => {
     const badgesFolder = zip.folder('badges')!
     const badgeRows = data['badges'] as Array<{ filename: string }>
     for (const badge of badgeRows) {
-      const filepath = join(UPLOAD_DIR, badge.filename)
-      if (existsSync(filepath)) {
-        badgesFolder.file(badge.filename, readFileSync(filepath))
+      try {
+        const filepath = resolveBadgePath(UPLOAD_DIR, badge.filename)
+        if (existsSync(filepath)) {
+          badgesFolder.file(badge.filename, readFileSync(filepath))
+        }
+      } catch {
+        // Skip badges with invalid filenames
       }
     }
 
@@ -143,8 +161,8 @@ router.post('/import', async (c) => {
     return c.json({ error: 'Invalid manifest.json' }, 400)
   }
 
-  if (typeof manifest.version !== 'number' || manifest.version < 1) {
-    return c.json({ error: `Unsupported backup version: ${manifest.version}` }, 400)
+  if (manifest.version !== BACKUP_VERSION) {
+    return c.json({ error: `Unsupported backup version: ${manifest.version}. Expected: ${BACKUP_VERSION}` }, 400)
   }
 
   // 4. Parse data
@@ -158,7 +176,33 @@ router.post('/import', async (c) => {
     return c.json({ error: 'Invalid data.json' }, 400)
   }
 
-  // 5. Restore DB in a single transaction
+  // 5. Stage badge files BEFORE the DB transaction so failures are atomic
+  const badgesInZip = Object.keys(zip.files)
+    .filter((p) => p.startsWith('badges/') && !p.endsWith('/'))
+  const stagingDir = UPLOAD_DIR + '.staging'
+  const badgeFileErrors: string[] = []
+
+  if (badgesInZip.length > 0) {
+    mkdirSync(stagingDir, { recursive: true })
+
+    for (const zipPath of badgesInZip) {
+      const filename = zipPath.slice('badges/'.length)
+      try {
+        const safeTarget = resolveBadgePath(stagingDir, filename)
+        const fileBuffer = await zip.files[zipPath].async('nodebuffer')
+        writeFileSync(safeTarget, fileBuffer)
+      } catch (err: any) {
+        badgeFileErrors.push(`${filename}: ${err.message}`)
+      }
+    }
+
+    if (badgeFileErrors.length > 0) {
+      try { rmSync(stagingDir, { recursive: true, force: true }) } catch {}
+      return c.json({ error: `Badge file staging failed: ${badgeFileErrors.join(', ')}` }, 400)
+    }
+  }
+
+  // 6. Restore DB in a single transaction
   try {
     const restore = sqliteDb.transaction(() => {
       // Disable FK constraints so we can delete/insert in bulk without ordering issues
@@ -196,26 +240,29 @@ router.post('/import', async (c) => {
   } catch (err: any) {
     // Ensure FK constraints are re-enabled even on error
     try { sqliteDb.exec('PRAGMA foreign_keys = ON') } catch {}
+    if (badgesInZip.length > 0) {
+      try { rmSync(stagingDir, { recursive: true, force: true }) } catch {}
+    }
     return c.json({ error: `Restore failed: ${err.message}` }, 400)
   }
 
-  // 6. Restore badge image files (outside transaction — best effort)
-  const badgeFileErrors: string[] = []
-  if (!existsSync(UPLOAD_DIR)) {
+  // 7. Move staged badge files into the final location (atomic per-file rename)
+  if (badgesInZip.length > 0) {
     mkdirSync(UPLOAD_DIR, { recursive: true })
-  }
 
-  const badgesInZip = Object.keys(zip.files)
-    .filter((p) => p.startsWith('badges/') && !p.endsWith('/'))
-
-  for (const zipPath of badgesInZip) {
-    const filename = zipPath.slice('badges/'.length)
-    try {
-      const fileBuffer = await zip.files[zipPath].async('nodebuffer')
-      writeFileSync(join(UPLOAD_DIR, filename), fileBuffer)
-    } catch (err: any) {
-      badgeFileErrors.push(`${filename}: ${err.message}`)
+    for (const zipPath of badgesInZip) {
+      const filename = zipPath.slice('badges/'.length)
+      try {
+        renameSync(
+          resolveBadgePath(stagingDir, filename),
+          resolveBadgePath(UPLOAD_DIR, filename)
+        )
+      } catch (err: any) {
+        badgeFileErrors.push(`${filename}: ${err.message}`)
+      }
     }
+
+    try { rmSync(stagingDir, { recursive: true, force: true }) } catch {}
   }
 
   // Build stats from restored data
