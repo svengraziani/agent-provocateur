@@ -1,4 +1,5 @@
 import { Hono } from 'hono'
+import { stream } from 'hono/streaming'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import pkg from '../../package.json'
@@ -20,6 +21,7 @@ interface CacheEntry {
 
 const CACHE_TTL_MS = 60 * 60 * 1000 // 1 hour server-side cache
 const GITHUB_REPO = 'svengraziani/vibe-and-conquer'
+const MAX_OUTPUT_BYTES = 512 * 1024 // 512 KB cap on streamed output
 let releaseCache: CacheEntry | null = null
 
 function semverGt(a: string, b: string): boolean {
@@ -98,44 +100,67 @@ router.get('/check', async (c) => {
   }
 })
 
-// POST /update — run scripts/update.sh and return full output
-// In Docker deployments, the script is available via the /workspace bind mount.
-// Requires: /var/run/docker.sock and . (project root) mounted in compose.yml.
-router.post('/update', async (c) => {
-  // Prefer the host-mounted path (/workspace) so the script can run
-  // docker compose commands with the correct project context.
+// POST /update — stream scripts/update.sh output to the client.
+// In Docker deployments, the script is available via the /workspace bind mount
+// (compose.update.yml). Requires: /var/run/docker.sock and . (project root).
+router.post('/update', (c) => {
   const inContainerPath = '/workspace/gh-ctrl/scripts/update.sh'
   const localPath = join(process.cwd(), 'scripts', 'update.sh')
   const scriptPath = existsSync(inContainerPath) ? inContainerPath : localPath
 
   const workDir = existsSync('/workspace/compose.yml') ? '/workspace' : process.cwd()
 
-  try {
-    const proc = Bun.spawn(['bash', scriptPath], {
-      cwd: workDir,
-      stdout: 'pipe',
-      stderr: 'pipe',
-    })
+  return stream(c, async (s) => {
+    const decoder = new TextDecoder()
+    let totalBytes = 0
+    let truncated = false
 
-    const [stdout, stderr, exitCode] = await Promise.all([
-      new Response(proc.stdout).text(),
-      new Response(proc.stderr).text(),
-      proc.exited,
-    ])
+    async function drainStream(readable: ReadableStream<Uint8Array>) {
+      const reader = readable.getReader()
+      try {
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          if (!value) continue
+          totalBytes += value.byteLength
+          if (totalBytes > MAX_OUTPUT_BYTES) {
+            if (!truncated) {
+              truncated = true
+              await s.write('\n[output truncated — 512 KB limit reached]\n')
+            }
+            continue
+          }
+          await s.write(decoder.decode(value, { stream: true }))
+        }
+      } finally {
+        reader.releaseLock()
+      }
+    }
 
-    const output = [stdout, stderr].filter(Boolean).join('\n').trim()
+    try {
+      const proc = Bun.spawn(['bash', scriptPath], {
+        cwd: workDir,
+        stdout: 'pipe',
+        stderr: 'pipe',
+      })
 
-    return c.json({ success: exitCode === 0, output, exitCode })
-  } catch (err) {
-    return c.json(
-      {
-        success: false,
-        output: err instanceof Error ? err.message : String(err),
-        exitCode: -1,
-      },
-      500
-    )
-  }
+      await Promise.all([drainStream(proc.stdout), drainStream(proc.stderr)])
+
+      const exitCode = await proc.exited
+      // Sentinel line so the client can determine success/failure
+      await s.write(
+        `\n__META__:${JSON.stringify({ exitCode, truncated })}\n`
+      )
+    } catch (err) {
+      await s.write(
+        `\n__META__:${JSON.stringify({
+          exitCode: -1,
+          truncated,
+          error: err instanceof Error ? err.message : String(err),
+        })}\n`
+      )
+    }
+  })
 })
 
 export default router

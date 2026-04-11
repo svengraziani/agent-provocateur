@@ -43,9 +43,11 @@ export function useVersionCheck() {
     }
 
     // Fetch fresh from backend
+    let cancelled = false
     api
       .checkVersion()
       .then((result) => {
+        if (cancelled) return
         const checkState: VersionCheckState = {
           current: result.current,
           latest: result.latest,
@@ -65,6 +67,10 @@ export function useVersionCheck() {
       .catch(() => {
         // silently fail — version check is non-critical
       })
+
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   const dismiss = useCallback(() => {

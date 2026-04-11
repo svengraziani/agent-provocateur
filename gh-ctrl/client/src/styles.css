@@ -6449,6 +6449,11 @@ select.input {
   padding-top: 36px;
 }
 
+/* Keep hamburger above the update banner on mobile */
+.app-layout.update-banner-visible .sidebar-hamburger {
+  top: 44px;
+}
+
 /* Sidebar update indicator */
 .sidebar-version--update {
   display: flex;
@@ -6482,7 +6487,8 @@ select.input {
   font-size: 11px;
   color: var(--crt-green);
   white-space: pre-wrap;
-  word-break: break-word;
+  word-break: normal;
+  overflow-wrap: anywhere;
   max-height: 360px;
   overflow-y: auto;
   margin-bottom: 12px;

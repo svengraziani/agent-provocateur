@@ -44,9 +44,11 @@ docker compose cp app:/app/data/. "$BACKUP_DIR/" 2>/dev/null \
   || echo "  (skipped — container not running or no data volume yet)"
 echo ""
 
-# ── 2. Pull latest source code ─────────────────────────────────────────────────
-echo "==> Pulling latest code from origin/main..."
-git pull origin main
+# ── 2. Sync working tree to origin/main ────────────────────────────────────────
+echo "==> Syncing working tree to origin/main..."
+git fetch origin main --tags
+git checkout main
+git reset --hard origin/main
 echo ""
 
 # ── 3. Rebuild and restart via Docker Compose ──────────────────────────────────
