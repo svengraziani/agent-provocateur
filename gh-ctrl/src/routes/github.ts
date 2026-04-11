@@ -1,7 +1,8 @@
 import { Hono } from 'hono'
 import { streamSSE } from 'hono/streaming'
 import { db } from '../db'
-import { repos } from '../db/schema'
+import { repos, settings } from '../db/schema'
+import { eq } from 'drizzle-orm'
 import { fetchGitLabRepoData } from '../providers/gitlab'
 
 interface GHResult {
@@ -9,8 +10,28 @@ interface GHResult {
   error: string | null
 }
 
+// Cache the GitHub token from DB with a 60-second TTL to avoid hitting SQLite on every `gh` call
+let _ghTokenCache: { value: string | null; expiry: number } | null = null
+
+async function getGithubTokenFromSettings(): Promise<string | null> {
+  const now = Date.now()
+  if (_ghTokenCache && now < _ghTokenCache.expiry) return _ghTokenCache.value
+  const row = await db.select().from(settings).where(eq(settings.key, 'GITHUB_TOKEN')).get()
+  const value = row?.value ?? null
+  _ghTokenCache = { value, expiry: now + 60_000 }
+  return value
+}
+
+/** Invalidate the cached GitHub token (called when the setting is updated). */
+export function invalidateGithubTokenCache() {
+  _ghTokenCache = null
+}
+
 async function gh(args: string[]): Promise<GHResult> {
-  const proc = Bun.spawn(['gh', ...args], { env: { ...process.env } })
+  const dbToken = await getGithubTokenFromSettings()
+  const env: Record<string, string | undefined> = { ...process.env }
+  if (dbToken) env['GH_TOKEN'] = dbToken
+  const proc = Bun.spawn(['gh', ...args], { env })
   const stdout = await new Response(proc.stdout).text()
   const exitCode = await proc.exited
   if (exitCode !== 0) {

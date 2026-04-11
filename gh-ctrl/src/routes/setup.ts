@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { db } from '../db'
-import { repos } from '../db/schema'
+import { repos, settings } from '../db/schema'
+import { eq } from 'drizzle-orm'
 import fs from 'fs'
 
 const app = new Hono()
@@ -46,8 +47,9 @@ app.get('/status', async (c) => {
     dbDetail = err instanceof Error ? err.message : 'Unknown error'
   }
 
-  // Check 4: GitLab token (optional)
-  const gitlabToken = !!process.env.GITLAB_TOKEN
+  // Check 4: GitLab token (optional) — from env var or app settings
+  const gitlabSettingsRow = await db.select().from(settings).where(eq(settings.key, 'GITLAB_TOKEN')).get()
+  const gitlabToken = !!process.env.GITLAB_TOKEN || !!gitlabSettingsRow?.value
 
   const checks = [
     {
@@ -79,9 +81,7 @@ app.get('/status', async (c) => {
       detail: gitlabToken ? 'GitLab token configured' : 'No GitLab token found',
       fix: gitlabToken
         ? null
-        : mode === 'docker'
-        ? 'Add GITLAB_TOKEN=<your_token> to your .env file and restart the container'
-        : 'Set GITLAB_TOKEN env var to enable GitLab repository support',
+        : 'Set a GitLab Personal Access Token in Settings → API Credentials, or via the GITLAB_TOKEN environment variable',
     },
   ]
 
