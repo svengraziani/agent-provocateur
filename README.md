@@ -118,6 +118,33 @@ docker compose --profile dev up --build
 
 The SQLite database is stored in a named Docker volume (`gh-ctrl-data`) and persists across restarts.
 
+### In-App Updates (opt-in)
+
+When a new release is available, a notification banner appears at the top of the UI. Clicking **INSTALL UPDATE** runs `gh-ctrl/scripts/update.sh` inside the container — it pulls the latest code, rebuilds the image, and restarts the services.
+
+This requires the container to reach the host Docker daemon and the project root on disk. Because mounting `/var/run/docker.sock` grants container-level control of the Docker daemon (root-equivalent on the host), **this is opt-in** and disabled by default.
+
+**Enable with the overlay file:**
+
+```bash
+# Start (or restart) with both compose files:
+docker compose -f compose.yml -f compose.update.yml --profile prod up -d
+```
+
+**Or set `COMPOSE_FILE` in your `.env` so it applies automatically:**
+
+```dotenv
+COMPOSE_FILE=compose.yml:compose.update.yml
+```
+
+Then `docker compose --profile prod up -d` picks up the overlay without the extra `-f` flag.
+
+> **Security note:** Only enable the overlay when:
+> - You trust the network exposure of your deployment, **and**
+> - You have configured authentication (`KEYCLOAK_URL` / `KEYCLOAK_REALM` / `KEYCLOAK_CLIENT_ID` in `.env`).
+>
+> Without auth, any user who can reach the UI can trigger a host rebuild. The updater path (`POST /api/version/update`) is excluded from public routes and requires a valid session when Keycloak is configured.
+
 ---
 
 ## GitHub Actions Workflows
