@@ -1,0 +1,50 @@
+services:
+  vibe-and-conquer:
+    image: ghcr.io/svengraziani/vibe-and-conquer:latest
+    # Or build locally:
+    # build: ../../..
+    environment:
+      - PORT=3001
+      # No KEYCLOAK_* / AUTHENTIK_* / OIDC_* vars needed —
+      # Authelia handles auth at the proxy level, the app itself
+      # does not validate JWTs when using this setup.
+    volumes:
+      - app_data:/app/data
+    restart: unless-stopped
+
+  authelia:
+    image: authelia/authelia:latest
+    volumes:
+      - ./authelia-config.yml:/config/configuration.yml:ro
+      # Authelia needs a users database; for production use LDAP or a proper DB
+      - ./users_database.yml:/config/users_database.yml:ro
+    environment:
+      - TZ=Europe/Berlin
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9091/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  caddy:
+    image: caddy:latest
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"  # HTTP/3
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      authelia:
+        condition: service_healthy
+      vibe-and-conquer:
+        condition: service_started
+    restart: unless-stopped
+
+volumes:
+  app_data:
+  caddy_data:
+  caddy_config:

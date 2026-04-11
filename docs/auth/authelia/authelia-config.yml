@@ -1,0 +1,55 @@
+---
+# Authelia minimal configuration for Vibe and Conquer
+# Full reference: https://www.authelia.com/configuration/prologue/introduction/
+
+theme: dark
+
+server:
+  address: tcp://0.0.0.0:9091/
+
+log:
+  level: info
+
+# JWT secret used to sign internal session tokens (generate with: openssl rand -hex 32)
+jwt_secret: CHANGE_ME_generate_with_openssl_rand_hex_32
+
+authentication_backend:
+  file:
+    path: /config/users_database.yml
+    password:
+      algorithm: bcrypt
+
+# Where Authelia stores sessions
+session:
+  secret: CHANGE_ME_another_random_secret
+  cookies:
+    - name: authelia_session
+      domain: example.com  # Replace with your domain
+      authelia_url: https://auth.example.com
+      expiration: 1h
+      inactivity: 5m
+
+storage:
+  encryption_key: CHANGE_ME_32_char_encryption_key_here
+  local:
+    path: /config/db.sqlite3
+
+notifier:
+  # For testing; switch to smtp for production
+  filesystem:
+    filename: /config/notification.txt
+
+access_control:
+  default_policy: deny
+  rules:
+    # Allow the Authelia API itself (health, verify, etc.)
+    - domain: auth.example.com
+      policy: bypass
+
+    # Protect the dashboard — require any authenticated user
+    - domain: dashboard.example.com
+      policy: one_factor
+
+    # Optional: require two-factor for extra security
+    # - domain: dashboard.example.com
+    #   policy: two_factor

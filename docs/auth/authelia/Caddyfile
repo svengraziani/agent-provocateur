@@ -1,0 +1,42 @@
+# Vibe and Conquer — Caddy + Authelia forward_auth example
+#
+# Authelia acts as a forward auth server in front of the app.
+# Caddy checks every request against Authelia before proxying it to the backend.
+# No changes to the Vibe and Conquer app itself are required.
+#
+# Flow:
+#   Browser → Caddy → Authelia (verify) → Caddy → Vibe and Conquer
+#                          ↓ not authenticated
+#                      Redirect to Authelia login portal
+#
+# Prerequisites:
+#   - Authelia container running (see docker-compose.yml)
+#   - DNS pointing dashboard.example.com and auth.example.com to this host
+#   - Replace example.com with your actual domain
+
+{
+    # Optional: Enable the Caddy admin API (disable in production if not needed)
+    admin off
+}
+
+# Authelia login portal
+auth.example.com {
+    reverse_proxy authelia:9091
+}
+
+# Vibe and Conquer dashboard — protected by Authelia
+dashboard.example.com {
+    # Forward every request to Authelia for verification
+    forward_auth authelia:9091 {
+        uri /api/verify?rd=https://auth.example.com
+
+        # Authelia passes authenticated user info via headers
+        copy_headers Remote-User Remote-Groups Remote-Name Remote-Email
+    }
+
+    # Proxy authenticated requests to the Vibe and Conquer backend
+    reverse_proxy vibe-and-conquer:3001
+
+    # Optional: serve the Vite frontend in production (if built into the backend)
+    # If running the dev server separately, add a second reverse_proxy block for port 5173
+}
