@@ -14,6 +14,7 @@ import contactsRouter from './routes/contacts'
 import settingsRouter from './routes/settings'
 import shellRouter, { shellWebsocket } from './routes/shell'
 import versionRouter from './routes/version'
+import backupRouter from './routes/backup'
 import { existsSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { initHealthcheckService } from './healthcheck-service'
@@ -63,6 +64,7 @@ app.route('/api/contacts', contactsRouter)
 app.route('/api/settings', settingsRouter)
 app.route('/api/shell', shellRouter)
 app.route('/api/version', versionRouter)
+app.route('/api/backup', backupRouter)
 
 app.get('/api/health', (c) => c.json({ ok: true }))
 

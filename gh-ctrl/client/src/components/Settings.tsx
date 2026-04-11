@@ -4,6 +4,7 @@ import { api, getServerUrl, setServerUrl } from '../api'
 import { useAppStore } from '../store'
 import type { GameMap } from '../types'
 import { GitHubIcon, GitLabIcon } from './Icons'
+import { BackupPanel } from './BackupPanel'
 
 const COLORS = ['#39d353', '#58a6ff', '#f0883e', '#f85149', '#bc8cff', '#ffa657', '#ff7b72', '#79c0ff']
 
@@ -890,6 +891,8 @@ export function Settings() {
           </div>
         )}
       </div>
+
+      <BackupPanel />
     </div>
   )
 }

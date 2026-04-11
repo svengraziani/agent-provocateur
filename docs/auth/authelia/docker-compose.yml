@@ -1,0 +1,58 @@
+services:
+  vibe-and-conquer:
+    # Pin to a specific release tag — replace with the version you are deploying.
+    image: ghcr.io/svengraziani/vibe-and-conquer:1.2.0
+    # Or build locally:
+    # build: ../../..
+    environment:
+      - PORT=3001
+      # No KEYCLOAK_* / AUTHENTIK_* / OIDC_* vars needed —
+      # Authelia handles auth at the proxy level, the app itself
+      # does not validate JWTs when using this setup.
+    volumes:
+      - app_data:/app/data
+    restart: unless-stopped
+
+  authelia:
+    # Pin to a specific minor version for reproducible deployments.
+    image: authelia/authelia:4.38
+    volumes:
+      - ./authelia-config.yml:/config/configuration.yml:ro
+      # Authelia needs a users database; for production use LDAP or a proper DB
+      - ./users_database.yml:/config/users_database.yml:ro
+    environment:
+      - TZ=Europe/Berlin
+      # Secrets — supply via a .env file or your secrets manager.
+      # Generate values with: openssl rand -hex 32
+      - AUTHELIA_JWT_SECRET=${AUTHELIA_JWT_SECRET}
+      - AUTHELIA_SESSION_SECRET=${AUTHELIA_SESSION_SECRET}
+      - AUTHELIA_STORAGE_ENCRYPTION_KEY=${AUTHELIA_STORAGE_ENCRYPTION_KEY}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9091/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  caddy:
+    # v2.11.2+ includes the fix for GHSA-7r4p-gjf4-gxv4 (Remote-* header spoofing).
+    image: caddy:2.11.2
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"  # HTTP/3
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      authelia:
+        condition: service_healthy
+      vibe-and-conquer:
+        condition: service_started
+    restart: unless-stopped
+
+volumes:
+  app_data:
+  caddy_data:
+  caddy_config:
