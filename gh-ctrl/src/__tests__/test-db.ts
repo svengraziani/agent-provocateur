@@ -72,6 +72,14 @@ export function createTestDb() {
   `)
 
   sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL,
+      updated_at INTEGER DEFAULT (unixepoch())
+    )
+  `)
+
+  sqlite.exec(`
     CREATE TABLE IF NOT EXISTS badges (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
