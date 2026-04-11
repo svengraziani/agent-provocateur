@@ -1,7 +1,17 @@
 # Domain is read from the DOMAIN env var (set in .env)
 {env.DOMAIN} {
 
-    # SSE + WebSocket: disable buffering and extend timeouts
+    # ── Basic Auth (opt-in) ───────────────────────────────────────────────────
+    # Uncomment the block below to enable basic auth.
+    # Generate a password hash:
+    #   docker run --rm caddy:2-alpine caddy hash-password --plaintext 'yourpassword'
+    # Then set BASIC_AUTH_USER and BASIC_AUTH_HASH in your .env file.
+    #
+    # basicauth {
+    #     {env.BASIC_AUTH_USER} {env.BASIC_AUTH_HASH}
+    # }
+
+    # ── SSE streams: disable buffering, extend timeout ────────────────────────
     @streaming {
         path /api/github/stream* /api/gitlab/stream* /api/buildings/*/clawcom/stream*
     }
@@ -12,7 +22,7 @@
         }
     }
 
-    # WebSocket for the shell route
+    # ── WebSocket for the shell route ─────────────────────────────────────────
     @websocket {
         path /api/shell*
         header Connection *Upgrade*
@@ -20,6 +30,6 @@
     }
     reverse_proxy @websocket app:3001
 
-    # Everything else
+    # ── Everything else ───────────────────────────────────────────────────────
     reverse_proxy app:3001
 }
