@@ -13,6 +13,15 @@ RUN cd client && bun install
 
 # Copy source and build frontend
 COPY . .
+
+# Keycloak OIDC vars are baked into the JS bundle at build time
+ARG VITE_KEYCLOAK_URL=""
+ARG VITE_KEYCLOAK_REALM=""
+ARG VITE_KEYCLOAK_CLIENT_ID=""
+ENV VITE_KEYCLOAK_URL=$VITE_KEYCLOAK_URL
+ENV VITE_KEYCLOAK_REALM=$VITE_KEYCLOAK_REALM
+ENV VITE_KEYCLOAK_CLIENT_ID=$VITE_KEYCLOAK_CLIENT_ID
+
 RUN cd client && bunx vite build
 
 # ── Stage 2: runtime (production) ────────────────────────────────────────────

@@ -4,12 +4,49 @@ services:
     build:
       context: ./gh-ctrl
       target: runtime
-    ports:
-      - "3001:3001"
-    environment:
-      - GH_TOKEN=${GH_TOKEN}
+      args:
+        VITE_KEYCLOAK_URL: ${VITE_KEYCLOAK_URL:-}
+        VITE_KEYCLOAK_REALM: ${VITE_KEYCLOAK_REALM:-}
+        VITE_KEYCLOAK_CLIENT_ID: ${VITE_KEYCLOAK_CLIENT_ID:-}
+    image: gh-ctrl:latest
+    container_name: gh-ctrl
+    restart: unless-stopped
+    expose:
+      - "3001"
+    env_file:
+      - .env
     volumes:
       - gh-ctrl-data:/app/data
+      - gh-ctrl-uploads:/app/uploads
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  caddy:
+    profiles: [prod]
+    image: caddy:2-alpine
+    container_name: gh-ctrl-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    env_file:
+      - .env
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      - internal
+    depends_on:
+      app:
+        condition: service_healthy
 
   app-dev:
     profiles: [dev]
@@ -19,12 +56,19 @@ services:
     ports:
       - "3001:3001"
       - "5173:5173"
-    environment:
-      - GH_TOKEN=${GH_TOKEN}
+    env_file:
+      - .env
     volumes:
       - ./gh-ctrl/src:/app/src
       - ./gh-ctrl/client/src:/app/client/src
       - gh-ctrl-data:/app/data
+      - gh-ctrl-uploads:/app/uploads
+
+networks:
+  internal:
 
 volumes:
   gh-ctrl-data:
+  gh-ctrl-uploads:
+  caddy-data:
+  caddy-config:
