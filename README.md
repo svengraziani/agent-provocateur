@@ -199,7 +199,11 @@ These workflows are the backbone of **ClawCom** — the dashboard's AI command l
 - Label-trigger automation endpoint
 
 ### Authentication
-- Optional Keycloak (OAuth2 / OpenID Connect) integration
+- Optional auth — disabled by default; enable by setting provider env vars
+- **Keycloak** — full OAuth2 / OpenID Connect (`KEYCLOAK_URL`, `KEYCLOAK_REALM`, `KEYCLOAK_CLIENT_ID`)
+- **Authentik** — OIDC wrapper (`AUTHENTIK_URL`, `AUTHENTIK_SLUG`)
+- **Generic OIDC** — works with Zitadel, Dex, Logto, Auth0, and others (`OIDC_JWKS_URL`, `OIDC_ISSUER`, `OIDC_AUDIENCE`)
+- **Authelia** (proxy-level) — zero app changes; forward auth via Caddy; see [`docs/auth/authelia/`](docs/auth/authelia/)
 - User profile display in sidebar
 
 ### Other
@@ -223,7 +227,7 @@ These workflows are the backbone of **ClawCom** — the dashboard's AI command l
 | GitHub API | GitHub CLI (`gh`) |
 | GitLab API | REST API (with self-hosted instance support) |
 | State Management | [Zustand](https://github.com/pmndrs/zustand) |
-| Auth (optional) | Keycloak (OAuth2 / OpenID Connect) |
+| Auth (optional) | Keycloak · Authentik · Generic OIDC · Authelia (proxy) |
 
 ## Project Structure
 

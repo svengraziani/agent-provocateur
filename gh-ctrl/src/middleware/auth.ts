@@ -2,8 +2,11 @@ import type { MiddlewareHandler } from 'hono'
 import { createRemoteJWKSet, jwtVerify } from 'jose'
 
 // --- Keycloak ---
-const KEYCLOAK_URL = process.env.KEYCLOAK_URL
-const KEYCLOAK_INTERNAL_URL = process.env.KEYCLOAK_INTERNAL_URL || KEYCLOAK_URL
+const KEYCLOAK_URL = process.env.KEYCLOAK_URL?.replace(/\/+$/, '')
+const KEYCLOAK_INTERNAL_URL = (process.env.KEYCLOAK_INTERNAL_URL || KEYCLOAK_URL)?.replace(
+  /\/+$/,
+  '',
+)
 const KEYCLOAK_REALM = process.env.KEYCLOAK_REALM
 const KEYCLOAK_CLIENT_ID = process.env.KEYCLOAK_CLIENT_ID
 
@@ -16,7 +19,7 @@ const AUTHENTIK_SLUG = process.env.AUTHENTIK_SLUG
 // --- Generic OIDC (Zitadel, Dex, Logto, Auth0, Authelia OIDC, etc.) ---
 // OIDC_JWKS_URL = https://my-idp.example.com/.well-known/jwks.json
 // OIDC_ISSUER   = https://my-idp.example.com
-// OIDC_AUDIENCE = (optional) expected audience claim in the JWT
+// OIDC_AUDIENCE = expected audience claim in the JWT (required)
 const OIDC_JWKS_URL = process.env.OIDC_JWKS_URL
 const OIDC_ISSUER = process.env.OIDC_ISSUER
 const OIDC_AUDIENCE = process.env.OIDC_AUDIENCE
@@ -64,15 +67,15 @@ function resolveOidcConfig(): OidcConfig | null {
 
   const hasOidcPartial = Boolean(OIDC_JWKS_URL || OIDC_ISSUER || OIDC_AUDIENCE)
   if (hasOidcPartial) {
-    if (!(OIDC_JWKS_URL && OIDC_ISSUER)) {
+    if (!(OIDC_JWKS_URL && OIDC_ISSUER && OIDC_AUDIENCE)) {
       throw new Error(
-        '[auth] Incomplete generic OIDC config: OIDC_JWKS_URL and OIDC_ISSUER are required',
+        '[auth] Incomplete generic OIDC config: OIDC_JWKS_URL, OIDC_ISSUER and OIDC_AUDIENCE are all required',
       )
     }
     return {
       jwksUrl: OIDC_JWKS_URL,
       issuer: OIDC_ISSUER,
-      ...(OIDC_AUDIENCE ? { audience: OIDC_AUDIENCE } : {}),
+      audience: OIDC_AUDIENCE,
     }
   }
 
