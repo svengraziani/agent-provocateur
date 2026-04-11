@@ -18,7 +18,7 @@ function getJwks() {
   return jwks
 }
 
-const PUBLIC_PATHS = ['/api/health', '/api/version']
+const PUBLIC_PATHS = ['/api/health', '/api/version', '/api/version/check']
 
 export const authMiddleware: MiddlewareHandler = async (c, next) => {
   // Skip auth for public endpoints

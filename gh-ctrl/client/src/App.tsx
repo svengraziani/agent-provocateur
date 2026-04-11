@@ -8,8 +8,10 @@ import { MapEditor } from './components/MapEditor'
 import { ToastArea } from './components/Toast'
 import { SetupScreen } from './components/SetupScreen'
 import { ConnectionSetup } from './components/ConnectionSetup'
+import { UpdateNotificationBanner } from './components/UpdateNotificationBanner'
 import { api, getServerUrl, setAuthTokenProvider } from './api'
 import { useAuth } from './auth/useAuth'
+import { useVersionCheck } from './hooks/useVersionCheck'
 import type { SetupStatus } from './types'
 
 export default function App() {
@@ -28,6 +30,7 @@ export default function App() {
   const [setupChecked, setSetupChecked] = useState(false)
   const [connectionChecked, setConnectionChecked] = useState(false)
   const [serverReachable, setServerReachable] = useState(false)
+  const versionCheck = useVersionCheck()
   const auth = useAuth()
 
   // Register Keycloak token provider so api.ts can attach Bearer tokens
@@ -120,7 +123,17 @@ export default function App() {
   }
 
   return (
-    <div className="app-layout">
+    <div className={`app-layout${versionCheck.updateAvailable ? ' update-banner-visible' : ''}`}>
+      {versionCheck.updateAvailable && (
+        <UpdateNotificationBanner
+          current={versionCheck.current}
+          latest={versionCheck.latest}
+          releaseName={versionCheck.releaseName}
+          releaseUrl={versionCheck.releaseUrl}
+          onDismiss={versionCheck.dismiss}
+        />
+      )}
+
       {/* Mobile: hamburger button to open sidebar drawer */}
       <button
         className="sidebar-hamburger"
@@ -201,7 +214,12 @@ export default function App() {
         </div>
 
         {appVersion && (
-          <div className="sidebar-version">v{appVersion}</div>
+          <div className={`sidebar-version${versionCheck.updateAvailable ? ' sidebar-version--update' : ''}`}>
+            v{appVersion}
+            {versionCheck.updateAvailable && (
+              <span className="sidebar-update-dot" title={`Update available: ${versionCheck.latest}`} />
+            )}
+          </div>
         )}
 
         {auth.enabled && auth.user && (

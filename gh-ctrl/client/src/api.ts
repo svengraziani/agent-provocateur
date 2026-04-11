@@ -682,4 +682,18 @@ export const api = {
     request<{ ok: boolean; sessions: string[]; error?: string }>(
       `/buildings/${buildingId}/shell/connections/${connectionId}/tmux-sessions`
     ),
+
+  checkVersion: () =>
+    request<{
+      current: string
+      latest: string | null
+      updateAvailable: boolean
+      releaseUrl: string | null
+      releaseName: string | null
+    }>('/version/check'),
+
+  triggerUpdate: () =>
+    request<{ success: boolean; output: string; exitCode: number }>('/version/update', {
+      method: 'POST',
+    }),
 }

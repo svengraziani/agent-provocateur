@@ -18,6 +18,12 @@ services:
     volumes:
       - gh-ctrl-data:/app/data
       - gh-ctrl-uploads:/app/uploads
+      # Mount Docker socket + project root to enable the in-app "Install Update" button.
+      # The update script (gh-ctrl/scripts/update.sh) uses these to rebuild and restart
+      # the container via Docker Compose without leaving the running process.
+      # Remove these two lines if you don't need the in-app update button.
+      - /var/run/docker.sock:/var/run/docker.sock
+      - .:/workspace
     networks:
       - internal
     healthcheck:
