@@ -202,9 +202,48 @@ These workflows are the backbone of **ClawCom** — the dashboard's AI command l
 - Optional auth — disabled by default; enable by setting provider env vars
 - **Keycloak** — full OAuth2 / OpenID Connect (`KEYCLOAK_URL`, `KEYCLOAK_REALM`, `KEYCLOAK_CLIENT_ID`)
 - **Authentik** — OIDC wrapper (`AUTHENTIK_URL`, `AUTHENTIK_SLUG`)
-- **Generic OIDC** — works with Zitadel, Dex, Logto, Auth0, and others (`OIDC_JWKS_URL`, `OIDC_ISSUER`, `OIDC_AUDIENCE`)
+- **Generic OIDC** — works with Zitadel, Dex, Logto, Auth0, Clerk, and others (`OIDC_JWKS_URL`, `OIDC_ISSUER`, `OIDC_AUDIENCE`)
 - **Authelia** (proxy-level) — zero app changes; forward auth via Caddy; see [`docs/auth/authelia/`](docs/auth/authelia/)
 - User profile display in sidebar
+
+<details>
+<summary><strong>Clerk setup guide</strong></summary>
+
+Clerk uses the built-in generic OIDC provider. No extra dependencies are needed.
+
+**1. Create an OAuth application in the Clerk Dashboard**
+
+- Go to [Clerk Dashboard](https://dashboard.clerk.com) → **Configure** → **OAuth Applications** → **Create application**
+- Add your app URL as an **Allowed redirect URI** (e.g. `https://yourapp.com`)
+- Note the **Client ID** shown after creation
+
+**2. Find your Frontend API URL**
+
+In the Clerk Dashboard, go to **API Keys** and copy the **Frontend API URL**.  
+It looks like `https://your-app-id.clerk.accounts.dev` for development instances, or your custom domain for production.
+
+**3. Set environment variables**
+
+Frontend (`gh-ctrl/client/.env`):
+
+```env
+VITE_OIDC_AUTHORITY=https://your-app-id.clerk.accounts.dev
+VITE_OIDC_CLIENT_ID=<clerk-oauth-client-id>
+VITE_OIDC_REDIRECT_URI=https://yourapp.com
+VITE_OIDC_SCOPE=openid profile email
+```
+
+Backend (`gh-ctrl/.env`):
+
+```env
+OIDC_JWKS_URL=https://your-app-id.clerk.accounts.dev/.well-known/jwks.json
+OIDC_ISSUER=https://your-app-id.clerk.accounts.dev
+OIDC_AUDIENCE=<clerk-oauth-client-id>
+```
+
+Replace `your-app-id.clerk.accounts.dev` with your actual Frontend API URL and `<clerk-oauth-client-id>` with the Client ID from step 1. `VITE_OIDC_AUTHORITY` uses the OIDC discovery document (`/.well-known/openid-configuration`) Clerk exposes automatically — no extra configuration is required.
+
+</details>
 
 ### Other
 - Voice input (browser Speech API) for hands-free issue and PR creation
