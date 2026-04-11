@@ -98,7 +98,16 @@ export function BattlefieldView() {
   const autoScanTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
-    const onResize = () => setIsPortrait(window.innerWidth < window.innerHeight && window.innerWidth <= 768)
+    const onResize = () => {
+      setIsPortrait(window.innerWidth < window.innerHeight && window.innerWidth <= 768)
+      // Close side panels when entering mobile landscape to free up space
+      if (window.innerWidth > window.innerHeight && window.innerWidth <= 768) {
+        setShowFeedPanel(false)
+        setShowTimers(false)
+        setBranchSiloEntry(null)
+        setDetailEntry(null)
+      }
+    }
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
   }, [])
