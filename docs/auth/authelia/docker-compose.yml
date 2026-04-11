@@ -1,6 +1,7 @@
 services:
   vibe-and-conquer:
-    image: ghcr.io/svengraziani/vibe-and-conquer:latest
+    # Pin to a specific release tag — replace with the version you are deploying.
+    image: ghcr.io/svengraziani/vibe-and-conquer:1.2.0
     # Or build locally:
     # build: ../../..
     environment:
@@ -13,13 +14,19 @@ services:
     restart: unless-stopped
 
   authelia:
-    image: authelia/authelia:latest
+    # Pin to a specific minor version for reproducible deployments.
+    image: authelia/authelia:4.38
     volumes:
       - ./authelia-config.yml:/config/configuration.yml:ro
       # Authelia needs a users database; for production use LDAP or a proper DB
       - ./users_database.yml:/config/users_database.yml:ro
     environment:
       - TZ=Europe/Berlin
+      # Secrets — supply via a .env file or your secrets manager.
+      # Generate values with: openssl rand -hex 32
+      - AUTHELIA_JWT_SECRET=${AUTHELIA_JWT_SECRET}
+      - AUTHELIA_SESSION_SECRET=${AUTHELIA_SESSION_SECRET}
+      - AUTHELIA_STORAGE_ENCRYPTION_KEY=${AUTHELIA_STORAGE_ENCRYPTION_KEY}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:9091/api/health"]
@@ -28,7 +35,8 @@ services:
       retries: 5
 
   caddy:
-    image: caddy:latest
+    # v2.11.2+ includes the fix for GHSA-7r4p-gjf4-gxv4 (Remote-* header spoofing).
+    image: caddy:2.11.2
     ports:
       - "80:80"
       - "443:443"

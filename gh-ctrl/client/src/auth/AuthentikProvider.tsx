@@ -11,8 +11,11 @@ export const authentikEnabled =
   Boolean(AUTHENTIK_URL) && Boolean(AUTHENTIK_SLUG) && Boolean(AUTHENTIK_CLIENT_ID)
 
 export function AuthentikProvider({ children }: { children: ReactNode }) {
+  // Trim trailing slashes so a user-supplied URL like "https://authentik.example.com/"
+  // doesn't produce double-slash paths in the OIDC discovery / JWKS URLs.
+  const baseUrl = AUTHENTIK_URL!.replace(/\/+$/, '')
   // e.g. "https://authentik.example.com/application/o/vibe-and-conquer/"
-  const authority = `${AUTHENTIK_URL}/application/o/${AUTHENTIK_SLUG}/`
+  const authority = `${baseUrl}/application/o/${AUTHENTIK_SLUG}/`
 
   return (
     <OidcProvider authority={authority} clientId={AUTHENTIK_CLIENT_ID!}>

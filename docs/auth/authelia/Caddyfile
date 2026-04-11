@@ -26,6 +26,14 @@ auth.example.com {
 
 # Vibe and Conquer dashboard — protected by Authelia
 dashboard.example.com {
+    # Strip any client-supplied identity headers before the auth check.
+    # Prevents header-injection/spoofing (GHSA-7r4p-gjf4-gxv4) on Caddy < v2.11.2;
+    # acts as defense-in-depth on v2.11.2+ where copy_headers already deletes them.
+    request_header -Remote-User
+    request_header -Remote-Groups
+    request_header -Remote-Name
+    request_header -Remote-Email
+
     # Forward every request to Authelia for verification
     forward_auth authelia:9091 {
         uri /api/verify?rd=https://auth.example.com

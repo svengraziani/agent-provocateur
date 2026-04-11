@@ -16,39 +16,78 @@ const AUTHENTIK_SLUG = process.env.AUTHENTIK_SLUG
 // --- Generic OIDC (Zitadel, Dex, Logto, Auth0, Authelia OIDC, etc.) ---
 // OIDC_JWKS_URL = https://my-idp.example.com/.well-known/jwks.json
 // OIDC_ISSUER   = https://my-idp.example.com
+// OIDC_AUDIENCE = (optional) expected audience claim in the JWT
 const OIDC_JWKS_URL = process.env.OIDC_JWKS_URL
 const OIDC_ISSUER = process.env.OIDC_ISSUER
+const OIDC_AUDIENCE = process.env.OIDC_AUDIENCE
 
 // --- Resolve active OIDC config (Keycloak > Authentik > Generic OIDC) ---
 interface OidcConfig {
   jwksUrl: string
   issuer: string
+  /** Expected audience claim; if set it is validated in jwtVerify. */
+  audience?: string
 }
 
 function resolveOidcConfig(): OidcConfig | null {
-  if (KEYCLOAK_URL && KEYCLOAK_REALM && KEYCLOAK_CLIENT_ID) {
+  const hasKeycloakPartial = Boolean(KEYCLOAK_URL || KEYCLOAK_REALM || KEYCLOAK_CLIENT_ID)
+  if (hasKeycloakPartial) {
+    if (!(KEYCLOAK_URL && KEYCLOAK_REALM && KEYCLOAK_CLIENT_ID)) {
+      throw new Error(
+        '[auth] Incomplete Keycloak config: KEYCLOAK_URL, KEYCLOAK_REALM and KEYCLOAK_CLIENT_ID are all required',
+      )
+    }
     return {
       jwksUrl: `${KEYCLOAK_INTERNAL_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/certs`,
       issuer: `${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}`,
+      audience: KEYCLOAK_CLIENT_ID,
     }
   }
-  if (AUTHENTIK_URL && AUTHENTIK_SLUG) {
-    const base = `${AUTHENTIK_URL}/application/o/${AUTHENTIK_SLUG}`
+
+  const hasAuthentikPartial = Boolean(AUTHENTIK_URL || AUTHENTIK_SLUG)
+  if (hasAuthentikPartial) {
+    if (!(AUTHENTIK_URL && AUTHENTIK_SLUG)) {
+      throw new Error(
+        '[auth] Incomplete Authentik config: both AUTHENTIK_URL and AUTHENTIK_SLUG are required',
+      )
+    }
+    // Trim trailing slashes so a user-supplied URL like "https://authentik.example.com/"
+    // doesn't produce double-slash paths in the JWKS / issuer URLs.
+    const baseUrl = AUTHENTIK_URL.replace(/\/+$/, '')
+    const base = `${baseUrl}/application/o/${AUTHENTIK_SLUG}`
     return {
       jwksUrl: `${base}/jwks/`,
       issuer: `${base}/`,
+      audience: AUTHENTIK_SLUG,
     }
   }
-  if (OIDC_JWKS_URL && OIDC_ISSUER) {
+
+  const hasOidcPartial = Boolean(OIDC_JWKS_URL || OIDC_ISSUER || OIDC_AUDIENCE)
+  if (hasOidcPartial) {
+    if (!(OIDC_JWKS_URL && OIDC_ISSUER)) {
+      throw new Error(
+        '[auth] Incomplete generic OIDC config: OIDC_JWKS_URL and OIDC_ISSUER are required',
+      )
+    }
     return {
       jwksUrl: OIDC_JWKS_URL,
       issuer: OIDC_ISSUER,
+      ...(OIDC_AUDIENCE ? { audience: OIDC_AUDIENCE } : {}),
     }
   }
+
   return null
 }
 
-const oidcConfig = resolveOidcConfig()
+let oidcConfig: OidcConfig | null = null
+let oidcConfigError: string | null = null
+try {
+  oidcConfig = resolveOidcConfig()
+} catch (err) {
+  oidcConfigError = err instanceof Error ? err.message : String(err)
+  console.error(oidcConfigError)
+}
+
 let jwks: ReturnType<typeof createRemoteJWKSet> | null = null
 
 function getJwks() {
@@ -64,6 +103,12 @@ export const authMiddleware: MiddlewareHandler = async (c, next) => {
   // Skip auth for public endpoints
   if (PUBLIC_PATHS.includes(c.req.path)) {
     return next()
+  }
+
+  // Fail closed: some auth env vars were set but the config is incomplete.
+  if (oidcConfigError) {
+    console.error('[auth] Auth configuration error:', oidcConfigError)
+    return c.json({ error: 'Server auth misconfiguration' }, 500)
   }
 
   // No auth provider configured — opt-in, skip entirely
@@ -85,6 +130,7 @@ export const authMiddleware: MiddlewareHandler = async (c, next) => {
     const keySet = getJwks()!
     const { payload } = await jwtVerify(token, keySet, {
       issuer: oidcConfig.issuer,
+      ...(oidcConfig.audience ? { audience: oidcConfig.audience } : {}),
     })
     c.set('user' as never, payload)
     return next()
