@@ -442,3 +442,47 @@ export interface SshSessionLog {
 }
 
 export type ShellStatus = 'idle' | 'connecting' | 'connected' | 'disconnected' | 'error'
+
+export interface SourceRelayConfig {
+  configured: boolean
+}
+
+export type SourceRelayConnectorType = 'git' | 'private_git' | 'website'
+
+export interface SourceRelayConnectorConfig {
+  url: string
+  branch?: string
+  token?: string | true // true = token exists but is redacted by API
+}
+
+export interface SourceRelayConnector {
+  id: number
+  buildingId: number
+  name: string
+  type: SourceRelayConnectorType
+  configuration: string // JSON-encoded SourceRelayConnectorConfig (token redacted)
+  hasToken: boolean
+  createdAt: string | number | null
+}
+
+export interface SourceRelayConnectorFile {
+  id: number
+  connectorId: number
+  fetcherId: number
+  filePaths: string // JSON array of selected file paths (empty = all files)
+  createdAt: string | number | null
+}
+
+export interface SourceRelayFetcher {
+  id: number
+  buildingId: number
+  name: string
+  uniqueToken: string
+  createdAt: string | number | null
+  connectorFiles: SourceRelayConnectorFile[]
+}
+
+export interface SourceRelayGitFile {
+  path: string
+  size?: number
+}

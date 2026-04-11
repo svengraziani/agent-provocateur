@@ -11,6 +11,7 @@ import { HealthcheckBuilding } from '../HealthcheckBuilding'
 import { MailboxBuilding } from '../MailboxBuilding'
 import { ResearchCenterBuilding } from '../ResearchCenterBuilding'
 import { RemoteShellBuilding } from '../RemoteShellBuilding'
+import { SourceRelayBuilding } from '../SourceRelayBuilding'
 import { BadgeMarker } from '../BadgeMarker'
 import { UserUnit } from './UserUnit'
 import type { Repo } from '../../types'
@@ -181,7 +182,9 @@ export function BattlefieldMapLayer({
               ? '/buildings/construction_4s_snailbox.gif'
               : building.type === 'research'
                 ? '/buildings/construct_4s_healthcheck.gif'
-                : '/buildings/construct_3s_clawcom.gif'
+                : building.type === 'sourceRelay'
+                  ? '/buildings/construct_4s_healthcheck.gif'
+                  : '/buildings/construct_3s_clawcom.gif'
           return (
             <div
               key={`building-${building.id}`}
@@ -215,6 +218,9 @@ export function BattlefieldMapLayer({
         }
         if (building.type === 'remoteShell') {
           return <RemoteShellBuilding {...commonProps} />
+        }
+        if (building.type === 'sourceRelay') {
+          return <SourceRelayBuilding {...commonProps} />
         }
         return <ClawComBuilding {...commonProps} />
       })}
