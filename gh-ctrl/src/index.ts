@@ -13,6 +13,7 @@ import timersRouter from './routes/timers'
 import contactsRouter from './routes/contacts'
 import settingsRouter from './routes/settings'
 import shellRouter, { shellWebsocket } from './routes/shell'
+import backupRouter from './routes/backup'
 import pkg from '../package.json'
 import { existsSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
@@ -62,6 +63,7 @@ app.route('/api/timers', timersRouter)
 app.route('/api/contacts', contactsRouter)
 app.route('/api/settings', settingsRouter)
 app.route('/api/shell', shellRouter)
+app.route('/api/backup', backupRouter)
 
 app.get('/api/health', (c) => c.json({ ok: true }))
 app.get('/api/version', (c) => c.json({ version: pkg.version }))
