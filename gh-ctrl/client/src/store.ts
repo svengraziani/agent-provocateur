@@ -2,6 +2,10 @@ import { create } from 'zustand'
 import type { Repo, DashboardEntry, RepoData, GameMap, Building, Badge, PlacedBadge, DeadlineTimer, BattlefieldUser, Contact } from './types'
 import { api } from './api'
 
+function errMsg(err: unknown): string {
+  return err instanceof Error ? err.message : String(err)
+}
+
 function avatarUrlForLogin(login: string, provider: 'github' | 'gitlab', instanceUrl?: string | null, knownAvatarUrl?: string): string {
   if (knownAvatarUrl) return knownAvatarUrl
   if (provider === 'gitlab') {
@@ -131,8 +135,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
     try {
       const data = await api.listRepos()
       set({ repos: data })
-    } catch (err: any) {
-      get().addToast(`Failed to load repos: ${err.message}`, 'error')
+    } catch (err: unknown) {
+      get().addToast(`Failed to load repos: ${errMsg(err)}`, 'error')
     }
   },
 
@@ -172,8 +176,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
         ),
         lastRefresh: new Date(),
       }))
-    } catch (err: any) {
-      get().addToast(`Failed to refresh ${owner}/${name}: ${err.message}`, 'error')
+    } catch (err: unknown) {
+      get().addToast(`Failed to refresh ${owner}/${name}: ${errMsg(err)}`, 'error')
     }
   },
 
@@ -203,8 +207,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
         repos: state.repos.map((r) => r.id === id ? { ...r, color: updated.color } : r),
         entries: state.entries.map((e) => e.repo.id === id ? { ...e, repo: { ...e.repo, color: updated.color } } : e),
       }))
-    } catch (err: any) {
-      get().addToast(`Failed to update color: ${err.message}`, 'error')
+    } catch (err: unknown) {
+      get().addToast(`Failed to update color: ${errMsg(err)}`, 'error')
     }
   },
 
@@ -212,16 +216,16 @@ export const useAppStore = create<AppStore>((set, get) => ({
     try {
       const data = await api.listMaps()
       set({ maps: data })
-    } catch (err: any) {
-      get().addToast(`Failed to load maps: ${err.message}`, 'error')
+    } catch (err: unknown) {
+      get().addToast(`Failed to load maps: ${errMsg(err)}`, 'error')
     }
   },
 
   assignRepoToMap: async (mapId: number, repoId: number) => {
     try {
       await api.assignRepoToMap(mapId, repoId)
-    } catch (err: any) {
-      get().addToast(`Failed to assign repo to map: ${err.message}`, 'error')
+    } catch (err: unknown) {
+      get().addToast(`Failed to assign repo to map: ${errMsg(err)}`, 'error')
       throw err
     }
   },
@@ -229,8 +233,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
   unassignRepoFromMap: async (mapId: number, repoId: number) => {
     try {
       await api.unassignRepoFromMap(mapId, repoId)
-    } catch (err: any) {
-      get().addToast(`Failed to unassign repo from map: ${err.message}`, 'error')
+    } catch (err: unknown) {
+      get().addToast(`Failed to unassign repo from map: ${errMsg(err)}`, 'error')
       throw err
     }
   },
@@ -239,8 +243,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
     try {
       const data = await api.listBuildings()
       set({ buildings: data })
-    } catch (err: any) {
-      get().addToast(`Failed to load buildings: ${err.message}`, 'error')
+    } catch (err: unknown) {
+      get().addToast(`Failed to load buildings: ${errMsg(err)}`, 'error')
     }
   },
 
@@ -250,8 +254,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
       set((state) => ({
         buildings: state.buildings.map((b) => b.id === id ? { ...b, posX: updated.posX, posY: updated.posY } : b),
       }))
-    } catch (err: any) {
-      get().addToast(`Failed to update building position: ${err.message}`, 'error')
+    } catch (err: unknown) {
+      get().addToast(`Failed to update building position: ${errMsg(err)}`, 'error')
     }
   },
 
@@ -261,8 +265,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
       set((state) => ({
         buildings: state.buildings.map((b) => b.id === id ? { ...b, color: updated.color } : b),
       }))
-    } catch (err: any) {
-      get().addToast(`Failed to update building color: ${err.message}`, 'error')
+    } catch (err: unknown) {
+      get().addToast(`Failed to update building color: ${errMsg(err)}`, 'error')
     }
   },
 
@@ -272,8 +276,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
       set((state) => ({
         buildings: state.buildings.filter((b) => b.id !== id),
       }))
-    } catch (err: any) {
-      get().addToast(`Failed to delete building: ${err.message}`, 'error')
+    } catch (err: unknown) {
+      get().addToast(`Failed to delete building: ${errMsg(err)}`, 'error')
       throw err
     }
   },
@@ -282,8 +286,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
     try {
       const data = await api.listBadges()
       set({ badges: data })
-    } catch (err: any) {
-      get().addToast(`Failed to load badges: ${err.message}`, 'error')
+    } catch (err: unknown) {
+      get().addToast(`Failed to load badges: ${errMsg(err)}`, 'error')
     }
   },
 
@@ -291,8 +295,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
     try {
       const data = await api.listPlacedBadges()
       set({ placedBadges: data })
-    } catch (err: any) {
-      get().addToast(`Failed to load placed badges: ${err.message}`, 'error')
+    } catch (err: unknown) {
+      get().addToast(`Failed to load placed badges: ${errMsg(err)}`, 'error')
     }
   },
 
@@ -301,8 +305,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
       const badge = await api.uploadBadge(file, name)
       set((state) => ({ badges: [...state.badges, badge] }))
       return badge
-    } catch (err: any) {
-      get().addToast(`Failed to upload badge: ${err.message}`, 'error')
+    } catch (err: unknown) {
+      get().addToast(`Failed to upload badge: ${errMsg(err)}`, 'error')
       throw err
     }
   },
@@ -311,8 +315,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
     try {
       const updated = await api.renameBadge(id, name)
       set((state) => ({ badges: state.badges.map((b) => b.id === id ? updated : b) }))
-    } catch (err: any) {
-      get().addToast(`Failed to rename badge: ${err.message}`, 'error')
+    } catch (err: unknown) {
+      get().addToast(`Failed to rename badge: ${errMsg(err)}`, 'error')
       throw err
     }
   },
@@ -324,8 +328,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
         badges: state.badges.filter((b) => b.id !== id),
         placedBadges: state.placedBadges.filter((pb) => pb.badgeId !== id),
       }))
-    } catch (err: any) {
-      get().addToast(`Failed to delete badge: ${err.message}`, 'error')
+    } catch (err: unknown) {
+      get().addToast(`Failed to delete badge: ${errMsg(err)}`, 'error')
       throw err
     }
   },
@@ -335,8 +339,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
       const placed = await api.placeBadge(params)
       set((state) => ({ placedBadges: [...state.placedBadges, placed] }))
       return placed
-    } catch (err: any) {
-      get().addToast(`Failed to place badge: ${err.message}`, 'error')
+    } catch (err: unknown) {
+      get().addToast(`Failed to place badge: ${errMsg(err)}`, 'error')
       throw err
     }
   },
@@ -347,8 +351,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
       set((state) => ({
         placedBadges: state.placedBadges.map((pb) => pb.id === id ? { ...pb, posX: updated.posX, posY: updated.posY } : pb),
       }))
-    } catch (err: any) {
-      get().addToast(`Failed to update badge position: ${err.message}`, 'error')
+    } catch (err: unknown) {
+      get().addToast(`Failed to update badge position: ${errMsg(err)}`, 'error')
     }
   },
 
@@ -358,8 +362,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
       set((state) => ({
         placedBadges: state.placedBadges.map((pb) => pb.id === id ? { ...pb, scale: updated.scale } : pb),
       }))
-    } catch (err: any) {
-      get().addToast(`Failed to update badge scale: ${err.message}`, 'error')
+    } catch (err: unknown) {
+      get().addToast(`Failed to update badge scale: ${errMsg(err)}`, 'error')
     }
   },
 
@@ -369,8 +373,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
       set((state) => ({
         placedBadges: state.placedBadges.map((pb) => pb.id === id ? { ...pb, label: updated.label } : pb),
       }))
-    } catch (err: any) {
-      get().addToast(`Failed to update badge label: ${err.message}`, 'error')
+    } catch (err: unknown) {
+      get().addToast(`Failed to update badge label: ${errMsg(err)}`, 'error')
     }
   },
 
@@ -380,8 +384,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
       set((state) => ({
         placedBadges: state.placedBadges.filter((pb) => pb.id !== id),
       }))
-    } catch (err: any) {
-      get().addToast(`Failed to remove badge: ${err.message}`, 'error')
+    } catch (err: unknown) {
+      get().addToast(`Failed to remove badge: ${errMsg(err)}`, 'error')
       throw err
     }
   },
@@ -390,8 +394,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
     try {
       const data = await api.listTimers()
       set({ deadlineTimers: data })
-    } catch (err: any) {
-      get().addToast(`Failed to load timers: ${err.message}`, 'error')
+    } catch (err: unknown) {
+      get().addToast(`Failed to load timers: ${errMsg(err)}`, 'error')
     }
   },
 
@@ -400,8 +404,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
       const timer = await api.createTimer(params)
       set((state) => ({ deadlineTimers: [...state.deadlineTimers, timer].sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime()) }))
       return timer
-    } catch (err: any) {
-      get().addToast(`Failed to create timer: ${err.message}`, 'error')
+    } catch (err: unknown) {
+      get().addToast(`Failed to create timer: ${errMsg(err)}`, 'error')
       throw err
     }
   },
@@ -414,8 +418,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
           .map((t) => t.id === id ? updated : t)
           .sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime()),
       }))
-    } catch (err: any) {
-      get().addToast(`Failed to update timer: ${err.message}`, 'error')
+    } catch (err: unknown) {
+      get().addToast(`Failed to update timer: ${errMsg(err)}`, 'error')
       throw err
     }
   },
@@ -424,8 +428,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
     try {
       await api.deleteTimer(id)
       set((state) => ({ deadlineTimers: state.deadlineTimers.filter((t) => t.id !== id) }))
-    } catch (err: any) {
-      get().addToast(`Failed to delete timer: ${err.message}`, 'error')
+    } catch (err: unknown) {
+      get().addToast(`Failed to delete timer: ${errMsg(err)}`, 'error')
       throw err
     }
   },
@@ -434,8 +438,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
     try {
       const data = await api.listContacts()
       set({ contacts: data })
-    } catch (err: any) {
-      get().addToast(`Failed to load contacts: ${err.message}`, 'error')
+    } catch (err: unknown) {
+      get().addToast(`Failed to load contacts: ${errMsg(err)}`, 'error')
     }
   },
 
@@ -444,8 +448,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
       const contact = await api.createContact(params)
       set((state) => ({ contacts: [...state.contacts, contact].sort((a, b) => a.username.localeCompare(b.username)) }))
       return contact
-    } catch (err: any) {
-      get().addToast(`Failed to create contact: ${err.message}`, 'error')
+    } catch (err: unknown) {
+      get().addToast(`Failed to create contact: ${errMsg(err)}`, 'error')
       throw err
     }
   },
@@ -458,8 +462,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
           .map((c) => c.id === id ? updated : c)
           .sort((a, b) => a.username.localeCompare(b.username)),
       }))
-    } catch (err: any) {
-      get().addToast(`Failed to update contact: ${err.message}`, 'error')
+    } catch (err: unknown) {
+      get().addToast(`Failed to update contact: ${errMsg(err)}`, 'error')
       throw err
     }
   },
@@ -468,8 +472,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
     try {
       await api.deleteContact(id)
       set((state) => ({ contacts: state.contacts.filter((c) => c.id !== id) }))
-    } catch (err: any) {
-      get().addToast(`Failed to delete contact: ${err.message}`, 'error')
+    } catch (err: unknown) {
+      get().addToast(`Failed to delete contact: ${errMsg(err)}`, 'error')
       throw err
     }
   },

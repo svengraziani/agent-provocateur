@@ -43,7 +43,9 @@ export function Settings() {
   const [githubTokenSet, setGithubTokenSet] = useState(false)
   const [gitlabTokenSet, setGitlabTokenSet] = useState(false)
   const [savingGithubToken, setSavingGithubToken] = useState(false)
+  const [clearingGithubToken, setClearingGithubToken] = useState(false)
   const [savingGitlabToken, setSavingGitlabToken] = useState(false)
+  const [clearingGitlabToken, setClearingGitlabToken] = useState(false)
 
   useEffect(() => {
     api.getAllSettings().then((s) => {
@@ -68,6 +70,8 @@ export function Settings() {
   }
 
   const handleClearGithubToken = async () => {
+    if (clearingGithubToken) return
+    setClearingGithubToken(true)
     try {
       await api.deleteSetting('GITHUB_TOKEN')
       setGithubTokenSet(false)
@@ -75,6 +79,8 @@ export function Settings() {
       addToast('GitHub token cleared', 'info')
     } catch (err: any) {
       addToast(`Failed to clear GitHub token: ${err.message}`, 'error')
+    } finally {
+      setClearingGithubToken(false)
     }
   }
 
@@ -94,6 +100,8 @@ export function Settings() {
   }
 
   const handleClearGitlabToken = async () => {
+    if (clearingGitlabToken) return
+    setClearingGitlabToken(true)
     try {
       await api.deleteSetting('GITLAB_TOKEN')
       setGitlabTokenSet(false)
@@ -101,6 +109,8 @@ export function Settings() {
       addToast('GitLab token cleared', 'info')
     } catch (err: any) {
       addToast(`Failed to clear GitLab token: ${err.message}`, 'error')
+    } finally {
+      setClearingGitlabToken(false)
     }
   }
 
@@ -491,9 +501,10 @@ export function Settings() {
                 <button
                   className="btn btn-danger"
                   onClick={handleClearGithubToken}
+                  disabled={clearingGithubToken}
                   style={{ whiteSpace: 'nowrap' }}
                 >
-                  Clear
+                  {clearingGithubToken ? '◌' : 'Clear'}
                 </button>
               )}
             </div>
@@ -536,9 +547,10 @@ export function Settings() {
                 <button
                   className="btn btn-danger"
                   onClick={handleClearGitlabToken}
+                  disabled={clearingGitlabToken}
                   style={{ whiteSpace: 'nowrap' }}
                 >
-                  Clear
+                  {clearingGitlabToken ? '◌' : 'Clear'}
                 </button>
               )}
             </div>

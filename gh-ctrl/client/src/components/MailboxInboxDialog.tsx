@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { api } from '../api'
 import type { Building, MailMessage } from '../types'
 
@@ -46,29 +46,30 @@ export function MailboxInboxDialog({ building, onClose, onReconfigure, onError }
   const [compose, setCompose]             = useState<ComposeState>({ to: '', subject: '', body: '' })
   const [sending, setSending]             = useState(false)
 
-  async function loadMessages() {
+  const loadMessages = useCallback(async () => {
     setLoading(true)
     try {
       const msgs = await api.getMailMessages(building.id)
       setMessages(msgs)
-    } catch (err: any) {
-      onError(`Error loading: ${err.message}`)
+    } catch (err: unknown) {
+      onError(`Error loading: ${err instanceof Error ? err.message : 'Unknown error'}`)
     } finally {
       setLoading(false)
     }
-  }
+  }, [building.id, onError])
 
   useEffect(() => {
     loadMessages()
-  }, [building.id])
+  }, [loadMessages])
 
   async function handleSync() {
+    if (syncing) return
     setSyncing(true)
     try {
       await api.syncMail(building.id)
-      setTimeout(loadMessages, 2000)
-    } catch (err: any) {
-      onError(`Sync failed: ${err.message}`)
+      await loadMessages()
+    } catch (err: unknown) {
+      onError(`Sync failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
     } finally {
       setSyncing(false)
     }
@@ -91,17 +92,20 @@ export function MailboxInboxDialog({ building, onClose, onReconfigure, onError }
       const result = await api.toggleMailStar(building.id, msg.id)
       setMessages((prev) => prev.map((m) => m.id === msg.id ? { ...m, isStarred: result.isStarred } : m))
       if (selected?.id === msg.id) setSelected((s) => s ? { ...s, isStarred: result.isStarred } : s)
-    } catch { /* ignore */ }
+    } catch (err: unknown) {
+      onError(`Failed to update star: ${err instanceof Error ? err.message : 'Unknown error'}`)
+    }
   }
 
   async function handleDelete(msg: MailMessage, e: React.MouseEvent) {
     e.stopPropagation()
+    if (!window.confirm(`Delete message "${msg.subject ?? '(no subject)'}"?`)) return
     try {
       await api.deleteMailMessage(building.id, msg.id)
       setMessages((prev) => prev.filter((m) => m.id !== msg.id))
       if (selected?.id === msg.id) setSelected(null)
-    } catch (err: any) {
-      onError(`Delete failed: ${err.message}`)
+    } catch (err: unknown) {
+      onError(`Delete failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
     }
   }
 
@@ -112,8 +116,8 @@ export function MailboxInboxDialog({ building, onClose, onReconfigure, onError }
       await api.sendMail(building.id, compose)
       setComposing(false)
       setCompose({ to: '', subject: '', body: '' })
-    } catch (err: any) {
-      onError(`Send failed: ${err.message}`)
+    } catch (err: unknown) {
+      onError(`Send failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
     } finally {
       setSending(false)
     }
@@ -123,39 +127,37 @@ export function MailboxInboxDialog({ building, onClose, onReconfigure, onError }
   const unreadCount = messages.filter((m) => !m.isRead).length
 
   return (
-    <div className="map-dialog" style={{ width: 720, maxWidth: '95vw' }} onWheel={(e) => e.stopPropagation()}>
+    <div className="map-dialog mailbox-dialog" onWheel={(e) => e.stopPropagation()}>
       {/* Header */}
-      <div className="map-dialog-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="map-dialog-title mailbox-dialog-header">
         <span>&#x25a0; {building.name.toUpperCase()} — INBOX</span>
-        <div style={{ display: 'flex', gap: 6 }}>
-          <button className="hud-btn" style={{ fontSize: 9 }} onClick={handleSync} disabled={syncing}>
+        <div className="mailbox-header-actions">
+          <button className="hud-btn mailbox-sm-btn" onClick={handleSync} disabled={syncing}>
             {syncing ? '◌' : '↻'} SYNC
           </button>
-          <button className="hud-btn" style={{ fontSize: 9 }} onClick={() => { setComposing(true); setSelected(null) }}>
+          <button className="hud-btn mailbox-sm-btn" onClick={() => { setComposing(true); setSelected(null) }}>
             ✉ COMPOSE
           </button>
-          <button className="hud-btn" style={{ fontSize: 9 }} onClick={onReconfigure}>
+          <button className="hud-btn mailbox-sm-btn" onClick={onReconfigure}>
             ⚙
           </button>
         </div>
       </div>
 
       {/* Body */}
-      <div style={{ display: 'flex', height: 420, overflow: 'hidden' }}>
+      <div className="mailbox-body">
         {/* Left: message list */}
-        <div style={{ width: 280, borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+        <div className="mailbox-list-panel">
           {/* Tabs */}
-          <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+          <div className="mailbox-tabs">
             <button
-              className={`hud-btn${tab === 'inbox' ? ' active' : ''}`}
-              style={{ flex: 1, fontSize: 9, borderRadius: 0 }}
+              className={`hud-btn mailbox-tab-btn${tab === 'inbox' ? ' active' : ''}`}
               onClick={() => setTab('inbox')}
             >
-              INBOX {unreadCount > 0 && <span style={{ color: '#ff4444' }}>({unreadCount})</span>}
+              INBOX {unreadCount > 0 && <span className="mailbox-unread-count">({unreadCount})</span>}
             </button>
             <button
-              className={`hud-btn${tab === 'starred' ? ' active' : ''}`}
-              style={{ flex: 1, fontSize: 9, borderRadius: 0 }}
+              className={`hud-btn mailbox-tab-btn${tab === 'starred' ? ' active' : ''}`}
               onClick={() => setTab('starred')}
             >
               ★ STARRED
@@ -163,60 +165,39 @@ export function MailboxInboxDialog({ building, onClose, onReconfigure, onError }
           </div>
 
           {/* List */}
-          <div style={{ overflowY: 'auto', flex: 1 }}>
+          <div className="mailbox-message-list">
             {loading && (
-              <div style={{ padding: 12, fontSize: 10, color: 'var(--text-dim)', textAlign: 'center' }}>◌ Loading...</div>
+              <div className="mailbox-list-status">◌ Loading...</div>
             )}
             {!loading && displayed.length === 0 && (
-              <div style={{ padding: 12, fontSize: 10, color: 'var(--text-dim)', textAlign: 'center' }}>
-                No messages
-              </div>
+              <div className="mailbox-list-status">No messages</div>
             )}
             {displayed.map((msg) => (
               <div
                 key={msg.id}
                 onClick={() => handleSelect(msg)}
-                style={{
-                  padding: '8px 10px',
-                  borderBottom: '1px solid var(--border)',
-                  cursor: 'pointer',
-                  background: selected?.id === msg.id ? 'var(--bg-hover)' : 'transparent',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 2,
-                }}
+                className={`mailbox-message-row${selected?.id === msg.id ? ' mailbox-message-row--selected' : ''}`}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 4 }}>
-                  <span style={{
-                    fontSize: 10,
-                    fontWeight: msg.isRead ? 400 : 700,
-                    color: msg.isRead ? 'var(--text-dim)' : 'var(--text)',
-                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1,
-                  }}>
+                <div className="mailbox-row-header">
+                  <span className={`mailbox-sender${msg.isRead ? ' mailbox-sender--read' : ''}`}>
                     {parseFrom(msg.fromAddress)}
                   </span>
-                  <span style={{ fontSize: 9, color: 'var(--text-dim)', flexShrink: 0 }}>
+                  <span className="mailbox-date">
                     {formatDate(msg.date)}
                   </span>
                 </div>
-                <div style={{
-                  fontSize: 10,
-                  color: msg.isRead ? 'var(--text-dim)' : 'var(--text)',
-                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                }}>
+                <div className={`mailbox-subject${msg.isRead ? ' mailbox-subject--read' : ''}`}>
                   {msg.subject ?? '(no subject)'}
                 </div>
-                <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                  {!msg.isRead && (
-                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--green-neon)', display: 'inline-block' }} />
-                  )}
+                <div className="mailbox-row-meta">
+                  {!msg.isRead && <span className="mailbox-unread-dot" />}
                   <button
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 10, padding: 0, color: msg.isStarred ? '#ffaa00' : 'var(--text-dim)' }}
+                    className={`mailbox-icon-btn${msg.isStarred ? ' mailbox-icon-btn--starred' : ''}`}
                     onClick={(e) => handleToggleStar(msg, e)}
                     title="Star"
                   >★</button>
                   <button
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 10, padding: 0, color: 'var(--text-dim)', marginLeft: 'auto' }}
+                    className="mailbox-icon-btn mailbox-icon-btn--delete"
                     onClick={(e) => handleDelete(msg, e)}
                     title="Delete"
                   >✕</button>
@@ -227,33 +208,30 @@ export function MailboxInboxDialog({ building, onClose, onReconfigure, onError }
         </div>
 
         {/* Right: detail or compose */}
-        <div style={{ flex: 1, padding: 14, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div className="mailbox-detail-panel">
           {composing ? (
             <>
-              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--green-neon)' }}>✉ NEW EMAIL</div>
+              <div className="mailbox-compose-title">✉ NEW EMAIL</div>
               <input
-                className="hud-input"
+                className="hud-input mailbox-compose-input"
                 value={compose.to}
                 onChange={(e) => setCompose((c) => ({ ...c, to: e.target.value }))}
                 placeholder="To: recipient@example.com"
-                style={{ width: '100%' }}
               />
               <input
-                className="hud-input"
+                className="hud-input mailbox-compose-input"
                 value={compose.subject}
                 onChange={(e) => setCompose((c) => ({ ...c, subject: e.target.value }))}
                 placeholder="Subject"
-                style={{ width: '100%' }}
               />
               <textarea
-                className="hud-input"
+                className="hud-input mailbox-compose-textarea"
                 value={compose.body}
                 onChange={(e) => setCompose((c) => ({ ...c, body: e.target.value }))}
                 placeholder="Message..."
                 rows={8}
-                style={{ width: '100%', resize: 'vertical', fontFamily: 'inherit' }}
               />
-              <div style={{ display: 'flex', gap: 6 }}>
+              <div className="mailbox-compose-actions">
                 <button className="hud-btn" onClick={() => setComposing(false)}>CANCEL</button>
                 <button
                   className="hud-btn hud-btn-new-base"
@@ -267,28 +245,28 @@ export function MailboxInboxDialog({ building, onClose, onReconfigure, onError }
           ) : selected ? (
             <>
               <div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', marginBottom: 6 }}>
+                <div className="mailbox-detail-subject">
                   {selected.subject ?? '(no subject)'}
                 </div>
-                <div style={{ fontSize: 10, color: 'var(--text-dim)', marginBottom: 2 }}>
+                <div className="mailbox-detail-meta">
                   <strong>From:</strong> {selected.fromAddress ?? '—'}
                 </div>
                 {selected.toAddresses && (() => {
                   try {
                     const addrs = JSON.parse(selected.toAddresses) as string[]
                     return addrs.length > 0 ? (
-                      <div style={{ fontSize: 10, color: 'var(--text-dim)', marginBottom: 2 }}>
+                      <div className="mailbox-detail-meta">
                         <strong>To:</strong> {addrs.join(', ')}
                       </div>
                     ) : null
                   } catch { return null }
                 })()}
-                <div style={{ fontSize: 10, color: 'var(--text-dim)', marginBottom: 10 }}>
+                <div className="mailbox-detail-date">
                   <strong>Date:</strong> {selected.date ? new Date(selected.date).toLocaleString() : '—'}
                 </div>
-                <div style={{ borderTop: '1px solid var(--border)', paddingTop: 10, fontSize: 11, color: 'var(--text)', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+                <div className="mailbox-detail-body">
                   {selected.bodyText ?? selected.snippet ?? (
-                    <span style={{ color: 'var(--text-dim)', fontStyle: 'italic' }}>
+                    <span className="mailbox-detail-empty">
                       No text available. Start a sync to fetch the message content.
                     </span>
                   )}
@@ -296,7 +274,7 @@ export function MailboxInboxDialog({ building, onClose, onReconfigure, onError }
               </div>
             </>
           ) : (
-            <div style={{ color: 'var(--text-dim)', fontSize: 10, marginTop: 40, textAlign: 'center' }}>
+            <div className="mailbox-detail-placeholder">
               &#x25a6; Select a message
             </div>
           )}

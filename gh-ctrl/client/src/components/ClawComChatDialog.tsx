@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { api } from '../api'
 import { useAppStore } from '../store'
 import type { Building, ClawComConfig, ClawComMessage, ChannelEvent } from '../types'
@@ -27,8 +27,9 @@ export function ClawComChatDialog({ building, onClose, onReconfigure, onError }:
   const [submittingPermission, setSubmittingPermission] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
-  let config: Partial<ClawComConfig> = {}
-  try { config = JSON.parse(building.config) } catch { /* empty */ }
+  const config = useMemo<Partial<ClawComConfig>>(() => {
+    try { return JSON.parse(building.config) } catch { return {} }
+  }, [building.config])
 
   const isChannel = config.clawType === 'claudechannel'
 
@@ -36,7 +37,9 @@ export function ClawComChatDialog({ building, onClose, onReconfigure, onError }:
   useEffect(() => {
     api.getBuildingMessages(building.id)
       .then(setMessages)
-      .catch(() => {})
+      .catch((err: unknown) => {
+        onError(`Failed to load messages: ${err instanceof Error ? err.message : 'Unknown error'}`)
+      })
       .finally(() => setLoading(false))
   }, [building.id])
 
@@ -51,7 +54,9 @@ export function ClawComChatDialog({ building, onClose, onReconfigure, onError }:
           setSseConnected(true)
         } else if (event.type === 'reply' && event.content) {
           // The backend already persisted this reply; refresh message list
-          api.getBuildingMessages(building.id).then(setMessages).catch(() => {})
+          api.getBuildingMessages(building.id).then(setMessages).catch((err: unknown) => {
+            onError(`Failed to refresh messages: ${err instanceof Error ? err.message : 'Unknown error'}`)
+          })
         } else if (event.type === 'permission_request' && event.id && event.toolName) {
           setPermissionPrompts((prev) => [
             ...prev,
@@ -83,8 +88,8 @@ export function ClawComChatDialog({ building, onClose, onReconfigure, onError }:
         const updated = await api.getBuildingMessages(building.id)
         setMessages(updated)
       }
-    } catch (err: any) {
-      onError(`Message could not be sent: ${err.message}`)
+    } catch (err: unknown) {
+      onError(`Message could not be sent: ${err instanceof Error ? err.message : 'Unknown error'}`)
     } finally {
       setSending(false)
     }
@@ -104,8 +109,8 @@ export function ClawComChatDialog({ building, onClose, onReconfigure, onError }:
       })
       await loadBuildings()
       onReconfigure()
-    } catch (err: any) {
-      onError(`Disconnect failed: ${err.message}`)
+    } catch (err: unknown) {
+      onError(`Disconnect failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
     }
   }
 
@@ -114,8 +119,8 @@ export function ClawComChatDialog({ building, onClose, onReconfigure, onError }:
     try {
       await api.submitPermissionVerdict(building.id, id, verdict)
       setPermissionPrompts((prev) => prev.filter((p) => p.id !== id))
-    } catch (err: any) {
-      onError(`Permission response failed: ${err.message}`)
+    } catch (err: unknown) {
+      onError(`Permission response failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
     } finally {
       setSubmittingPermission(null)
     }
