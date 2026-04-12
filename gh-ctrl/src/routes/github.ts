@@ -359,16 +359,20 @@ function fetchAnyRepoData(repo: typeof repos.$inferSelect) {
   return fetchRepoData(repo.fullName)
 }
 
-// GET /api/github/dashboard — fetch all repos in parallel (non-streaming)
+// GET /api/github/dashboard — fetch all repos with limited concurrency (non-streaming)
 app.get('/dashboard', async (c) => {
   const allRepos = await db.select().from(repos)
 
-  const results = await Promise.all(
-    allRepos.map(async (repo) => ({
-      repo,
-      data: await fetchAnyRepoData(repo),
-    }))
-  )
+  const CONCURRENCY = 3
+  const results: { repo: typeof allRepos[number]; data: any }[] = []
+  const queue = [...allRepos]
+  const workers = Array.from({ length: Math.min(CONCURRENCY, queue.length) }, async () => {
+    while (queue.length > 0) {
+      const repo = queue.shift()!
+      results.push({ repo, data: await fetchAnyRepoData(repo) })
+    }
+  })
+  await Promise.all(workers)
 
   return c.json(results)
 })
@@ -378,15 +382,21 @@ app.get('/dashboard/stream', (c) => {
   return streamSSE(c, async (stream) => {
     const allRepos = await db.select().from(repos)
 
-    await Promise.all(
-      allRepos.map(async (repo) => {
+    // Limit to 3 concurrent repo fetches — each repo spawns ~9 gh processes,
+    // so unbounded Promise.all across all repos floods the process table.
+    const CONCURRENCY = 3
+    const queue = [...allRepos]
+    const workers = Array.from({ length: Math.min(CONCURRENCY, queue.length) }, async () => {
+      while (queue.length > 0) {
+        const repo = queue.shift()!
         const data = await fetchAnyRepoData(repo)
         await stream.writeSSE({
           data: JSON.stringify({ repo, data }),
           event: 'repo',
         })
-      })
-    )
+      }
+    })
+    await Promise.all(workers)
 
     await stream.writeSSE({ data: 'done', event: 'done' })
   })
