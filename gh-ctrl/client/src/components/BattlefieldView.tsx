@@ -110,13 +110,16 @@ export function BattlefieldView() {
       }
     }
     // orientationchange fires on mobile before resize and provides more reliable detection
+    let orientationTimeout: ReturnType<typeof setTimeout> | null = null
     const onOrientationChange = () => {
       // Small delay so innerWidth/innerHeight reflect the new orientation
-      setTimeout(closePanelsIfLandscape, 100)
+      if (orientationTimeout !== null) clearTimeout(orientationTimeout)
+      orientationTimeout = setTimeout(closePanelsIfLandscape, 100)
     }
     window.addEventListener('resize', closePanelsIfLandscape)
     window.addEventListener('orientationchange', onOrientationChange)
     return () => {
+      if (orientationTimeout !== null) clearTimeout(orientationTimeout)
       window.removeEventListener('resize', closePanelsIfLandscape)
       window.removeEventListener('orientationchange', onOrientationChange)
     }
