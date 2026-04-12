@@ -1,6 +1,9 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import Keycloak from 'keycloak-js'
 import { AuthContext, type AuthContextValue } from './AuthContext'
+import { LoggedOutScreen } from './LoggedOutScreen'
+
+const LOGGED_OUT_KEY = 'gh_ctrl_logged_out'
 
 const KEYCLOAK_URL = import.meta.env.VITE_KEYCLOAK_URL as string | undefined
 const KEYCLOAK_REALM = import.meta.env.VITE_KEYCLOAK_REALM as string | undefined
@@ -24,11 +27,20 @@ function getKeycloakInstance(): Keycloak {
 
 export function KeycloakProvider({ children }: { children: ReactNode }) {
   const [initialized, setInitialized] = useState(false)
+  const [loggedOut, setLoggedOut] = useState(false)
   const [token, setToken] = useState<string | undefined>(undefined)
   const [user, setUser] = useState<AuthContextValue['user']>(null)
   const [keycloak] = useState<Keycloak>(() => getKeycloakInstance())
 
   useEffect(() => {
+    // If the user just logged out, show the logout screen instead of re-initiating login
+    if (sessionStorage.getItem(LOGGED_OUT_KEY) === 'true') {
+      sessionStorage.removeItem(LOGGED_OUT_KEY)
+      setLoggedOut(true)
+      setInitialized(true)
+      return
+    }
+
     keycloak
       .init({
         onLoad: 'login-required',
@@ -64,7 +76,8 @@ export function KeycloakProvider({ children }: { children: ReactNode }) {
   }, [keycloak])
 
   const logout = () => {
-    keycloak.logout()
+    sessionStorage.setItem(LOGGED_OUT_KEY, 'true')
+    keycloak.logout({ redirectUri: window.location.origin })
   }
 
   if (!initialized) {
@@ -73,6 +86,10 @@ export function KeycloakProvider({ children }: { children: ReactNode }) {
         Authenticating…
       </div>
     )
+  }
+
+  if (loggedOut) {
+    return <LoggedOutScreen onLogin={() => window.location.reload()} />
   }
 
   return (
