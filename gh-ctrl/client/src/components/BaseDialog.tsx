@@ -8,7 +8,7 @@ interface BaseDialogProps {
 
 /**
  * Shared dialog primitive.
- * Handles: Escape key to close, onClick/onMouseDown/wheel stopPropagation.
+ * Handles: Escape key to close, onClick/onMouseDown/wheel/touch stopPropagation.
  */
 export function BaseDialog({ onClose, className, children }: BaseDialogProps) {
   useEffect(() => {
@@ -25,6 +25,9 @@ export function BaseDialog({ onClose, className, children }: BaseDialogProps) {
       onWheel={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
+      onTouchStart={(e) => e.stopPropagation()}
+      onTouchMove={(e) => e.stopPropagation()}
+      onTouchEnd={(e) => e.stopPropagation()}
     >
       {children}
     </div>

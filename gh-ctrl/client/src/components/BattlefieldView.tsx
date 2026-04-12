@@ -98,7 +98,7 @@ export function BattlefieldView() {
   const autoScanTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
-    const onResize = () => {
+    const closePanelsIfLandscape = () => {
       setIsPortrait(window.innerWidth < window.innerHeight && window.innerWidth <= 768)
       // Close side panels when entering mobile landscape to free up space
       if (window.innerWidth > window.innerHeight && window.innerWidth <= 768) {
@@ -106,10 +106,23 @@ export function BattlefieldView() {
         setShowTimers(false)
         setBranchSiloEntry(null)
         setDetailEntry(null)
+        setConstructTarget(null)
       }
     }
-    window.addEventListener('resize', onResize)
-    return () => window.removeEventListener('resize', onResize)
+    // orientationchange fires on mobile before resize and provides more reliable detection
+    let orientationTimeout: ReturnType<typeof setTimeout> | null = null
+    const onOrientationChange = () => {
+      // Small delay so innerWidth/innerHeight reflect the new orientation
+      if (orientationTimeout !== null) clearTimeout(orientationTimeout)
+      orientationTimeout = setTimeout(closePanelsIfLandscape, 100)
+    }
+    window.addEventListener('resize', closePanelsIfLandscape)
+    window.addEventListener('orientationchange', onOrientationChange)
+    return () => {
+      if (orientationTimeout !== null) clearTimeout(orientationTimeout)
+      window.removeEventListener('resize', closePanelsIfLandscape)
+      window.removeEventListener('orientationchange', onOrientationChange)
+    }
   }, [])
 
   const { play } = useSound()

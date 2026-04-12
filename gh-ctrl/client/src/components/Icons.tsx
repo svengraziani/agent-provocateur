@@ -242,3 +242,16 @@ export function CodeRabbitIcon({ size = 12, className, title }: IconProps) {
     </svg>
   )
 }
+
+export function TimerIcon({ size = 12, className, title }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" className={className} aria-hidden={!title} role={title ? 'img' : undefined}>
+      {title && <title>{title}</title>}
+      <circle cx="8" cy="9.5" r="5.5" stroke="currentColor" strokeWidth="1.5" />
+      <line x1="8" y1="9.5" x2="8" y2="6.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <line x1="8" y1="9.5" x2="10.2" y2="9.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <line x1="6" y1="1.5" x2="10" y2="1.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <line x1="8" y1="1.5" x2="8" y2="4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  )
+}
