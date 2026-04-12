@@ -1626,7 +1626,7 @@ select.input {
   gap: 6px;
   flex: 1;
   flex-wrap: nowrap;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .hud-label {
