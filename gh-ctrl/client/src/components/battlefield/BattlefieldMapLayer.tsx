@@ -14,6 +14,7 @@ import { RemoteShellBuilding } from '../RemoteShellBuilding'
 import { SourceRelayBuilding } from '../SourceRelayBuilding'
 import { BadgeMarker } from '../BadgeMarker'
 import { UserUnit } from './UserUnit'
+import { SourceRelayConnectionsLayer } from './SourceRelayConnectionsLayer'
 import type { Repo } from '../../types'
 
 interface BattlefieldMapLayerProps {
@@ -124,6 +125,13 @@ export function BattlefieldMapLayer({
           <div className="ore-collector-tracks" />
         </div>
       ))}
+
+      <SourceRelayConnectionsLayer
+        storeBuildings={storeBuildings}
+        buildingPositions={buildingPositions}
+        visibleEntries={visibleEntries}
+        positions={positions}
+      />
 
       {visibleEntries.map((entry) => {
         const pos = positions[entry.repo.id] ?? { x: 0, y: 0 }
