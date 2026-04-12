@@ -8,7 +8,7 @@ interface SidePanelProps {
 
 /**
  * Shared side panel primitive.
- * Handles: Escape key to close, onClick/onMouseDown/wheel stopPropagation.
+ * Handles: Escape key to close, onClick/onMouseDown/wheel/touch stopPropagation.
  */
 export function SidePanel({ onClose, className, children }: SidePanelProps) {
   const panelRef = useRef<HTMLDivElement>(null)
