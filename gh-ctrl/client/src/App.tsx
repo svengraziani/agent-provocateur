@@ -174,7 +174,7 @@ export default function App() {
             className={({ isActive }) => `nav-btn${isActive ? ' active' : ''}`}
             onClick={() => setSidebarOpen(false)}
           >
-            <span className="nav-icon">&#x2699;</span><span className="nav-label"> Repositories</span>
+            <span className="nav-icon">&#x2699;</span><span className="nav-label"> Settings</span>
           </NavLink>
           <NavLink
             to="/contacts"

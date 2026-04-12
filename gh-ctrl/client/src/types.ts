@@ -101,13 +101,6 @@ export interface ClaudeIssuePRInfo {
   body: string
 }
 
-export interface ClaudeIssuePRInfo {
-  head: string
-  base: string
-  title: string
-  body: string
-}
-
 export interface RepoData {
   fullName: string
   prs: GHPR[]

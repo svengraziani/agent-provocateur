@@ -9,6 +9,9 @@ import { useAppStore } from '../store'
 
 // ── Canvas color utilities ────────────────────────────────────────────────────
 
+// Module-level cache for processed ImageData, keyed by "src|color|pw|ph"
+const colorizedImageCache = new Map<string, ImageData>()
+
 function hexToRgb(hex: string): [number, number, number] {
   const clean = hex.replace('#', '')
   const full = clean.length === 3
@@ -47,6 +50,12 @@ function ColorizedBuilding({ src, fallback = src, width, height, color }: Colori
     canvas.height = ph
     ctx.scale(dpr, dpr)
 
+    const cacheKey = `${src}|${color}|${pw}|${ph}`
+    if (colorizedImageCache.has(cacheKey)) {
+      ctx.putImageData(colorizedImageCache.get(cacheKey)!, 0, 0)
+      return
+    }
+
     const applyColorReplacement = (source: string) => {
       const img = new Image()
       img.onload = () => {
@@ -71,6 +80,7 @@ function ColorizedBuilding({ src, fallback = src, width, height, color }: Colori
         }
 
         ctx.putImageData(imageData, 0, 0)
+        colorizedImageCache.set(cacheKey, imageData)
       }
       img.onerror = () => {
         // Fallback: draw the original building without color replacement

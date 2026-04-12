@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import type { DeadlineTimer } from '../types'
 import { useAppStore } from '../store'
 import { SidePanel } from './SidePanel'
@@ -8,8 +8,7 @@ interface DeadlineTimersProps {
   onClose: () => void
 }
 
-function formatCountdown(deadline: string): { text: string; urgency: 'expired' | 'critical' | 'warning' | 'ok' } {
-  const now = Date.now()
+function formatCountdown(deadline: string, now: number): { text: string; urgency: 'expired' | 'critical' | 'warning' | 'ok' } {
   const end = new Date(deadline).getTime()
   const diff = end - now
 
@@ -52,19 +51,13 @@ function formatDeadlineDate(deadline: string): string {
 
 interface TimerCardProps {
   timer: DeadlineTimer
+  now: number
   onEdit: (timer: DeadlineTimer) => void
   onDelete: (id: number) => void
 }
 
-function TimerCard({ timer, onEdit, onDelete }: TimerCardProps) {
-  const [countdown, setCountdown] = useState(() => formatCountdown(timer.deadline))
-
-  useEffect(() => {
-    const tick = () => setCountdown(formatCountdown(timer.deadline))
-    tick()
-    const id = setInterval(tick, 1000)
-    return () => clearInterval(id)
-  }, [timer.deadline])
+function TimerCard({ timer, now, onEdit, onDelete }: TimerCardProps) {
+  const countdown = useMemo(() => formatCountdown(timer.deadline, now), [timer.deadline, now])
 
   const urgencyColor = {
     expired: '#888',
@@ -79,7 +72,13 @@ function TimerCard({ timer, onEdit, onDelete }: TimerCardProps) {
         <span className="dt-card-name" style={{ color: timer.color }}>{timer.name}</span>
         <div className="dt-card-actions">
           <button className="dt-icon-btn" onClick={() => onEdit(timer)} title="Edit timer">✎</button>
-          <button className="dt-icon-btn dt-icon-btn--danger" onClick={() => onDelete(timer.id)} title="Delete timer">✕</button>
+          <button
+            className="dt-icon-btn dt-icon-btn--danger"
+            onClick={() => {
+              if (window.confirm(`Delete timer "${timer.name}"?`)) onDelete(timer.id)
+            }}
+            title="Delete timer"
+          >✕</button>
         </div>
       </div>
       {timer.description && (
@@ -206,10 +205,17 @@ export function DeadlineTimers({ isOpen, onClose }: DeadlineTimersProps) {
   const { deadlineTimers, loadTimers, createTimer, updateTimer, deleteTimer, addToast } = useAppStore()
   const [showForm, setShowForm] = useState(false)
   const [editingTimer, setEditingTimer] = useState<DeadlineTimer | null>(null)
+  const [now, setNow] = useState(() => Date.now())
 
   useEffect(() => {
     if (isOpen) loadTimers()
   }, [isOpen, loadTimers])
+
+  useEffect(() => {
+    if (!isOpen) return
+    const id = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(id)
+  }, [isOpen])
 
   if (!isOpen) return null
 
@@ -274,6 +280,7 @@ export function DeadlineTimers({ isOpen, onClose }: DeadlineTimersProps) {
           <TimerCard
             key={timer.id}
             timer={timer}
+            now={now}
             onEdit={(t) => { setEditingTimer(t); setShowForm(false) }}
             onDelete={handleDelete}
           />
