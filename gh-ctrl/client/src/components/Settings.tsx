@@ -197,6 +197,8 @@ export function Settings() {
     }
   }
 
+  const [activeSection, setActiveSection] = useState<'repositories' | 'setup' | 'preferences' | 'backup'>('repositories')
+
   const [fullName, setFullName] = useState('')
   const [selectedColor, setSelectedColor] = useState(COLORS[0])
   const [adding, setAdding] = useState(false)
@@ -381,6 +383,39 @@ export function Settings() {
         <h1>Repositories</h1>
       </div>
 
+      <div className="settings-section-tabs">
+        <button
+          className={`settings-section-tab${activeSection === 'repositories' ? ' active' : ''}`}
+          onClick={() => setActiveSection('repositories')}
+          type="button"
+        >
+          Repositories
+        </button>
+        <button
+          className={`settings-section-tab${activeSection === 'setup' ? ' active' : ''}`}
+          onClick={() => setActiveSection('setup')}
+          type="button"
+        >
+          Setup
+        </button>
+        <button
+          className={`settings-section-tab${activeSection === 'preferences' ? ' active' : ''}`}
+          onClick={() => setActiveSection('preferences')}
+          type="button"
+        >
+          Preferences
+        </button>
+        <button
+          className={`settings-section-tab${activeSection === 'backup' ? ' active' : ''}`}
+          onClick={() => setActiveSection('backup')}
+          type="button"
+        >
+          Backup
+        </button>
+      </div>
+
+      {activeSection === 'setup' && (
+      <>
       <div className="settings-section">
         <h2>Server Connection</h2>
         <p style={{ color: 'var(--text-2)', fontSize: '0.85rem', margin: '0 0 0.75rem' }}>
@@ -513,7 +548,10 @@ export function Settings() {
           </div>
         </div>
       </div>
+      </>
+      )}
 
+      {activeSection === 'preferences' && (
       <div className="settings-section">
         <h2>Preferences</h2>
         <div className="form-row">
@@ -530,7 +568,10 @@ export function Settings() {
           </select>
         </div>
       </div>
+      )}
 
+      {activeSection === 'repositories' && (
+      <>
       <div className="settings-section">
         <h2>Add Repository</h2>
         <div className="tab-bar">
@@ -891,8 +932,12 @@ export function Settings() {
           </div>
         )}
       </div>
+      </>
+      )}
 
-      <BackupPanel />
+      {activeSection === 'backup' && (
+        <BackupPanel />
+      )}
     </div>
   )
 }
