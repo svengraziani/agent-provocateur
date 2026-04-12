@@ -14,7 +14,8 @@ import contactsRouter from './routes/contacts'
 import settingsRouter from './routes/settings'
 import shellRouter, { shellWebsocket } from './routes/shell'
 import sourceRelayRouter, { sourceRelayPublicRouter } from './routes/source-relay'
-import pkg from '../package.json'
+import versionRouter from './routes/version'
+import backupRouter from './routes/backup'
 import { existsSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { initHealthcheckService } from './healthcheck-service'
@@ -67,9 +68,10 @@ app.route('/api/source-relay', sourceRelayRouter)
 
 // Public source-relay fetch endpoint — no auth required
 app.route('/source-relay', sourceRelayPublicRouter)
+app.route('/api/version', versionRouter)
+app.route('/api/backup', backupRouter)
 
 app.get('/api/health', (c) => c.json({ ok: true }))
-app.get('/api/version', (c) => c.json({ version: pkg.version }))
 
 // Serve uploaded badge images
 app.use('/uploads/*', serveStatic({ root: './' }))

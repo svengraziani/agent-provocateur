@@ -72,6 +72,14 @@ export function createTestDb() {
   `)
 
   sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL,
+      updated_at INTEGER DEFAULT (unixepoch())
+    )
+  `)
+
+  sqlite.exec(`
     CREATE TABLE IF NOT EXISTS badges (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
@@ -92,6 +100,14 @@ export function createTestDb() {
       scale REAL NOT NULL DEFAULT 1.0,
       map_id INTEGER REFERENCES maps(id) ON DELETE SET NULL,
       created_at INTEGER DEFAULT (unixepoch()),
+      updated_at INTEGER DEFAULT (unixepoch())
+    )
+  `)
+
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL,
       updated_at INTEGER DEFAULT (unixepoch())
     )
   `)

@@ -251,3 +251,4 @@ sqlite.exec(`
 `)
 
 export const db = drizzle(sqlite, { schema })
+export const sqliteDb = sqlite

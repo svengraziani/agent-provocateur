@@ -1,0 +1,17 @@
+---
+# Authelia local users database
+# Replace with LDAP or a proper user store for production.
+#
+# Generate a bcrypt password hash:
+#   docker run --rm authelia/authelia:latest authelia crypto hash generate bcrypt --password 'your-password'
+
+users:
+  admin:
+    displayname: Admin
+    # Generate a real bcrypt hash before deploying — do NOT use a placeholder here.
+    # Run: docker run --rm authelia/authelia:4.38 authelia crypto hash generate bcrypt --password 'your-password'
+    # Then paste the output below.
+    password: "<REPLACE_WITH_BCRYPT_HASH>"
+    email: admin@example.com
+    groups:
+      - admins

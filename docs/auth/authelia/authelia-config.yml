@@ -1,0 +1,61 @@
+---
+# Authelia minimal configuration for Vibe and Conquer
+# Full reference: https://www.authelia.com/configuration/prologue/introduction/
+#
+# Secrets are injected via environment variables (see docker-compose.yml).
+# Enable Authelia's built-in env-expansion filter so ${VAR} references work below.
+filters:
+  - expand-env
+
+theme: dark
+
+server:
+  address: tcp://0.0.0.0:9091/
+
+log:
+  level: info
+
+# JWT secret used to sign internal session tokens.
+# Set AUTHELIA_JWT_SECRET in your environment (generate with: openssl rand -hex 32)
+jwt_secret: ${AUTHELIA_JWT_SECRET}
+
+authentication_backend:
+  file:
+    path: /config/users_database.yml
+    password:
+      algorithm: bcrypt
+
+# Where Authelia stores sessions
+session:
+  secret: ${AUTHELIA_SESSION_SECRET}
+  cookies:
+    - name: authelia_session
+      domain: example.com  # Replace with your domain
+      authelia_url: https://auth.example.com
+      expiration: 1h
+      inactivity: 5m
+
+storage:
+  encryption_key: ${AUTHELIA_STORAGE_ENCRYPTION_KEY}
+  local:
+    path: /config/db.sqlite3
+
+notifier:
+  # For testing; switch to smtp for production
+  filesystem:
+    filename: /config/notification.txt
+
+access_control:
+  default_policy: deny
+  rules:
+    # Allow the Authelia API itself (health, verify, etc.)
+    - domain: auth.example.com
+      policy: bypass
+
+    # Protect the dashboard — require any authenticated user
+    - domain: dashboard.example.com
+      policy: one_factor
+
+    # Optional: require two-factor for extra security
+    # - domain: dashboard.example.com
+    #   policy: two_factor

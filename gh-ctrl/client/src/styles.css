@@ -6348,3 +6348,177 @@ select.input {
   }
 }
 
+/* ── Update Notification Banner ─────────────────────────────────── */
+
+.update-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 36px;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px 0 16px;
+  background: rgba(0, 14, 0, 0.96);
+  border-bottom: 1px solid rgba(57, 255, 20, 0.4);
+  backdrop-filter: blur(8px);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--crt-green);
+  letter-spacing: 0.04em;
+}
+
+.update-banner-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--crt-green);
+  box-shadow: 0 0 6px rgba(57, 255, 20, 0.8);
+  flex-shrink: 0;
+  animation: update-dot-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes update-dot-pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 6px rgba(57, 255, 20, 0.8); }
+  50% { opacity: 0.4; box-shadow: 0 0 2px rgba(57, 255, 20, 0.3); }
+}
+
+.update-banner-text {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.update-banner-current {
+  opacity: 0.55;
+  margin-left: 4px;
+}
+
+.update-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.update-banner-link {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.8px;
+  color: rgba(57, 255, 20, 0.65);
+  text-decoration: none;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border: 1px solid rgba(57, 255, 20, 0.25);
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.update-banner-link:hover {
+  color: var(--crt-green);
+  border-color: rgba(57, 255, 20, 0.6);
+}
+
+.update-banner-install-btn {
+  font-size: 9px !important;
+  padding: 2px 8px !important;
+  background: rgba(57, 255, 20, 0.08) !important;
+  border-color: rgba(57, 255, 20, 0.5) !important;
+}
+
+.update-banner-install-btn:hover:not(:disabled) {
+  background: rgba(57, 255, 20, 0.15) !important;
+  border-color: var(--crt-green) !important;
+  box-shadow: 0 0 8px rgba(57, 255, 20, 0.3) !important;
+}
+
+.update-banner-dismiss {
+  opacity: 0.5;
+  font-size: 10px !important;
+  padding: 2px 5px !important;
+}
+
+.update-banner-dismiss:hover {
+  opacity: 1;
+}
+
+/* Push app content down when banner is visible */
+.app-layout.update-banner-visible {
+  padding-top: 36px;
+}
+
+/* Keep hamburger above the update banner on mobile */
+.app-layout.update-banner-visible .sidebar-hamburger {
+  top: 44px;
+}
+
+/* Sidebar update indicator */
+.sidebar-version--update {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+.sidebar-update-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--crt-green);
+  box-shadow: 0 0 5px rgba(57, 255, 20, 0.7);
+  animation: update-dot-pulse 1.6s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+/* Update install dialog */
+.update-install-modal {
+  width: 600px;
+  max-width: calc(100vw - 40px);
+}
+
+.update-install-output {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px 14px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--crt-green);
+  white-space: pre-wrap;
+  word-break: normal;
+  overflow-wrap: anywhere;
+  max-height: 360px;
+  overflow-y: auto;
+  margin-bottom: 12px;
+  line-height: 1.6;
+}
+
+.update-install-notice {
+  font-size: 11px;
+  color: var(--text-2);
+  background: rgba(57, 255, 20, 0.05);
+  border: 1px solid rgba(57, 255, 20, 0.15);
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+.update-install-notice code {
+  font-family: var(--font-mono);
+  color: var(--crt-green);
+  font-size: 10px;
+}
+
+.update-install-notice--error {
+  background: rgba(248, 81, 73, 0.06);
+  border-color: rgba(248, 81, 73, 0.2);
+  color: var(--crt-red);
+}
+
+.update-install-notice--error code {
+  color: var(--crt-red);
+}
+

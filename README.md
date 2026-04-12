@@ -118,6 +118,33 @@ docker compose --profile dev up --build
 
 The SQLite database is stored in a named Docker volume (`gh-ctrl-data`) and persists across restarts.
 
+### In-App Updates (opt-in)
+
+When a new release is available, a notification banner appears at the top of the UI. Clicking **INSTALL UPDATE** runs `gh-ctrl/scripts/update.sh` inside the container — it pulls the latest code, rebuilds the image, and restarts the services.
+
+This requires the container to reach the host Docker daemon and the project root on disk. Because mounting `/var/run/docker.sock` grants container-level control of the Docker daemon (root-equivalent on the host), **this is opt-in** and disabled by default.
+
+**Enable with the overlay file:**
+
+```bash
+# Start (or restart) with both compose files:
+docker compose -f compose.yml -f compose.update.yml --profile prod up -d
+```
+
+**Or set `COMPOSE_FILE` in your `.env` so it applies automatically:**
+
+```dotenv
+COMPOSE_FILE=compose.yml:compose.update.yml
+```
+
+Then `docker compose --profile prod up -d` picks up the overlay without the extra `-f` flag.
+
+> **Security note:** Only enable the overlay when:
+> - You trust the network exposure of your deployment, **and**
+> - You have configured authentication (`KEYCLOAK_URL` / `KEYCLOAK_REALM` / `KEYCLOAK_CLIENT_ID` in `.env`).
+>
+> Without auth, any user who can reach the UI can trigger a host rebuild. The updater path (`POST /api/version/update`) is excluded from public routes and requires a valid session when Keycloak is configured.
+
 ---
 
 ## GitHub Actions Workflows
@@ -199,8 +226,51 @@ These workflows are the backbone of **ClawCom** — the dashboard's AI command l
 - Label-trigger automation endpoint
 
 ### Authentication
-- Optional Keycloak (OAuth2 / OpenID Connect) integration
+- Optional auth — disabled by default; enable by setting provider env vars
+- **Keycloak** — full OAuth2 / OpenID Connect (`KEYCLOAK_URL`, `KEYCLOAK_REALM`, `KEYCLOAK_CLIENT_ID`)
+- **Authentik** — OIDC wrapper (`AUTHENTIK_URL`, `AUTHENTIK_SLUG`)
+- **Generic OIDC** — works with Zitadel, Dex, Logto, Auth0, Clerk, and others (`OIDC_JWKS_URL`, `OIDC_ISSUER`, `OIDC_AUDIENCE`)
+- **Authelia** (proxy-level) — zero app changes; forward auth via Caddy; see [`docs/auth/authelia/`](docs/auth/authelia/)
 - User profile display in sidebar
+
+<details>
+<summary><strong>Clerk setup guide</strong></summary>
+
+Clerk uses the built-in generic OIDC provider. No extra dependencies are needed.
+
+**1. Create an OAuth application in the Clerk Dashboard**
+
+- Go to [Clerk Dashboard](https://dashboard.clerk.com) → **Configure** → **OAuth Applications** → **Create application**
+- Add your app URL as an **Allowed redirect URI** (e.g. `https://yourapp.com`)
+- Note the **Client ID** shown after creation
+
+**2. Find your Frontend API URL**
+
+In the Clerk Dashboard, go to **API Keys** and copy the **Frontend API URL**.  
+It looks like `https://your-app-id.clerk.accounts.dev` for development instances, or your custom domain for production.
+
+**3. Set environment variables**
+
+Frontend (`gh-ctrl/client/.env`):
+
+```env
+VITE_OIDC_AUTHORITY=https://your-app-id.clerk.accounts.dev
+VITE_OIDC_CLIENT_ID=<clerk-oauth-client-id>
+VITE_OIDC_REDIRECT_URI=https://yourapp.com
+VITE_OIDC_SCOPE=openid profile email
+```
+
+Backend (`gh-ctrl/.env`):
+
+```env
+OIDC_JWKS_URL=https://your-app-id.clerk.accounts.dev/.well-known/jwks.json
+OIDC_ISSUER=https://your-app-id.clerk.accounts.dev
+OIDC_AUDIENCE=<clerk-oauth-client-id>
+```
+
+Replace `your-app-id.clerk.accounts.dev` with your actual Frontend API URL and `<clerk-oauth-client-id>` with the Client ID from step 1. `VITE_OIDC_AUTHORITY` uses the OIDC discovery document (`/.well-known/openid-configuration`) Clerk exposes automatically — no extra configuration is required.
+
+</details>
 
 ### Other
 - Voice input (browser Speech API) for hands-free issue and PR creation
@@ -223,7 +293,7 @@ These workflows are the backbone of **ClawCom** — the dashboard's AI command l
 | GitHub API | GitHub CLI (`gh`) |
 | GitLab API | REST API (with self-hosted instance support) |
 | State Management | [Zustand](https://github.com/pmndrs/zustand) |
-| Auth (optional) | Keycloak (OAuth2 / OpenID Connect) |
+| Auth (optional) | Keycloak · Authentik · Generic OIDC · Authelia (proxy) |
 
 ## Project Structure
 

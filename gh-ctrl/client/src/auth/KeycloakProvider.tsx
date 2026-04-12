@@ -1,5 +1,6 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import Keycloak from 'keycloak-js'
+import { AuthContext, type AuthContextValue } from './AuthContext'
 
 const KEYCLOAK_URL = import.meta.env.VITE_KEYCLOAK_URL as string | undefined
 const KEYCLOAK_REALM = import.meta.env.VITE_KEYCLOAK_REALM as string | undefined
@@ -7,28 +8,6 @@ const KEYCLOAK_CLIENT_ID = import.meta.env.VITE_KEYCLOAK_CLIENT_ID as string | u
 
 export const keycloakEnabled =
   Boolean(KEYCLOAK_URL) && Boolean(KEYCLOAK_REALM) && Boolean(KEYCLOAK_CLIENT_ID)
-
-interface AuthContextValue {
-  keycloak: Keycloak | null
-  initialized: boolean
-  token: string | undefined
-  user: {
-    username?: string
-    email?: string
-    name?: string
-  } | null
-  isAuthenticated: boolean
-  logout: () => void
-}
-
-const AuthContext = createContext<AuthContextValue>({
-  keycloak: null,
-  initialized: true,
-  token: undefined,
-  user: null,
-  isAuthenticated: true,
-  logout: () => {},
-})
 
 let keycloakInstance: Keycloak | null = null
 
@@ -99,7 +78,6 @@ export function KeycloakProvider({ children }: { children: ReactNode }) {
   return (
     <AuthContext.Provider
       value={{
-        keycloak,
         initialized,
         token,
         user,
@@ -110,8 +88,4 @@ export function KeycloakProvider({ children }: { children: ReactNode }) {
       {children}
     </AuthContext.Provider>
   )
-}
-
-export function useAuthContext() {
-  return useContext(AuthContext)
 }

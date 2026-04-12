@@ -763,4 +763,105 @@ export const api = {
     request<{ ok: boolean }>(`/source-relay/${buildingId}/fetchers/${fetcherId}/connectors/${connectorId}`, {
       method: 'DELETE',
     }),
+
+  checkVersion: () =>
+    request<{
+      current: string
+      latest: string | null
+      updateAvailable: boolean
+      releaseUrl: string | null
+      releaseName: string | null
+    }>('/version/check'),
+
+  triggerUpdate: async (onChunk: (chunk: string) => void): Promise<{ exitCode: number; truncated: boolean; error?: string }> => {
+    const base = getBase()
+    const token = _getToken?.()
+    const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {}
+
+    const res = await fetch(`${base}/version/update`, { method: 'POST', headers })
+    if (!res.body) throw new Error('No response body')
+
+    const reader = res.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        const text = decoder.decode(value, { stream: true })
+        buffer += text
+
+        // Flush everything except a potential partial sentinel line at the end
+        const sentinelIdx = buffer.lastIndexOf('\n__META__:')
+        const flushUpTo = sentinelIdx >= 0 ? sentinelIdx : buffer.lastIndexOf('\n')
+        if (flushUpTo > 0) {
+          onChunk(buffer.slice(0, flushUpTo + 1))
+          buffer = buffer.slice(flushUpTo + 1)
+        }
+      }
+    } finally {
+      reader.releaseLock()
+    }
+
+    // Parse the sentinel line from whatever remains in buffer
+    const metaMatch = buffer.match(/__META__:(\{.*\})/)
+    if (metaMatch) {
+      try {
+        return JSON.parse(metaMatch[1]) as { exitCode: number; truncated: boolean; error?: string }
+      } catch {
+        // fall through
+      }
+    }
+    // Flush any remaining non-sentinel output
+    if (buffer.trim() && !buffer.includes('__META__:')) {
+      onChunk(buffer)
+    }
+    return { exitCode: -1, truncated: false, error: 'Could not parse update result' }
+  },
+}
+
+export async function exportBackup(): Promise<Blob> {
+  const token = _getToken?.()
+  const authHeader: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {}
+  const res = await fetch(`${getBase()}/backup/export`, { headers: authHeader })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }))
+    throw new Error((err as any).error || res.statusText)
+  }
+  return res.blob()
+}
+
+export async function importBackup(file: File): Promise<{ success: boolean; stats: Record<string, number>; badgeFileErrors?: string[] }> {
+  const token = _getToken?.()
+  const authHeader: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {}
+  const form = new FormData()
+  form.append('file', file)
+  const res = await fetch(`${getBase()}/backup/import`, {
+    method: 'POST',
+    headers: authHeader,
+    body: form,
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }))
+    throw new Error((err as any).error || res.statusText)
+  }
+  return res.json()
+}
+
+export async function previewBackup(file: File): Promise<{ version: number; appVersion: string; exportedAt: string; tables: Record<string, number> }> {
+  const token = _getToken?.()
+  const authHeader: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {}
+  const form = new FormData()
+  form.append('file', file)
+  const res = await fetch(`${getBase()}/backup/preview`, {
+    method: 'POST',
+    headers: authHeader,
+    body: form,
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }))
+    throw new Error((err as any).error || res.statusText)
+  }
+  return res.json()
 }
