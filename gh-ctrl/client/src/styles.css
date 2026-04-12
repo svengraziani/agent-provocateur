@@ -6188,6 +6188,55 @@ select.input {
   min-height: 36px;
 }
 
+/* ── HUD Dropdown Menus (desktop) ── */
+.hud-dropdown-wrap {
+  position: relative;
+}
+
+.hud-dropdown-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  background: rgba(4, 10, 6, 0.98);
+  border: 1px solid rgba(57, 255, 20, 0.4);
+  border-radius: 6px;
+  padding: 4px;
+  min-width: 170px;
+  z-index: 30;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.hud-dropdown-item {
+  width: 100%;
+  justify-content: flex-start !important;
+  padding: 6px 10px !important;
+  font-size: 10px !important;
+  gap: 6px;
+  display: flex;
+  align-items: center;
+}
+
+.hud-active-dot {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--crt-green);
+  box-shadow: 0 0 4px var(--crt-green);
+  flex-shrink: 0;
+  margin-left: 2px;
+}
+
+.hud-dropdown-arrow {
+  font-size: 7px;
+  opacity: 0.55;
+  margin-left: 2px;
+  flex-shrink: 0;
+}
+
 /* ── MapEditor mobile block ── */
 .map-editor-mobile-block {
   display: flex;
