@@ -1,5 +1,5 @@
 # ── Stage 1: builder ─────────────────────────────────────────────────────────
-FROM oven/bun AS builder
+FROM oven/bun:1.3.9 AS builder
 
 WORKDIR /app
 
@@ -25,7 +25,7 @@ ENV VITE_KEYCLOAK_CLIENT_ID=$VITE_KEYCLOAK_CLIENT_ID
 RUN cd client && bunx vite build
 
 # ── Stage 2: runtime (production) ────────────────────────────────────────────
-FROM oven/bun AS runtime
+FROM oven/bun:1.3.9 AS runtime
 
 # Install gh CLI + Docker CLI (docker CLI is used by the in-app update script
 # to run `docker compose up -d --build` via the mounted /var/run/docker.sock)
@@ -62,7 +62,7 @@ EXPOSE 3001
 CMD ["bun", "src/index.ts"]
 
 # ── Stage 3: dev ──────────────────────────────────────────────────────────────
-FROM oven/bun AS dev
+FROM oven/bun:1.3.9 AS dev
 
 # Install gh CLI + procps (ps, required by concurrently/tree-kill)
 RUN apt-get update && \
