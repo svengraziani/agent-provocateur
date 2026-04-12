@@ -1,0 +1,21 @@
+# compose.update.yml — Opt-in overlay for the in-app "Install Update" button.
+#
+# Mounts the host Docker socket and project root into the app container so that
+# gh-ctrl/scripts/update.sh can rebuild and restart services via Docker Compose
+# from within the running container.
+#
+# ⚠️  Security note: mounting /var/run/docker.sock grants container-level control
+# of the Docker daemon (equivalent to root on the host). Only enable this if you
+# trust the network exposure of your deployment and have configured auth
+# (KEYCLOAK_URL / KEYCLOAK_REALM / KEYCLOAK_CLIENT_ID in .env).
+#
+# Usage:
+#   docker compose -f compose.yml -f compose.update.yml --profile prod up -d
+#
+# Or set COMPOSE_FILE in your .env:
+#   COMPOSE_FILE=compose.yml:compose.update.yml
+services:
+  app:
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - .:/workspace
