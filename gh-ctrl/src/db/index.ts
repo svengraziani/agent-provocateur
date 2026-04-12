@@ -219,5 +219,36 @@ sqlite.exec(`
   )
 `)
 
+sqlite.exec(`
+  CREATE TABLE IF NOT EXISTS source_relay_connectors (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    building_id INTEGER NOT NULL REFERENCES buildings(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    type TEXT NOT NULL DEFAULT 'git',
+    configuration TEXT NOT NULL DEFAULT '{}',
+    created_at INTEGER DEFAULT (unixepoch())
+  )
+`)
+
+sqlite.exec(`
+  CREATE TABLE IF NOT EXISTS source_relay_fetchers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    building_id INTEGER NOT NULL REFERENCES buildings(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    unique_token TEXT NOT NULL UNIQUE,
+    created_at INTEGER DEFAULT (unixepoch())
+  )
+`)
+
+sqlite.exec(`
+  CREATE TABLE IF NOT EXISTS source_relay_connector_files (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    connector_id INTEGER NOT NULL REFERENCES source_relay_connectors(id) ON DELETE CASCADE,
+    fetcher_id INTEGER NOT NULL REFERENCES source_relay_fetchers(id) ON DELETE CASCADE,
+    file_paths TEXT NOT NULL DEFAULT '[]',
+    created_at INTEGER DEFAULT (unixepoch())
+  )
+`)
+
 export const db = drizzle(sqlite, { schema })
 export const sqliteDb = sqlite

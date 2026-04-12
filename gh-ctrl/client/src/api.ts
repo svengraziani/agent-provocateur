@@ -1,4 +1,4 @@
-import type { Repo, DashboardEntry, RepoData, GHLabel, BranchesData, IssueDetail, PRDetail, GameMap, RepoMeta, FeedData, SetupStatus, Building, ClawComMessage, Badge, PlacedBadge, HealthcheckResult, DeadlineTimer, ChannelEvent, MailMessage, ResearchJob, Contact, SshConnection, SshSessionLog } from './types'
+import type { Repo, DashboardEntry, RepoData, GHLabel, BranchesData, IssueDetail, PRDetail, GameMap, RepoMeta, FeedData, SetupStatus, Building, ClawComMessage, Badge, PlacedBadge, HealthcheckResult, DeadlineTimer, ChannelEvent, MailMessage, ResearchJob, Contact, SshConnection, SshSessionLog, SourceRelayConnector, SourceRelayFetcher, SourceRelayGitFile } from './types'
 
 export function getServerUrl(): string {
   return localStorage.getItem('serverUrl')?.replace(/\/$/, '') ?? ''
@@ -37,6 +37,12 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     throw new Error(err.error || res.statusText)
   }
   return res.json()
+}
+
+export function getSourceRelayFetchUrl(uniqueToken: string): string {
+  const serverUrl = getServerUrl()
+  if (serverUrl) return `${serverUrl}/source-relay/fetch/${uniqueToken}`
+  return `${window.location.origin}/source-relay/fetch/${uniqueToken}`
 }
 
 export function getShellWsUrl(buildingId: number, connectionId: number): string {
@@ -682,6 +688,81 @@ export const api = {
     request<{ ok: boolean; sessions: string[]; error?: string }>(
       `/buildings/${buildingId}/shell/connections/${connectionId}/tmux-sessions`
     ),
+
+  // ── Source Relay ──────────────────────────────────────────────────────────
+
+  listSourceRelayConnectors: (buildingId: number) =>
+    request<SourceRelayConnector[]>(`/source-relay/${buildingId}/connectors`),
+
+  createSourceRelayConnector: (
+    buildingId: number,
+    params: { name: string; type: string; configuration: object },
+  ) =>
+    request<SourceRelayConnector>(`/source-relay/${buildingId}/connectors`, {
+      method: 'POST',
+      body: JSON.stringify(params),
+    }),
+
+  updateSourceRelayConnector: (
+    buildingId: number,
+    connectorId: number,
+    updates: { name?: string; type?: string; configuration?: object },
+  ) =>
+    request<SourceRelayConnector>(`/source-relay/${buildingId}/connectors/${connectorId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(updates),
+    }),
+
+  deleteSourceRelayConnector: (buildingId: number, connectorId: number) =>
+    request<{ ok: boolean }>(`/source-relay/${buildingId}/connectors/${connectorId}`, {
+      method: 'DELETE',
+    }),
+
+  getSourceRelayGitTree: (buildingId: number, connectorId: number, branch?: string) => {
+    const qs = new URLSearchParams({ connectorId: String(connectorId) })
+    if (branch) qs.set('branch', branch)
+    return request<{ files: SourceRelayGitFile[] }>(`/source-relay/${buildingId}/git-tree?${qs}`)
+  },
+
+  listSourceRelayFetchers: (buildingId: number) =>
+    request<SourceRelayFetcher[]>(`/source-relay/${buildingId}/fetchers`),
+
+  createSourceRelayFetcher: (buildingId: number, name: string) =>
+    request<SourceRelayFetcher>(`/source-relay/${buildingId}/fetchers`, {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+    }),
+
+  updateSourceRelayFetcher: (buildingId: number, fetcherId: number, name: string) =>
+    request<SourceRelayFetcher>(`/source-relay/${buildingId}/fetchers/${fetcherId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ name }),
+    }),
+
+  deleteSourceRelayFetcher: (buildingId: number, fetcherId: number) =>
+    request<{ ok: boolean }>(`/source-relay/${buildingId}/fetchers/${fetcherId}`, {
+      method: 'DELETE',
+    }),
+
+  setSourceRelayConnectorFiles: (
+    buildingId: number,
+    fetcherId: number,
+    connectorId: number,
+    filePaths: string[],
+  ) =>
+    request<{ ok: boolean }>(`/source-relay/${buildingId}/fetchers/${fetcherId}/connectors/${connectorId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ filePaths }),
+    }),
+
+  removeSourceRelayConnectorFromFetcher: (
+    buildingId: number,
+    fetcherId: number,
+    connectorId: number,
+  ) =>
+    request<{ ok: boolean }>(`/source-relay/${buildingId}/fetchers/${fetcherId}/connectors/${connectorId}`, {
+      method: 'DELETE',
+    }),
 
   checkVersion: () =>
     request<{

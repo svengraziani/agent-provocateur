@@ -13,6 +13,7 @@ import timersRouter from './routes/timers'
 import contactsRouter from './routes/contacts'
 import settingsRouter from './routes/settings'
 import shellRouter, { shellWebsocket } from './routes/shell'
+import sourceRelayRouter, { sourceRelayPublicRouter } from './routes/source-relay'
 import versionRouter from './routes/version'
 import backupRouter from './routes/backup'
 import { existsSync, mkdirSync } from 'node:fs'
@@ -63,6 +64,10 @@ app.route('/api/timers', timersRouter)
 app.route('/api/contacts', contactsRouter)
 app.route('/api/settings', settingsRouter)
 app.route('/api/shell', shellRouter)
+app.route('/api/source-relay', sourceRelayRouter)
+
+// Public source-relay fetch endpoint — no auth required
+app.route('/source-relay', sourceRelayPublicRouter)
 app.route('/api/version', versionRouter)
 app.route('/api/backup', backupRouter)
 

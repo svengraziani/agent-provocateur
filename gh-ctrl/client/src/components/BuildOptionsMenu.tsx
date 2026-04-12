@@ -52,6 +52,14 @@ const AVAILABLE_BUILDINGS: BuildingDef[] = [
     defaultColor: '#00aaff',
   },
   {
+    type: 'sourceRelay',
+    name: 'Source Relay',
+    description:
+      'Aggregate content from GitHub repositories and websites into shareable plain-text endpoints. Create context bundles for AI assistants — each fetcher generates a unique public URL that returns all your configured sources combined.',
+    buildImage: '/buildings/healthcheck.png',
+    defaultColor: '#ff8800',
+  },
+  {
     type: 'new-base',
     name: 'Repository',
     description:

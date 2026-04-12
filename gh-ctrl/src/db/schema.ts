@@ -164,3 +164,31 @@ export const sshSessionLog = sqliteTable('ssh_session_log', {
   disconnectedAt:  integer('disconnected_at', { mode: 'timestamp' }),
   durationMs:      integer('duration_ms'),
 })
+
+// Source Relay: connectors (git repos and websites used as content sources)
+export const sourceRelayConnectors = sqliteTable('source_relay_connectors', {
+  id:            integer('id').primaryKey({ autoIncrement: true }),
+  buildingId:    integer('building_id').notNull().references(() => buildings.id, { onDelete: 'cascade' }),
+  name:          text('name').notNull(),
+  type:          text('type').notNull().default('git'), // 'git' | 'private_git' | 'website'
+  configuration: text('configuration').notNull().default('{}'), // JSON: {url, branch?, token?} or {url}
+  createdAt:     integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
+})
+
+// Source Relay: fetchers — each fetcher aggregates multiple connectors into a single public URL
+export const sourceRelayFetchers = sqliteTable('source_relay_fetchers', {
+  id:          integer('id').primaryKey({ autoIncrement: true }),
+  buildingId:  integer('building_id').notNull().references(() => buildings.id, { onDelete: 'cascade' }),
+  name:        text('name').notNull(),
+  uniqueToken: text('unique_token').notNull().unique(),
+  createdAt:   integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
+})
+
+// Source Relay: links a connector to a fetcher, optionally with a list of selected file paths
+export const sourceRelayConnectorFiles = sqliteTable('source_relay_connector_files', {
+  id:          integer('id').primaryKey({ autoIncrement: true }),
+  connectorId: integer('connector_id').notNull().references(() => sourceRelayConnectors.id, { onDelete: 'cascade' }),
+  fetcherId:   integer('fetcher_id').notNull().references(() => sourceRelayFetchers.id, { onDelete: 'cascade' }),
+  filePaths:   text('file_paths').notNull().default('[]'), // JSON array; empty = include all files
+  createdAt:   integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
+})
