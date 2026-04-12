@@ -178,7 +178,7 @@ export function BattlefieldHUD({
               </button>
               <button
                 className={`hud-btn hud-dropdown-item${showBadgeLibrary ? ' active' : ''}`}
-                onClick={() => { onToggleBadgeLibrary() }}
+                onClick={() => { setShowToolsMenu(false); onToggleBadgeLibrary() }}
                 title="Badge Library — place custom markers on the battlefield"
                 aria-pressed={showBadgeLibrary}
               >
@@ -205,7 +205,7 @@ export function BattlefieldHUD({
             <div className="hud-dropdown-panel" onClick={(e) => e.stopPropagation()}>
               <button
                 className={`hud-btn hud-dropdown-item${showFeedPanel ? ' active' : ''}`}
-                onClick={onToggleFeed}
+                onClick={() => { setShowPanelsMenu(false); onToggleFeed() }}
                 title="Toggle Intel Feed"
                 aria-pressed={showFeedPanel}
               >
@@ -213,7 +213,7 @@ export function BattlefieldHUD({
               </button>
               <button
                 className={`hud-btn hud-dropdown-item${showTimers ? ' active' : ''}`}
-                onClick={onToggleTimers}
+                onClick={() => { setShowPanelsMenu(false); onToggleTimers() }}
                 title="Mission Timers — Deadline countdown"
                 aria-pressed={showTimers}
               >
@@ -221,7 +221,7 @@ export function BattlefieldHUD({
               </button>
               <button
                 className={`hud-btn hud-dropdown-item${showMinimap ? ' active' : ''}`}
-                onClick={onToggleMinimap}
+                onClick={() => { setShowPanelsMenu(false); onToggleMinimap() }}
                 title={showMinimap ? 'Hide minimap' : 'Show minimap'}
                 aria-pressed={showMinimap}
               >
@@ -229,7 +229,7 @@ export function BattlefieldHUD({
               </button>
               <button
                 className={`hud-btn hud-dropdown-item${showShortcuts ? ' active' : ''}`}
-                onClick={onToggleShortcuts}
+                onClick={() => { setShowPanelsMenu(false); onToggleShortcuts() }}
                 title="Keyboard Shortcuts [?]"
                 aria-pressed={showShortcuts}
               >

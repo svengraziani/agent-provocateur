@@ -458,7 +458,7 @@ export function BattlefieldView() {
         onScan={() => { play('peep'); onRefresh() }}
         onToggleRelocate={() => { play('hydraulic'); setIsRelocateMode(v => !v); setRelocatingId(null); setRelocatingStart(null) }}
         onShowBuildMenu={() => { play('hydraulic'); setShowBuildMenu(true) }}
-        onToggleBadgeLibrary={() => { play('peep'); setShowBadgeLibrary(true) }}
+        onToggleBadgeLibrary={() => { play('peep'); setShowBadgeLibrary(v => !v) }}
         onShowMapSelector={() => setShowMapSelector(true)}
         onClearMap={handleClearMap}
         onToggleFeed={() => { play('peep'); setShowFeedPanel(v => !v); setBranchSiloEntry(null); setDetailEntry(null); setSelectedBuildingId(null) }}
