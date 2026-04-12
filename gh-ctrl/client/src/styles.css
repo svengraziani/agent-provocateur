@@ -6338,12 +6338,22 @@ select.input {
   }
 }
 
+/* Construct dialog full-width on mobile */
+@media (max-width: 600px) {
+  .construct-dialog {
+    width: 100vw;
+    left: 0;
+    right: 0;
+  }
+}
+
 /* Hide side panels in mobile landscape — they eat the entire viewport */
 @media (max-width: 768px) and (orientation: landscape) {
   .feed-panel,
   .silo-panel,
   .dt-panel,
-  .base-detail-side-panel {
+  .base-detail-side-panel,
+  .construct-dialog {
     display: none !important;
   }
 }

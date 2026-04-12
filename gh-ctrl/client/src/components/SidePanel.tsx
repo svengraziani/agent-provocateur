@@ -35,6 +35,9 @@ export function SidePanel({ onClose, className, children }: SidePanelProps) {
       className={className}
       onClick={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
+      onTouchStart={(e) => e.stopPropagation()}
+      onTouchMove={(e) => e.stopPropagation()}
+      onTouchEnd={(e) => e.stopPropagation()}
     >
       {children}
     </div>

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { DashboardEntry, GameMap } from '../../types'
-import { CloseIcon, RelocateIcon, ScanIcon, BuildIcon, MapIcon, FeedIcon } from '../Icons'
+import { CloseIcon, RelocateIcon, ScanIcon, BuildIcon, MapIcon, FeedIcon, TimerIcon } from '../Icons'
 import { ZOOM_MIN, ZOOM_MAX } from './battlefieldConstants'
 
 interface BattlefieldHUDProps {
@@ -165,7 +165,7 @@ export function BattlefieldHUD({
           aria-label="Toggle mission timers"
           aria-pressed={showTimers}
         >
-          ⏱<span className="hud-label"> TIMERS</span>
+          <TimerIcon size={11} /><span className="hud-label"> TIMERS</span>
         </button>
         <span className="hud-zoom-sep" />
         <button className="hud-btn hud-zoom-btn" onClick={onZoomOut} disabled={zoom <= ZOOM_MIN} title="Zoom out [−]" aria-label="Zoom out">−</button>
@@ -224,7 +224,7 @@ export function BattlefieldHUD({
                 <FeedIcon size={11} /> FEED
               </button>
               <button className={`hud-btn hud-overflow-item${showTimers ? ' active' : ''}`} onClick={() => { setShowOverflow(false); onToggleTimers() }}>
-                ⏱ TIMERS
+                <TimerIcon size={11} /> TIMERS
               </button>
             </div>
           )}
