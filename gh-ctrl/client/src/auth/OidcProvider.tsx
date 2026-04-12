@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { UserManager, WebStorageStateStore, type User } from 'oidc-client-ts'
 import { AuthContext, type AuthContextValue } from './AuthContext'
+import { LoggedOutScreen } from './LoggedOutScreen'
+
+const LOGGED_OUT_KEY = 'gh_ctrl_logged_out'
 
 const OIDC_AUTHORITY = import.meta.env.VITE_OIDC_AUTHORITY as string | undefined
 const OIDC_CLIENT_ID = import.meta.env.VITE_OIDC_CLIENT_ID as string | undefined
@@ -28,6 +31,7 @@ export function OidcProvider({ children, authority, clientId, redirectUri, scope
   const resolvedScope = scope ?? OIDC_SCOPE ?? 'openid profile email'
 
   const [initialized, setInitialized] = useState(false)
+  const [loggedOut, setLoggedOut] = useState(false)
   const [token, setToken] = useState<string | undefined>(undefined)
   const [user, setUser] = useState<AuthContextValue['user']>(null)
   const managerRef = useRef<UserManager | null>(null)
@@ -66,6 +70,14 @@ export function OidcProvider({ children, authority, clientId, redirectUri, scope
     }
 
     async function handleAuth() {
+      // If the user just logged out, show the logout screen instead of re-initiating login
+      if (sessionStorage.getItem(LOGGED_OUT_KEY) === 'true') {
+        sessionStorage.removeItem(LOGGED_OUT_KEY)
+        setLoggedOut(true)
+        setInitialized(true)
+        return
+      }
+
       // Check if we're handling an OIDC authorization code callback
       const params = new URLSearchParams(window.location.search)
       if (params.get('code') && params.get('state')) {
@@ -112,6 +124,7 @@ export function OidcProvider({ children, authority, clientId, redirectUri, scope
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const logout = () => {
+    sessionStorage.setItem(LOGGED_OUT_KEY, 'true')
     getManager().signoutRedirect().catch(console.error)
   }
 
@@ -121,6 +134,10 @@ export function OidcProvider({ children, authority, clientId, redirectUri, scope
         Authenticating…
       </div>
     )
+  }
+
+  if (loggedOut) {
+    return <LoggedOutScreen onLogin={() => window.location.reload()} />
   }
 
   return (
