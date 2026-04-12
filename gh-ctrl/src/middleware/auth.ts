@@ -67,15 +67,15 @@ function resolveOidcConfig(): OidcConfig | null {
 
   const hasOidcPartial = Boolean(OIDC_JWKS_URL || OIDC_ISSUER || OIDC_AUDIENCE)
   if (hasOidcPartial) {
-    if (!(OIDC_JWKS_URL && OIDC_ISSUER && OIDC_AUDIENCE)) {
+    if (!(OIDC_JWKS_URL && OIDC_ISSUER)) {
       throw new Error(
-        '[auth] Incomplete generic OIDC config: OIDC_JWKS_URL, OIDC_ISSUER and OIDC_AUDIENCE are all required',
+        '[auth] Incomplete generic OIDC config: OIDC_JWKS_URL and OIDC_ISSUER are required (OIDC_AUDIENCE is optional)',
       )
     }
     return {
       jwksUrl: OIDC_JWKS_URL,
       issuer: OIDC_ISSUER,
-      audience: OIDC_AUDIENCE,
+      audience: OIDC_AUDIENCE, // optional — some providers (e.g. Clerk) omit the aud claim
     }
   }
 
