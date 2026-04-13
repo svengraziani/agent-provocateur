@@ -40,7 +40,7 @@ const AVAILABLE_BUILDINGS: BuildingDef[] = [
     name: 'Research Center',
     description:
       'Deploy remote research agents via GitHub Issues. Create research missions that trigger @claude to investigate topics and produce reports. Track active missions and mark them complete — labels update automatically on GitHub.',
-    buildImage: '/buildings/healthcheck.png',
+    buildImage: '/buildings/build_research.png',
     defaultColor: '#aa44ff',
   },
   {
@@ -56,7 +56,7 @@ const AVAILABLE_BUILDINGS: BuildingDef[] = [
     name: 'Source Relay',
     description:
       'Aggregate content from GitHub repositories and websites into shareable plain-text endpoints. Create context bundles for AI assistants — each fetcher generates a unique public URL that returns all your configured sources combined.',
-    buildImage: '/buildings/healthcheck.png',
+    buildImage: '/buildings/build_source_relay.png',
     defaultColor: '#ff8800',
   },
   {
