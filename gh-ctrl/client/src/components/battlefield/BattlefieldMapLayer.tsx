@@ -1,3 +1,4 @@
+import { memo, useCallback } from 'react'
 import { useAppStore, selectBattlefieldUsers } from '../../store'
 import type { SoundName } from '../../hooks/useSound'
 import type { DashboardEntry, GameMap, Building, PlacedBadge } from '../../types'
@@ -16,6 +17,60 @@ import { BadgeMarker } from '../BadgeMarker'
 import { UserUnit } from './UserUnit'
 import { SourceRelayConnectionsLayer } from './SourceRelayConnectionsLayer'
 import type { Repo } from '../../types'
+
+interface BuildingRendererProps {
+  building: Building
+  position: { x: number; y: number }
+  isRelocateMode: boolean
+  isBeingRelocated: boolean
+  isSelected: boolean
+  addToast: (msg: string, type?: 'success' | 'error' | 'info') => void
+  play: (sound: SoundName) => void
+  onSelectBuilding: (id: number) => void
+  onDeselectBuilding: () => void
+  onStartBuildingRelocate: (id: number, mouseX: number, mouseY: number) => void
+}
+
+const BuildingRenderer = memo(function BuildingRenderer({
+  building,
+  position,
+  isRelocateMode,
+  isBeingRelocated,
+  isSelected,
+  addToast,
+  play,
+  onSelectBuilding,
+  onDeselectBuilding,
+  onStartBuildingRelocate,
+}: BuildingRendererProps) {
+  const handleSelect = useCallback(() => {
+    play('peep')
+    onSelectBuilding(building.id)
+  }, [play, onSelectBuilding, building.id])
+
+  const handleStartRelocate = useCallback((mouseX: number, mouseY: number) => {
+    onStartBuildingRelocate(building.id, mouseX, mouseY)
+  }, [onStartBuildingRelocate, building.id])
+
+  const commonProps = {
+    building,
+    position,
+    isRelocateMode,
+    isBeingRelocated,
+    addToast,
+    isSelected,
+    onSelect: handleSelect,
+    onDeselect: onDeselectBuilding,
+    onStartRelocate: handleStartRelocate,
+  }
+
+  if (building.type === 'healthcheck') return <HealthcheckBuilding {...commonProps} />
+  if (building.type === 'snailbox') return <MailboxBuilding {...commonProps} />
+  if (building.type === 'research') return <ResearchCenterBuilding {...commonProps} />
+  if (building.type === 'remoteShell') return <RemoteShellBuilding {...commonProps} />
+  if (building.type === 'sourceRelay') return <SourceRelayBuilding {...commonProps} />
+  return <ClawComBuilding {...commonProps} />
+})
 
 interface BattlefieldMapLayerProps {
   offset: Position
@@ -203,34 +258,21 @@ export function BattlefieldMapLayer({
             </div>
           )
         }
-        const commonProps = {
-          key: `building-${building.id}`,
-          building,
-          position: pos,
-          isRelocateMode,
-          isBeingRelocated: relocatingBuildingId === building.id,
-          onStartRelocate: (mouseX: number, mouseY: number) => onStartBuildingRelocate(building.id, mouseX, mouseY),
-          addToast,
-          isSelected: selectedBuildingId === building.id,
-          onSelect: () => { play('peep'); onSelectBuilding(building.id) },
-          onDeselect: onDeselectBuilding,
-        }
-        if (building.type === 'healthcheck') {
-          return <HealthcheckBuilding {...commonProps} />
-        }
-        if (building.type === 'snailbox') {
-          return <MailboxBuilding {...commonProps} />
-        }
-        if (building.type === 'research') {
-          return <ResearchCenterBuilding {...commonProps} />
-        }
-        if (building.type === 'remoteShell') {
-          return <RemoteShellBuilding {...commonProps} />
-        }
-        if (building.type === 'sourceRelay') {
-          return <SourceRelayBuilding {...commonProps} />
-        }
-        return <ClawComBuilding {...commonProps} />
+        return (
+          <BuildingRenderer
+            key={`building-${building.id}`}
+            building={building}
+            position={pos}
+            isRelocateMode={isRelocateMode}
+            isBeingRelocated={relocatingBuildingId === building.id}
+            isSelected={selectedBuildingId === building.id}
+            addToast={addToast}
+            play={play}
+            onSelectBuilding={onSelectBuilding}
+            onDeselectBuilding={onDeselectBuilding}
+            onStartBuildingRelocate={onStartBuildingRelocate}
+          />
+        )
       })}
 
       {placedBadges.map((pb) => {
