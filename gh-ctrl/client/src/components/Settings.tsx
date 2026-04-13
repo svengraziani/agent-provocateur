@@ -743,30 +743,46 @@ export function Settings() {
                   <div className="browse-truncated-note">Showing top 100 matches — refine your search for more specific results.</div>
                 )}
                 <div className="browse-repo-list">
-                  {browseRepos.map((repo) => (
-                    <button
-                      key={repo.fullName}
-                      className="browse-repo-item"
-                      onClick={() => handleSelectBrowseRepo(repo.fullName)}
-                      type="button"
-                      disabled={adding}
-                    >
-                      <div className="browse-repo-info">
-                        <span className="browse-repo-name">{repo.fullName}</span>
-                        {repo.isPrivate && <span className="browse-repo-badge">private</span>}
-                        {repo.description && (
-                          <span className="browse-repo-desc">{repo.description}</span>
-                        )}
-                      </div>
-                      <span className="browse-repo-add">+ Add</span>
-                    </button>
-                  ))}
+                  {browseRepos
+                    .filter((repo) => {
+                      const currentProviderType = browseProvider === 'github' ? 'github' : 'gitlab'
+                      return !repos.some(
+                        (tracked) => tracked.fullName === repo.fullName && tracked.provider === currentProviderType
+                      )
+                    })
+                    .map((repo) => (
+                      <button
+                        key={repo.fullName}
+                        className="browse-repo-item"
+                        onClick={() => handleSelectBrowseRepo(repo.fullName)}
+                        type="button"
+                        disabled={adding}
+                      >
+                        <div className="browse-repo-info">
+                          <span className="browse-repo-name">{repo.fullName}</span>
+                          {repo.isPrivate && <span className="browse-repo-badge">private</span>}
+                          {repo.description && (
+                            <span className="browse-repo-desc">{repo.description}</span>
+                          )}
+                        </div>
+                        <span className="browse-repo-add">+ Add</span>
+                      </button>
+                    ))}
                   {browseLoading && (
                     <div className="browse-loading">Loading...</div>
                   )}
                   {!browseLoading && browseRepos.length === 0 && !browseError && (
                     <div className="empty-state"><p>No repositories found.</p></div>
                   )}
+                  {!browseLoading && browseRepos.length > 0 && !browseError && (() => {
+                    const currentProviderType = browseProvider === 'github' ? 'github' : 'gitlab'
+                    const visibleCount = browseRepos.filter(
+                      (repo) => !repos.some((tracked) => tracked.fullName === repo.fullName && tracked.provider === currentProviderType)
+                    ).length
+                    return visibleCount === 0 ? (
+                      <div className="empty-state"><p>All repositories are already tracked.</p></div>
+                    ) : null
+                  })()}
                 </div>
                 {!browseLoading && browseHasMore && browseRepos.length > 0 && !browseSearch && (
                   <div className="browse-load-more">
