@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import type { DashboardEntry, Building } from '../../types'
 import type { ShortcutConfig } from '../../hooks/useBattlefieldKeyboardShortcuts'
 
@@ -40,10 +41,24 @@ export function BattlefieldShortcutsOverlay({
   onClearShortcut,
   onCancelAssigning,
 }: BattlefieldShortcutsOverlayProps) {
+  // Close on Escape key
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !assigningFor) onClose()
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [onClose, assigningFor])
+
   return (
     <div
       className="shortcuts-overlay"
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
+      // Stop touch events from reaching the battlefield camera handler so that
+      // tapping the close button or backdrop on mobile synthesises a click correctly.
+      onTouchStart={(e) => e.stopPropagation()}
+      onTouchMove={(e) => e.stopPropagation()}
+      onTouchEnd={(e) => e.stopPropagation()}
       role="dialog"
       aria-modal="true"
       aria-label="Keyboard Shortcuts"

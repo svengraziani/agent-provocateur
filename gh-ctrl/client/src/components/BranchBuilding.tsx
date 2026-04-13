@@ -87,9 +87,10 @@ interface BranchSiloProps {
   position: { x: number; y: number }
   onClick: () => void
   isSelected?: boolean
+  repoId?: number
 }
 
-export function BranchSilo({ branches, defaultBranch, position, onClick, isSelected }: BranchSiloProps) {
+export function BranchSilo({ branches, defaultBranch, position, onClick, isSelected, repoId }: BranchSiloProps) {
   const nonDefault = branches.filter(b => b.name !== defaultBranch)
   if (nonDefault.length === 0) return null
 
@@ -106,6 +107,8 @@ export function BranchSilo({ branches, defaultBranch, position, onClick, isSelec
       style={{ left: position.x, top: position.y }}
       onClick={(e) => { e.stopPropagation(); onClick() }}
       title={`${nonDefault.length} branch(es) — click to manage`}
+      data-tap-type="branch-silo"
+      data-repo-id={repoId}
     >
       <div className="branch-silo-tower">
         <ColorizedSilo state={worstState} />

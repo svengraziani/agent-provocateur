@@ -65,7 +65,7 @@ export function useBattlefieldCamera(options?: BattlefieldCameraOptions) {
 
   const handleTouchStart = useCallback((e: TouchEvent) => {
     const target = e.target as HTMLElement
-    if (target.closest('.modal-overlay, .map-dialog-overlay, .side-panel-root, .silo-panel, .feed-panel, [class*="dialog"], .battlefield-hud, .minimap, .battlefield-context-menu, .battlefield-placement-banner, .battlefield-relocate-banner, .hud-overflow-panel, .mph-cancel, .battlefield-context-backdrop, .battlefield-landscape-overlay')) return
+    if (target.closest('.modal-overlay, .map-dialog-overlay, .side-panel-root, .silo-panel, .feed-panel, .cnc-sidebar, [class*="dialog"], .battlefield-hud, .minimap, .battlefield-context-menu, .battlefield-placement-banner, .battlefield-relocate-banner, .hud-overflow-panel, .mph-cancel, .battlefield-context-backdrop, .battlefield-landscape-overlay')) return
     e.preventDefault()
 
     const tc = touchMetaRef.current
@@ -100,7 +100,7 @@ export function useBattlefieldCamera(options?: BattlefieldCameraOptions) {
 
   const handleTouchMove = useCallback((e: TouchEvent) => {
     const target = e.target as HTMLElement
-    if (target.closest('.modal-overlay, .map-dialog-overlay, .side-panel-root, .silo-panel, .feed-panel, [class*="dialog"], .battlefield-hud, .minimap, .battlefield-context-menu, .mph-cancel, .battlefield-context-backdrop, .battlefield-landscape-overlay')) return
+    if (target.closest('.modal-overlay, .map-dialog-overlay, .side-panel-root, .silo-panel, .feed-panel, .cnc-sidebar, [class*="dialog"], .battlefield-hud, .minimap, .battlefield-context-menu, .mph-cancel, .battlefield-context-backdrop, .battlefield-landscape-overlay')) return
     e.preventDefault()
 
     const tc = touchMetaRef.current

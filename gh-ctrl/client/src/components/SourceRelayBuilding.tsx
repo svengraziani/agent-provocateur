@@ -932,6 +932,7 @@ export function SourceRelayBuilding({
           zIndex: isBeingRelocated ? 100 : 1,
           opacity: isBeingRelocated ? 0.75 : 1,
         }}
+        data-building-id={building.id}
         onMouseDown={handleMouseDown}
         onClick={handleClick}
       >
