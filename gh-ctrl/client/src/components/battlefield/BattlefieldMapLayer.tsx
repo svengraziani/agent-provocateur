@@ -185,13 +185,6 @@ export function BattlefieldMapLayer({
         </div>
       ))}
 
-      <SourceRelayConnectionsLayer
-        storeBuildings={storeBuildings}
-        buildingPositions={buildingPositions}
-        visibleEntries={visibleEntries}
-        positions={positions}
-      />
-
       {visibleEntries.map((entry) => {
         const pos = positions[entry.repo.id] ?? { x: 0, y: 0 }
         if (constructingRepoIds.has(entry.repo.id)) {
@@ -248,9 +241,9 @@ export function BattlefieldMapLayer({
             : building.type === 'snailbox'
               ? '/buildings/construction_4s_snailbox.gif'
               : building.type === 'research'
-                ? '/buildings/construct_4s_healthcheck.gif'
+                ? '/buildings/construct_6s_research.gif'
                 : building.type === 'sourceRelay'
-                  ? '/buildings/construct_4s_healthcheck.gif'
+                  ? '/buildings/construct_6s_source_relay.gif'
                   : '/buildings/construct_3s_clawcom.gif'
           return (
             <div
@@ -303,6 +296,13 @@ export function BattlefieldMapLayer({
           spawnPos={user.lastRepoId != null ? positions[user.lastRepoId] : undefined}
         />
       ))}
+
+      {/* Source relay splines rendered last so they appear above bases/buildings */}
+      <SourceRelayConnectionsLayer
+        buildingPositions={buildingPositions}
+        visibleEntries={visibleEntries}
+        positions={positions}
+      />
     </div>
   )
 }

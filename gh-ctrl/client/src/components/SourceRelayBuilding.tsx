@@ -239,7 +239,14 @@ function SourceRelayDialog({ building, onClose, addToast }: SourceRelayDialogPro
     setLinkedRepoIds(next)
     setSavingLinks(true)
     try {
-      await api.updateBuilding(building.id, { config: { ...parsedConfig, linkedRepoIds: next } })
+      const newConfig = { ...parsedConfig, linkedRepoIds: next }
+      await api.updateBuilding(building.id, { config: newConfig })
+      // Sync store so SourceRelayConnectionsLayer sees the new linkedRepoIds immediately
+      useAppStore.setState((state) => ({
+        buildings: state.buildings.map((b) =>
+          b.id === building.id ? { ...b, config: JSON.stringify(newConfig) } : b
+        ),
+      }))
     } catch {
       addToast('Failed to save repo links', 'error')
       setLinkedRepoIds(linkedRepoIds) // revert
@@ -443,39 +450,44 @@ function SourceRelayDialog({ building, onClose, addToast }: SourceRelayDialogPro
       <div
         style={{
           position: 'fixed', inset: 0, zIndex: 2000,
-          background: 'rgba(0,0,0,0.6)',
+          background: 'rgba(0,0,0,0.65)',
+          backdropFilter: 'blur(2px)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}
         onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
       >
         <div style={{
-          background: 'var(--bg-panel)', border: '1px solid var(--border)',
+          background: '#0d1117',
+          border: '1px solid rgba(255,136,0,0.35)',
+          boxShadow: '0 0 32px rgba(255,136,0,0.12), 0 8px 40px rgba(0,0,0,0.8)',
           borderRadius: 4, width: 560, maxHeight: '82vh',
           display: 'flex', flexDirection: 'column', overflow: 'hidden',
+          fontFamily: 'monospace',
         }}>
           {/* Header */}
           <div style={{
-            padding: '10px 14px', borderBottom: '1px solid var(--border)',
+            padding: '10px 14px', borderBottom: '1px solid rgba(255,136,0,0.2)',
             display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            flexShrink: 0,
           }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: '#ff8800' }}>
-              &#x25a0; SOURCE RELAY — {building.name}
+            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: '#ff8800', textTransform: 'uppercase' }}>
+              &#x25a0; Source Relay — {building.name}
             </span>
             <button className="hud-btn" style={{ fontSize: 9 }} onClick={onClose}>✕ CLOSE</button>
           </div>
 
           {/* Tabs */}
-          <div style={{ display: 'flex', borderBottom: '1px solid var(--border)' }}>
+          <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,136,0,0.2)', flexShrink: 0 }}>
             {(['connectors', 'fetchers', 'links'] as DialogTab[]).map((t) => (
               <button
                 key={t}
                 className="hud-btn"
                 style={{
                   borderRadius: 0, borderBottom: 'none',
-                  borderRight: '1px solid var(--border)',
+                  borderRight: '1px solid rgba(255,136,0,0.15)',
                   fontSize: 10, padding: '6px 16px',
-                  color: tab === t ? '#ff8800' : 'var(--text-dim)',
-                  background: tab === t ? 'rgba(255,136,0,0.08)' : 'transparent',
+                  color: tab === t ? '#ff8800' : '#555',
+                  background: tab === t ? 'rgba(255,136,0,0.1)' : 'transparent',
                 }}
                 onClick={() => setTab(t)}
               >
@@ -485,7 +497,7 @@ function SourceRelayDialog({ building, onClose, addToast }: SourceRelayDialogPro
           </div>
 
           {/* Body */}
-          <div style={{ flex: 1, overflowY: 'auto', padding: 14 }}>
+          <div style={{ flex: 1, overflowY: 'auto', padding: 14, color: '#ccc' }}>
             {loading && (
               <div style={{ textAlign: 'center', color: 'var(--text-dim)', fontSize: 11, paddingTop: 20 }}>
                 Loading…

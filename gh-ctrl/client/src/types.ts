@@ -229,7 +229,7 @@ export interface ClawComConfig {
   channelSecret?: string
   /** Claude Channel: prompt the user before Claude runs destructive tools */
   enablePermissionRelay?: boolean
-  /** Copilot: GitHub PAT with copilot scope */
+  /** Copilot: GitHub OAuth token (from `gh auth token` — PATs not supported) */
   githubToken?: string
   /** Copilot: model name (default: gpt-4o) */
   copilotModel?: string
