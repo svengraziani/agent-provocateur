@@ -200,7 +200,7 @@ function FileTreeModal({ buildingId, connector, selectedPaths, onSave, onClose }
 
 // ── Main dialog ─────────────────────────────────────────────────────────────
 
-type DialogTab = 'connectors' | 'fetchers'
+type DialogTab = 'connectors' | 'fetchers' | 'links'
 
 interface ConnectorFormState {
   name: string
@@ -225,6 +225,28 @@ function SourceRelayDialog({ building, onClose, addToast }: SourceRelayDialogPro
   const [connectors, setConnectors] = useState<SourceRelayConnector[]>([])
   const [fetchers, setFetchers] = useState<SourceRelayFetcher[]>([])
   const [loading, setLoading] = useState(true)
+  const entries = useAppStore((s) => s.entries)
+
+  // Linked repo IDs — stored in building config JSON
+  const parsedConfig = (() => { try { return JSON.parse(building.config ?? '{}') } catch { return {} } })()
+  const [linkedRepoIds, setLinkedRepoIds] = useState<number[]>(parsedConfig.linkedRepoIds ?? [])
+  const [savingLinks, setSavingLinks] = useState(false)
+
+  const toggleLinkedRepo = async (repoId: number) => {
+    const next = linkedRepoIds.includes(repoId)
+      ? linkedRepoIds.filter((id) => id !== repoId)
+      : [...linkedRepoIds, repoId]
+    setLinkedRepoIds(next)
+    setSavingLinks(true)
+    try {
+      await api.updateBuilding(building.id, { config: { ...parsedConfig, linkedRepoIds: next } })
+    } catch {
+      addToast('Failed to save repo links', 'error')
+      setLinkedRepoIds(linkedRepoIds) // revert
+    } finally {
+      setSavingLinks(false)
+    }
+  }
 
   // Connector form
   const [showConnectorForm, setShowConnectorForm] = useState(false)
@@ -444,7 +466,7 @@ function SourceRelayDialog({ building, onClose, addToast }: SourceRelayDialogPro
 
           {/* Tabs */}
           <div style={{ display: 'flex', borderBottom: '1px solid var(--border)' }}>
-            {(['connectors', 'fetchers'] as DialogTab[]).map((t) => (
+            {(['connectors', 'fetchers', 'links'] as DialogTab[]).map((t) => (
               <button
                 key={t}
                 className="hud-btn"
@@ -830,6 +852,56 @@ function SourceRelayDialog({ building, onClose, addToast }: SourceRelayDialogPro
                 })}
               </div>
             )}
+            {/* ── Links Tab ── */}
+            {!loading && tab === 'links' && (
+              <div>
+                <div style={{ fontSize: 10, color: 'var(--text-dim)', marginBottom: 10 }}>
+                  Link battlefield bases to draw spline connections on the map.
+                  {savingLinks && <span style={{ marginLeft: 6, color: '#ff8800' }}>Saving…</span>}
+                </div>
+                {entries.length === 0 && (
+                  <div style={{ fontSize: 10, color: 'var(--text-dim)', textAlign: 'center', paddingTop: 20 }}>
+                    No bases on battlefield.
+                  </div>
+                )}
+                {entries.map((entry) => {
+                  const linked = linkedRepoIds.includes(entry.repo.id)
+                  return (
+                    <div
+                      key={entry.repo.id}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 8,
+                        padding: '5px 0',
+                        borderBottom: '1px solid var(--border)',
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
+                          background: entry.repo.color ?? '#888',
+                          boxShadow: linked ? `0 0 6px ${entry.repo.color ?? '#888'}` : 'none',
+                        }}
+                      />
+                      <span style={{ fontSize: 10, color: 'var(--text)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {entry.repo.name}
+                      </span>
+                      <button
+                        className="hud-btn"
+                        style={{
+                          fontSize: 9,
+                          color: linked ? '#ff8800' : 'var(--text-dim)',
+                          borderColor: linked ? '#ff8800' : undefined,
+                        }}
+                        onClick={() => toggleLinkedRepo(entry.repo.id)}
+                      >
+                        {linked ? '◈ LINKED' : '◇ LINK'}
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
           </div>
         </div>
       </div>

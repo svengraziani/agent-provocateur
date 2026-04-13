@@ -100,22 +100,37 @@ export function SourceRelayConnectionsLayer({
       x: bRaw.x + BUILDING_CENTER_X,
       y: bRaw.y + BUILDING_CENTER_Y,
     }
+    const color = building.color ?? '#ff8800'
 
+    // Connector-matched splines
+    const connectorRepoIds = new Set<number>()
     for (const connector of connectors) {
       if (connector.type === 'website') continue
       const entry = matchConnectorToEntry(connector, visibleEntries)
       if (!entry) continue
       const rRaw = positions[entry.repo.id]
       if (!rRaw) continue
-      const to: Position = {
-        x: rRaw.x + BASE_CENTER_X,
-        y: rRaw.y + BASE_CENTER_Y,
-      }
+      connectorRepoIds.add(entry.repo.id)
       connections.push({
         key: `${building.id}-${connector.id}`,
-        color: building.color ?? '#ff8800',
+        color,
         from,
-        to,
+        to: { x: rRaw.x + BASE_CENTER_X, y: rRaw.y + BASE_CENTER_Y },
+      })
+    }
+
+    // Explicitly linked repo splines (skip those already drawn from connectors)
+    let linkedRepoIds: number[] = []
+    try { linkedRepoIds = JSON.parse(building.config ?? '{}').linkedRepoIds ?? [] } catch { /* ignore */ }
+    for (const repoId of linkedRepoIds) {
+      if (connectorRepoIds.has(repoId)) continue
+      const rRaw = positions[repoId]
+      if (!rRaw) continue
+      connections.push({
+        key: `linked-${building.id}-${repoId}`,
+        color,
+        from,
+        to: { x: rRaw.x + BASE_CENTER_X, y: rRaw.y + BASE_CENTER_Y },
       })
     }
   }
