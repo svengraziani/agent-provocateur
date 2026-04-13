@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { api } from '../api'
 import type { Building, MailMessage } from '../types'
 
@@ -46,17 +46,22 @@ export function MailboxInboxDialog({ building, onClose, onReconfigure, onError }
   const [compose, setCompose]             = useState<ComposeState>({ to: '', subject: '', body: '' })
   const [sending, setSending]             = useState(false)
 
+  // Use a ref so that onError identity changes (from parent re-renders) don't
+  // cause loadMessages to be recreated and trigger a spurious mail reload.
+  const onErrorRef = useRef(onError)
+  useEffect(() => { onErrorRef.current = onError })
+
   const loadMessages = useCallback(async () => {
     setLoading(true)
     try {
       const msgs = await api.getMailMessages(building.id)
       setMessages(msgs)
     } catch (err: unknown) {
-      onError(`Error loading: ${err instanceof Error ? err.message : 'Unknown error'}`)
+      onErrorRef.current(`Error loading: ${err instanceof Error ? err.message : 'Unknown error'}`)
     } finally {
       setLoading(false)
     }
-  }, [building.id, onError])
+  }, [building.id])
 
   useEffect(() => {
     loadMessages()

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, memo } from 'react'
 import { createPortal } from 'react-dom'
 import { api } from '../api'
 import { useAppStore } from '../store'
@@ -62,7 +62,7 @@ function useColorizedImage(src: string, color: string): string | null {
   return dataUrl
 }
 
-export function MailboxBuilding({
+export const MailboxBuilding = memo(function MailboxBuilding({
   building,
   position,
   isRelocateMode,
@@ -304,4 +304,4 @@ export function MailboxBuilding({
       )}
     </>
   )
-}
+})
