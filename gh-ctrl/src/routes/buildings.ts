@@ -204,6 +204,10 @@ app.post('/:id/messages', async (c) => {
           headers: {
             'Authorization': `Bearer ${config.githubToken}`,
             'Content-Type': 'application/json',
+            'Editor-Version': 'vscode/1.95.3',
+            'Editor-Plugin-Version': 'github.copilot-chat/0.22.4',
+            'Copilot-Integration-Id': 'vscode-chat',
+            'openai-intent': 'conversation-panel',
           },
           body: JSON.stringify({
             model: config.copilotModel || 'gpt-4o',
@@ -383,20 +387,26 @@ app.post('/copilot-test', async (c) => {
       headers: {
         'Authorization': `Bearer ${String(githubToken)}`,
         'Content-Type': 'application/json',
+        'Editor-Version': 'vscode/1.95.3',
+        'Editor-Plugin-Version': 'github.copilot-chat/0.22.4',
+        'Copilot-Integration-Id': 'vscode-chat',
+        'openai-intent': 'conversation-panel',
       },
       signal: AbortSignal.timeout(8000),
     })
-    if (!res.ok) return c.json({ ok: false, error: `HTTP ${res.status}` })
-
-    if (copilotModel) {
-      const data = await res.json().catch(() => null)
-      const available: string[] = (data?.data ?? []).map((m: any) => m.id)
-      if (available.length > 0 && !available.includes(String(copilotModel))) {
-        return c.json({ ok: false, error: `Model '${copilotModel}' not available (available: ${available.join(', ')})` })
-      }
+    if (!res.ok) {
+      const body = await res.text().catch(() => '')
+      return c.json({ ok: false, error: `HTTP ${res.status}${body ? `: ${body}` : ''}` })
     }
 
-    return c.json({ ok: true })
+    const data = await res.json().catch(() => null)
+    const available: string[] = (data?.data ?? []).map((m: any) => m.id)
+
+    if (copilotModel && available.length > 0 && !available.includes(String(copilotModel))) {
+      return c.json({ ok: false, error: `Model '${copilotModel}' not available (available: ${available.join(', ')})` })
+    }
+
+    return c.json({ ok: true, models: available })
   } catch (err: any) {
     return c.json({ ok: false, error: err.message })
   }

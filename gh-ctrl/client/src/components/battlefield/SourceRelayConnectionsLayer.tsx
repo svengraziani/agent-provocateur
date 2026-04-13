@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react'
 import { api } from '../../api'
-import type { Building, DashboardEntry, SourceRelayConnector } from '../../types'
+import { useAppStore } from '../../store'
+import type { DashboardEntry, SourceRelayConnector } from '../../types'
 import type { Position } from './battlefieldConstants'
 
 interface Props {
-  storeBuildings: Building[]
   buildingPositions: Record<number, Position>
   visibleEntries: DashboardEntry[]
   positions: Record<number, Position>
@@ -50,11 +50,12 @@ interface Connection {
 }
 
 export function SourceRelayConnectionsLayer({
-  storeBuildings,
   buildingPositions,
   visibleEntries,
   positions,
 }: Props) {
+  // Subscribe directly to the store so config changes (linkedRepoIds) propagate immediately
+  const storeBuildings = useAppStore((s) => s.buildings)
   const [connectorsByBuilding, setConnectorsByBuilding] = useState<
     Record<number, SourceRelayConnector[]>
   >({})
@@ -139,15 +140,15 @@ export function SourceRelayConnectionsLayer({
 
   return (
     <svg
+      width={6000}
+      height={6000}
       style={{
         position: 'absolute',
         left: 0,
         top: 0,
-        width: 0,
-        height: 0,
         overflow: 'visible',
         pointerEvents: 'none',
-        zIndex: 1,
+        zIndex: 20,
       }}
     >
       <defs>

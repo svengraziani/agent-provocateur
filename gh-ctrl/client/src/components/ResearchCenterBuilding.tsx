@@ -39,9 +39,26 @@ export function ResearchCenterBuilding({
   const [currentBuilding, setCurrentBuilding] = useState(building)
   const [jobs, setJobs] = useState<ResearchJob[]>([])
   const [showDialog, setShowDialog] = useState(false)
+  const [idleAnimSrc, setIdleAnimSrc] = useState<string | null>(null)
   const colorInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => { setCurrentBuilding(building) }, [building])
+
+  // Idle animations: one variant, fires every 15–30s
+  useEffect(() => {
+    let timeout: ReturnType<typeof setTimeout>
+    function scheduleNext() {
+      timeout = setTimeout(() => {
+        setIdleAnimSrc('/buildings/idle_1_6s_research.gif')
+        timeout = setTimeout(() => {
+          setIdleAnimSrc(null)
+          scheduleNext()
+        }, 6000)
+      }, 15000 + Math.random() * 15000)
+    }
+    scheduleNext()
+    return () => clearTimeout(timeout)
+  }, [])
 
   let config: Partial<ResearchCenterConfig> = {}
   try { config = JSON.parse(currentBuilding.config) } catch { /* empty */ }
@@ -122,7 +139,7 @@ export function ResearchCenterBuilding({
         {/* Building icon */}
         <div style={{ position: 'relative', width: 100, height: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <img
-            src="/buildings/research.png"
+            src={idleAnimSrc ?? '/buildings/research.png'}
             alt={currentBuilding.name}
             style={{
               width: 100,
@@ -321,29 +338,36 @@ function ResearchCenterDialog({
   return (
     <div
       style={{
-        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
+        position: 'fixed', inset: 0,
+        background: 'rgba(0,0,0,0.65)',
+        backdropFilter: 'blur(2px)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         zIndex: 9999,
       }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
       <div style={{
-        background: 'var(--bg-panel)',
-        border: '1px solid var(--border-color)',
-        borderRadius: 6,
-        padding: 20,
+        background: '#0d1117',
+        border: '1px solid rgba(170,68,255,0.35)',
+        boxShadow: '0 0 32px rgba(170,68,255,0.12), 0 8px 40px rgba(0,0,0,0.8)',
+        borderRadius: 4,
         width: 520,
         maxHeight: '85vh',
-        overflowY: 'auto',
+        display: 'flex', flexDirection: 'column', overflow: 'hidden',
         fontFamily: 'monospace',
       }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <span style={{ color: '#aa44ff', fontWeight: 700, fontSize: 13 }}>📡 {building.name.toUpperCase()}</span>
+        <div style={{
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          padding: '10px 14px', borderBottom: '1px solid rgba(170,68,255,0.2)',
+          flexShrink: 0,
+        }}>
+          <span style={{ color: '#aa44ff', fontWeight: 700, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase' }}>&#x25a0; Research Center — {building.name}</span>
           <button className="hud-btn" style={{ fontSize: 10 }} onClick={onClose}>✕ CLOSE</button>
         </div>
+        <div style={{ flex: 1, overflowY: 'auto', padding: 16, color: '#ccc' }}>
 
         {/* Config */}
-        <div style={{ marginBottom: 16, padding: 10, border: '1px solid var(--border-color)', borderRadius: 4 }}>
+        <div style={{ marginBottom: 16, padding: 10, border: '1px solid rgba(170,68,255,0.2)', borderRadius: 4 }}>
           <div style={{ fontSize: 10, color: 'var(--text-dim)', marginBottom: 6 }}>TARGET REPOSITORY</div>
           <div style={{ display: 'flex', gap: 6 }}>
             <input
@@ -364,7 +388,7 @@ function ResearchCenterDialog({
 
         {/* Deploy new research */}
         {isConfigured && (
-          <div style={{ marginBottom: 16, padding: 10, border: '1px solid var(--border-color)', borderRadius: 4 }}>
+          <div style={{ marginBottom: 16, padding: 10, border: '1px solid rgba(170,68,255,0.2)', borderRadius: 4 }}>
             <div style={{ fontSize: 10, color: 'var(--text-dim)', marginBottom: 8 }}>DEPLOY RESEARCH MISSION</div>
             <input
               className="hud-input"
@@ -466,6 +490,7 @@ function ResearchCenterDialog({
             No research missions yet. Deploy one above.
           </div>
         )}
+        </div>{/* scrollable body */}
       </div>
     </div>
   )

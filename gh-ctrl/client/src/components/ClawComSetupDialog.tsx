@@ -28,6 +28,7 @@ export function ClawComSetupDialog({ building, onClose, onConfigured, onError }:
   const [saving, setSaving] = useState(false)
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<string | null>(null)
+  const [availableModels, setAvailableModels] = useState<string[]>([])
 
   const isChannel = clawType === 'claudechannel'
   const isCopilot = clawType === 'copilot'
@@ -110,6 +111,7 @@ export function ClawComSetupDialog({ building, onClose, onConfigured, onError }:
       const data = await api.copilotTest(githubToken.trim(), copilotModel || 'gpt-4o')
       if (data.ok) {
         setTestResult('✓ Token valid — Copilot API reachable!')
+        if (data.models?.length) setAvailableModels(data.models)
       } else {
         setTestResult(`✗ Error: ${data.error}`)
       }
@@ -133,7 +135,7 @@ export function ClawComSetupDialog({ building, onClose, onConfigured, onError }:
           <div className="clawcom-setup-form">
             <div className="clawcom-setup-desc">
               {isCopilot
-                ? 'Connect ClawCom to GitHub Copilot. Requires a GitHub PAT (classic or fine-grained) with the copilot scope.'
+                ? 'Connect ClawCom to GitHub Copilot. Requires a GitHub OAuth token — Personal Access Tokens are not supported. Run `gh auth token` in your terminal to get the right token.'
                 : isChannel
                 ? 'Connect ClawCom to a running Claude Code session via the Claude Channels MCP protocol.'
                 : 'Configure the connection to an Openclaw or Nanoclaw. Once set up, you can send and receive commands via the integrated chat window.'}
@@ -157,14 +159,14 @@ export function ClawComSetupDialog({ building, onClose, onConfigured, onError }:
             {isCopilot ? (
               <>
                 <div className="clawcom-setup-group">
-                  <label className="clawcom-setup-group-label">GitHub Token <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}>(copilot scope)</span></label>
+                  <label className="clawcom-setup-group-label">GitHub OAuth Token <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}>(run: gh auth token)</span></label>
                   <div className="clawcom-setup-row">
                     <input
                       className="hud-input"
                       type="password"
                       value={githubToken}
                       onChange={(e) => setGithubToken(e.target.value)}
-                      placeholder={hasExistingToken ? '●●●●●●●● (leave blank to keep existing)' : 'ghp_...'}
+                      placeholder={hasExistingToken ? '●●●●●●●● (leave blank to keep existing)' : 'gho_... (OAuth, not a PAT)'}
                     />
                     <button
                       className="hud-btn"
@@ -183,21 +185,26 @@ export function ClawComSetupDialog({ building, onClose, onConfigured, onError }:
                 </div>
 
                 <div className="clawcom-setup-group">
-                  <label className="clawcom-setup-group-label">Model</label>
+                  <label className="clawcom-setup-group-label">Model {availableModels.length === 0 && <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}>(test token to load available models)</span>}</label>
                   <select
                     className="hud-input"
                     value={copilotModel}
                     onChange={(e) => setCopilotModel(e.target.value)}
                   >
-                    <option value="gpt-4o">gpt-4o</option>
-                    <option value="gpt-4o-mini">gpt-4o-mini</option>
-                    <option value="claude-3.5-sonnet">claude-3.5-sonnet</option>
-                    <option value="o1-mini">o1-mini</option>
+                    {availableModels.length > 0
+                      ? availableModels.map((m) => <option key={m} value={m}>{m}</option>)
+                      : (
+                        <>
+                          <option value="gpt-4o">gpt-4o</option>
+                          <option value="gpt-4o-mini">gpt-4o-mini</option>
+                        </>
+                      )
+                    }
                   </select>
                 </div>
 
                 <div style={{ fontSize: 9, color: 'var(--text-dim)', marginTop: 4, lineHeight: 1.5 }}>
-                  Requires a GitHub Copilot Individual/Business/Enterprise subscription.
+                  Requires a GitHub Copilot subscription. PATs are rejected — use the OAuth token from <code style={{ background: 'rgba(255,255,255,0.07)', padding: '0 4px', borderRadius: 2 }}>gh auth token</code>.
                 </div>
               </>
             ) : isChannel ? (

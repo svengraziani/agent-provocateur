@@ -461,7 +461,7 @@ export const api = {
     }),
 
   copilotTest: (githubToken: string, copilotModel?: string) =>
-    request<{ ok: boolean; error?: string }>('/buildings/copilot-test', {
+    request<{ ok: boolean; error?: string; models?: string[] }>('/buildings/copilot-test', {
       method: 'POST',
       body: JSON.stringify({ githubToken, copilotModel }),
     }),
