@@ -257,6 +257,8 @@ export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, on
           '--base-color': repo.color,
           cursor: isRelocateMode ? 'move' : 'pointer',
         } as React.CSSProperties}
+        data-tap-type="base"
+        data-repo-id={entry.repo.id}
         onMouseDown={handleMouseDown}
         onClick={handleClick}
         onDoubleClick={handleDoubleClick}
@@ -385,6 +387,7 @@ export function BaseNode({ entry, position, isRelocateMode, isBeingRelocated, on
           }}
           onClick={() => onBranchSiloClick(entry)}
           isSelected={isSiloSelected}
+          repoId={entry.repo.id}
         />
       )}
 
@@ -886,6 +889,12 @@ function PRBuilding({ pr, position, repo, onModalOpen }: {
         top: position.y,
         '--pr-color': prColor,
       } as React.CSSProperties}
+      data-tap-type="pr"
+      data-pr-number={pr.number}
+      data-pr-full-name={repo.fullName}
+      data-pr-owner={repo.owner}
+      data-pr-repo-name={repo.name}
+      data-pr-provider={repo.provider}
       onClick={(e) => {
         e.stopPropagation()
         onModalOpen({ mode: 'pr-detail', fullName: repo.fullName, owner: repo.owner, repoName: repo.name, number: pr.number, provider: repo.provider })
