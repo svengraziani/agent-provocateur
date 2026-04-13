@@ -141,6 +141,16 @@ export function BattlefieldView() {
     setShowCommandPalette(v => !v)
   }, [play])
 
+  const handleSelectBuilding = useCallback((id: number) => {
+    setSelectedBuildingId(prev => prev === id ? null : id)
+    setDetailEntry(null)
+    setBranchSiloEntry(null)
+  }, [])
+
+  const handleDeselectBuilding = useCallback(() => {
+    setSelectedBuildingId(null)
+  }, [])
+
   const keyboardShortcuts = useBattlefieldKeyboardShortcuts({
     entries,
     buildings: storeBuildings,
@@ -503,8 +513,8 @@ export function BattlefieldView() {
         onZoomToBase={handleZoomToBase}
         onBaseDetailOpen={(e) => { setDetailEntry(prev => prev?.repo.id === e.repo.id ? null : e); setBranchSiloEntry(null); setSelectedBuildingId(null) }}
         onStartBuildingRelocate={handleStartBuildingRelocate}
-        onSelectBuilding={(id) => { setSelectedBuildingId(prev => prev === id ? null : id); setDetailEntry(null); setBranchSiloEntry(null) }}
-        onDeselectBuilding={() => setSelectedBuildingId(null)}
+        onSelectBuilding={handleSelectBuilding}
+        onDeselectBuilding={handleDeselectBuilding}
         onStartBadgeRelocate={handleStartBadgeRelocate}
       />
 
