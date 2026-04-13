@@ -4,6 +4,7 @@ import { api } from '../api'
 import { useAppStore } from '../store'
 import type { Building, ResearchCenterConfig, ResearchJob } from '../types'
 
+
 interface Position {
   x: number
   y: number
@@ -120,21 +121,18 @@ export function ResearchCenterBuilding({
       >
         {/* Building icon */}
         <div style={{ position: 'relative', width: 100, height: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{
-            width: 80,
-            height: 80,
-            border: `2px solid ${currentBuilding.color ?? '#aa44ff'}`,
-            borderRadius: 8,
-            background: `${currentBuilding.color ?? '#aa44ff'}18`,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: 36,
-            boxShadow: `0 0 12px ${currentBuilding.color ?? '#aa44ff'}44`,
-            filter: isBeingRelocated ? 'brightness(1.5)' : undefined,
-          }}>
-            📡
-          </div>
+          <img
+            src="/buildings/research.png"
+            alt={currentBuilding.name}
+            style={{
+              width: 100,
+              height: 100,
+              objectFit: 'contain',
+              imageRendering: 'auto',
+              filter: isBeingRelocated ? 'brightness(1.5)' : undefined,
+            }}
+            draggable={false}
+          />
 
           {/* Active jobs badge */}
           {activeCount > 0 && (

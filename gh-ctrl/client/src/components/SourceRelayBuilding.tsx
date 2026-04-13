@@ -872,7 +872,7 @@ export function SourceRelayBuilding({
   const [showDialog, setShowDialog] = useState(false)
   const colorInputRef = useRef<HTMLInputElement>(null)
 
-  const colorizedSrc = useColorizedImage('/buildings/healthcheck.png', currentBuilding.color ?? '#ff8800')
+  const colorizedSrc = useColorizedImage('/buildings/source_relay.png', currentBuilding.color ?? '#ff8800')
 
   useEffect(() => { setCurrentBuilding(building) }, [building])
 
