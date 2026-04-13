@@ -32,7 +32,7 @@ export function SidePanel({ onClose, className, children }: SidePanelProps) {
   return (
     <div
       ref={panelRef}
-      className={className}
+      className={['side-panel-root', className].filter(Boolean).join(' ')}
       onClick={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
       onTouchStart={(e) => e.stopPropagation()}
