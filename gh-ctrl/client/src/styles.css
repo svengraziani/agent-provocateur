@@ -3187,17 +3187,25 @@ select.input {
 
 @media (max-width: 480px) {
   .cnc-sidebar {
-    width: 160px;
+    width: 100vw;
+    left: 0;
   }
 
   .cnc-preview {
-    min-height: 100px;
+    min-height: 0;
+    max-height: 40vh;
+    overflow-y: auto;
+    flex-shrink: 1;
     padding: 8px;
   }
 
   .cnc-preview-img {
     width: 52px;
     height: 52px;
+  }
+
+  .cnc-grid {
+    grid-template-columns: repeat(4, 1fr);
   }
 }
 
@@ -6417,6 +6425,18 @@ select.input {
   .hud-btn {
     min-height: 36px;
     min-width: 36px;
+  }
+
+  /* Build panel: wider and with scrollable preview to prevent footer clipping */
+  .cnc-sidebar {
+    width: 240px;
+  }
+
+  .cnc-preview {
+    min-height: 0;
+    max-height: 35vh;
+    overflow-y: auto;
+    flex-shrink: 1;
   }
 }
 
