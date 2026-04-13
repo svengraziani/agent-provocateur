@@ -1,4 +1,4 @@
-import { memo, useCallback } from 'react'
+import { memo, useCallback, useMemo } from 'react'
 import { useAppStore, selectBattlefieldUsers } from '../../store'
 import type { SoundName } from '../../hooks/useSound'
 import type { DashboardEntry, GameMap, Building, PlacedBadge } from '../../types'
@@ -20,7 +20,8 @@ import type { Repo } from '../../types'
 
 interface BuildingRendererProps {
   building: Building
-  position: { x: number; y: number }
+  positionX: number
+  positionY: number
   isRelocateMode: boolean
   isBeingRelocated: boolean
   isSelected: boolean
@@ -33,7 +34,8 @@ interface BuildingRendererProps {
 
 const BuildingRenderer = memo(function BuildingRenderer({
   building,
-  position,
+  positionX,
+  positionY,
   isRelocateMode,
   isBeingRelocated,
   isSelected,
@@ -43,6 +45,8 @@ const BuildingRenderer = memo(function BuildingRenderer({
   onDeselectBuilding,
   onStartBuildingRelocate,
 }: BuildingRendererProps) {
+  const position = useMemo(() => ({ x: positionX, y: positionY }), [positionX, positionY])
+
   const handleSelect = useCallback(() => {
     play('peep')
     onSelectBuilding(building.id)
@@ -262,7 +266,8 @@ export function BattlefieldMapLayer({
           <BuildingRenderer
             key={`building-${building.id}`}
             building={building}
-            position={pos}
+            positionX={pos.x}
+            positionY={pos.y}
             isRelocateMode={isRelocateMode}
             isBeingRelocated={relocatingBuildingId === building.id}
             isSelected={selectedBuildingId === building.id}
