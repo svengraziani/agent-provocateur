@@ -50,6 +50,13 @@ export function BattlefieldView() {
   // onTap / onLongPress are set via refs inside the hook, so we pass stable callbacks
   const tapCallbackRef = useRef<((x: number, y: number) => void) | undefined>(undefined)
   const longPressCallbackRef = useRef<((x: number, y: number) => void) | undefined>(undefined)
+  // Capture what was touched at touchstart time — more reliable than elementFromPoint on mobile
+  type TapInfo =
+    | { type: 'building'; id: number }
+    | { type: 'base'; repoId: number }
+    | { type: 'branch-silo'; repoId: number }
+    | { type: 'pr'; number: number; fullName: string; owner: string; repoName: string; provider: 'github' | 'gitlab' }
+  const touchedTapRef = useRef<TapInfo | null>(null)
   const camera = useBattlefieldCamera({
     onTap: useCallback((x: number, y: number) => tapCallbackRef.current?.(x, y), []),
     onLongPress: useCallback((x: number, y: number) => longPressCallbackRef.current?.(x, y), []),
@@ -328,8 +335,43 @@ export function BattlefieldView() {
 
   const handleTap = useCallback((clientX: number, clientY: number) => {
     setContextMenu(null)
+    // Camera prevents default on touchstart so onClick never fires from touch.
+    // Use the tap info captured at touchstart time (more reliable than elementFromPoint on mobile).
+    const tap = touchedTapRef.current
+    if (tap && !isRelocateMode) {
+      if (tap.type === 'building' && !isNaN(tap.id)) {
+        play('peep')
+        handleSelectBuilding(tap.id)
+        return
+      }
+      if (tap.type === 'base' && !isNaN(tap.repoId)) {
+        const entry = visibleEntriesRef.current.find(e => e.repo.id === tap.repoId)
+        if (entry) {
+          play('peep')
+          setDetailEntry(prev => prev?.repo.id === tap.repoId ? null : entry)
+          setBranchSiloEntry(null)
+          setSelectedBuildingId(null)
+          return
+        }
+      }
+      if (tap.type === 'branch-silo' && !isNaN(tap.repoId)) {
+        const entry = visibleEntriesRef.current.find(e => e.repo.id === tap.repoId)
+        if (entry) {
+          play('peep')
+          setBranchSiloEntry(prev => prev?.repo.id === tap.repoId ? null : entry)
+          setDetailEntry(null)
+          setSelectedBuildingId(null)
+          return
+        }
+      }
+      if (tap.type === 'pr' && !isNaN(tap.number)) {
+        play('peep')
+        setModalState({ mode: 'pr-detail', fullName: tap.fullName, owner: tap.owner, repoName: tap.repoName, number: tap.number, provider: tap.provider })
+        return
+      }
+    }
     handleClickAtPosition(clientX, clientY)
-  }, [handleClickAtPosition])
+  }, [handleClickAtPosition, handleSelectBuilding, isRelocateMode, play])
 
   const handleLongPress = useCallback((clientX: number, clientY: number) => {
     setContextMenu({ screenX: clientX, screenY: clientY })
@@ -420,9 +462,53 @@ export function BattlefieldView() {
     }
   }, [placementMode])
 
+  // Capture what was tapped at touchstart time so handleTap can use it reliably.
+  // elementFromPoint is unreliable on mobile with CSS transforms; e.target at touchstart is always accurate.
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const onTouchStart = (e: TouchEvent) => {
+      const target = e.target as HTMLElement
+      // Check specialty buildings first
+      const buildingEl = target.closest<HTMLElement>('[data-building-id]')
+      if (buildingEl) {
+        touchedTapRef.current = { type: 'building', id: parseInt(buildingEl.dataset.buildingId ?? '', 10) }
+        return
+      }
+      // Check base nodes, branch silos, and PR buildings (all use data-tap-type)
+      const tapEl = target.closest<HTMLElement>('[data-tap-type]')
+      if (tapEl) {
+        const tapType = tapEl.dataset.tapType
+        if (tapType === 'base') {
+          touchedTapRef.current = { type: 'base', repoId: parseInt(tapEl.dataset.repoId ?? '', 10) }
+        } else if (tapType === 'branch-silo') {
+          touchedTapRef.current = { type: 'branch-silo', repoId: parseInt(tapEl.dataset.repoId ?? '', 10) }
+        } else if (tapType === 'pr') {
+          touchedTapRef.current = {
+            type: 'pr',
+            number: parseInt(tapEl.dataset.prNumber ?? '', 10),
+            fullName: tapEl.dataset.prFullName ?? '',
+            owner: tapEl.dataset.prOwner ?? '',
+            repoName: tapEl.dataset.prRepoName ?? '',
+            provider: (tapEl.dataset.prProvider ?? 'github') as 'github' | 'gitlab',
+          }
+        } else {
+          touchedTapRef.current = null
+        }
+        return
+      }
+      touchedTapRef.current = null
+    }
+    el.addEventListener('touchstart', onTouchStart, { passive: true })
+    return () => el.removeEventListener('touchstart', onTouchStart)
+  }, [])
+
   const visibleEntries = activeMapRepoIds === null
     ? entries
     : entries.filter((e) => activeMapRepoIds.has(e.repo.id))
+  // Keep a ref to visibleEntries so handleTap (useCallback) can read the latest without entries as a dep
+  const visibleEntriesRef = useRef<DashboardEntry[]>(visibleEntries)
+  visibleEntriesRef.current = visibleEntries
 
   const totalConflicts = visibleEntries.reduce((sum, e) => sum + e.data.stats.conflicts, 0)
   const totalRunningActions = visibleEntries.reduce((sum, e) => sum + (e.data.stats.runningActions ?? 0), 0)
