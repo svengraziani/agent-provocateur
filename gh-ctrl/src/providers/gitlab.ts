@@ -50,11 +50,52 @@ export async function glabAuthToken(instanceUrl?: string | null): Promise<string
   return null
 }
 
-/** Low-level GitLab REST API v4 fetch helper — proxies through `glab api` to handle OAuth refresh. */
+/** Low-level GitLab REST API v4 fetch helper.
+ * When a token is provided (on-prem / self-hosted), uses native fetch directly.
+ * Falls back to `glab api` for gitlab.com instances authenticated via glab auth. */
 export async function glabApi(
   path: string,
   options: { instanceUrl?: string | null; token?: string | null; method?: string; body?: unknown } = {}
 ): Promise<{ data: any; error: string | null }> {
+  // ── Token path: direct HTTP fetch (works for on-prem/self-hosted GitLab) ──
+  if (options.token) {
+    const baseUrl = options.instanceUrl
+      ? options.instanceUrl.replace(/\/$/, '')
+      : 'https://gitlab.com'
+    const url = `${baseUrl}/api/v4${path}`
+    const method = options.method ?? 'GET'
+
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: {
+          'PRIVATE-TOKEN': options.token,
+          'Content-Type': 'application/json',
+        },
+        ...(options.body !== undefined && method !== 'GET'
+          ? { body: JSON.stringify(options.body) }
+          : {}),
+      })
+
+      if (!res.ok) {
+        const text = await res.text().catch(() => '')
+        return { data: null, error: `HTTP ${res.status}: ${res.statusText}${text ? ` — ${text}` : ''}` }
+      }
+
+      const text = await res.text()
+      if (!text.trim()) return { data: null, error: null }
+
+      try {
+        return { data: JSON.parse(text), error: null }
+      } catch {
+        return { data: null, error: 'Failed to parse response' }
+      }
+    } catch (err: any) {
+      return { data: null, error: err?.message ?? 'Network error' }
+    }
+  }
+
+  // ── Fallback: glab CLI (gitlab.com with glab auth login) ──
   const hostname = options.instanceUrl
     ? new URL(options.instanceUrl.replace(/\/$/, '')).hostname
     : 'gitlab.com'

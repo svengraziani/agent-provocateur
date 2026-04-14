@@ -43,7 +43,7 @@ RUN apt-get update && \
     echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian bookworm stable" \
       > /etc/apt/sources.list.d/docker.list && \
     apt-get update && \
-    apt-get install -y --no-install-recommends gh docker-ce-cli docker-compose-plugin && \
+    apt-get install -y --no-install-recommends gh docker-ce-cli docker-compose-plugin glab && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -64,7 +64,7 @@ CMD ["bun", "src/index.ts"]
 # ── Stage 3: dev ──────────────────────────────────────────────────────────────
 FROM oven/bun:1.3.9 AS dev
 
-# Install gh CLI + procps (ps, required by concurrently/tree-kill)
+# Install gh CLI + glab CLI + procps (ps, required by concurrently/tree-kill)
 RUN apt-get update && \
     apt-get install -y --no-install-recommends ca-certificates curl gnupg procps && \
     mkdir -p /etc/apt/keyrings && \
@@ -74,7 +74,7 @@ RUN apt-get update && \
     echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
       > /etc/apt/sources.list.d/github-cli.list && \
     apt-get update && \
-    apt-get install -y --no-install-recommends gh && \
+    apt-get install -y --no-install-recommends gh glab && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
