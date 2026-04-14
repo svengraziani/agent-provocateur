@@ -742,32 +742,47 @@ export function Settings() {
                 {!browseLoading && browseSearch && browseTruncated && (
                   <div className="browse-truncated-note">Showing top 100 matches — refine your search for more specific results.</div>
                 )}
-                <div className="browse-repo-list">
-                  {browseRepos.map((repo) => (
-                    <button
-                      key={repo.fullName}
-                      className="browse-repo-item"
-                      onClick={() => handleSelectBrowseRepo(repo.fullName)}
-                      type="button"
-                      disabled={adding}
-                    >
-                      <div className="browse-repo-info">
-                        <span className="browse-repo-name">{repo.fullName}</span>
-                        {repo.isPrivate && <span className="browse-repo-badge">private</span>}
-                        {repo.description && (
-                          <span className="browse-repo-desc">{repo.description}</span>
-                        )}
-                      </div>
-                      <span className="browse-repo-add">+ Add</span>
-                    </button>
-                  ))}
-                  {browseLoading && (
-                    <div className="browse-loading">Loading...</div>
-                  )}
-                  {!browseLoading && browseRepos.length === 0 && !browseError && (
-                    <div className="empty-state"><p>No repositories found.</p></div>
-                  )}
-                </div>
+                {(() => {
+                  const currentProviderType: Repo['provider'] = browseProvider === 'github' ? 'github' : 'gitlab'
+                  const currentInstance = browseProvider === 'github' ? null : (browseProvider === 'gitlab.com' ? null : `https://${browseProvider}`)
+                  const visibleBrowseRepos = browseRepos.filter(
+                    (repo) => !repos.some(
+                      (tracked) => tracked.fullName === repo.fullName && tracked.provider === currentProviderType &&
+                        (currentProviderType !== 'gitlab' || (tracked.instanceUrl ?? null) === currentInstance)
+                    )
+                  )
+                  return (
+                    <div className="browse-repo-list">
+                      {visibleBrowseRepos.map((repo) => (
+                        <button
+                          key={repo.fullName}
+                          className="browse-repo-item"
+                          onClick={() => handleSelectBrowseRepo(repo.fullName)}
+                          type="button"
+                          disabled={adding}
+                        >
+                          <div className="browse-repo-info">
+                            <span className="browse-repo-name">{repo.fullName}</span>
+                            {repo.isPrivate && <span className="browse-repo-badge">private</span>}
+                            {repo.description && (
+                              <span className="browse-repo-desc">{repo.description}</span>
+                            )}
+                          </div>
+                          <span className="browse-repo-add">+ Add</span>
+                        </button>
+                      ))}
+                      {browseLoading && (
+                        <div className="browse-loading">Loading...</div>
+                      )}
+                      {!browseLoading && browseRepos.length === 0 && !browseError && (
+                        <div className="empty-state"><p>No repositories found.</p></div>
+                      )}
+                      {!browseLoading && browseRepos.length > 0 && !browseError && visibleBrowseRepos.length === 0 && (
+                        <div className="empty-state"><p>All repositories are already tracked.</p></div>
+                      )}
+                    </div>
+                  )
+                })()}
                 {!browseLoading && browseHasMore && browseRepos.length > 0 && !browseSearch && (
                   <div className="browse-load-more">
                     <button className="btn btn-ghost" onClick={handleLoadMore} type="button">
