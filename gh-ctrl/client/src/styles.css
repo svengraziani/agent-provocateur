@@ -6855,3 +6855,92 @@ select.input {
   text-align: center;
 }
 
+
+/* ── Command Palette ──────────────────────────────────────────────────────── */
+.command-palette-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 15vh;
+  z-index: 1001;
+  backdrop-filter: blur(2px);
+}
+
+.command-palette-panel {
+  background: var(--bg-2);
+  border: 1px solid var(--border-2);
+  border-radius: 8px;
+  width: 560px;
+  max-width: calc(100vw - 40px);
+  max-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.7);
+}
+
+.command-palette-input-row {
+  display: flex;
+  align-items: center;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-1);
+  gap: 8px;
+}
+
+.command-palette-prompt {
+  color: var(--crt-green);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  opacity: 0.7;
+}
+
+.command-palette-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-1);
+  font-family: var(--font-mono);
+  font-size: 14px;
+}
+
+.command-palette-list {
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+  overflow-y: auto;
+}
+
+.command-palette-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+.command-palette-item.selected,
+.command-palette-item:hover {
+  background: var(--bg-3);
+  color: var(--text-1);
+}
+
+.command-palette-category {
+  font-size: 11px;
+  opacity: 0.6;
+  min-width: 70px;
+}
+
+.command-palette-empty {
+  padding: 24px;
+  text-align: center;
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
