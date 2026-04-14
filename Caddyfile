@@ -24,7 +24,7 @@
 
     # ── WebSocket for the shell route ─────────────────────────────────────────
     @websocket {
-        path /api/shell*
+        path /api/buildings/*/shell/ws*
         header Connection *Upgrade*
         header Upgrade websocket
     }
