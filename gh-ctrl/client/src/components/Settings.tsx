@@ -746,8 +746,10 @@ export function Settings() {
                   {browseRepos
                     .filter((repo) => {
                       const currentProviderType = browseProvider === 'github' ? 'github' : 'gitlab'
+                      const currentInstance = browseProvider === 'github' ? null : (browseProvider === 'gitlab.com' ? null : `https://${browseProvider}`)
                       return !repos.some(
-                        (tracked) => tracked.fullName === repo.fullName && tracked.provider === currentProviderType
+                        (tracked) => tracked.fullName === repo.fullName && tracked.provider === currentProviderType &&
+                          (currentProviderType !== 'gitlab' || (tracked.instanceUrl ?? null) === currentInstance)
                       )
                     })
                     .map((repo) => (
@@ -776,8 +778,10 @@ export function Settings() {
                   )}
                   {!browseLoading && browseRepos.length > 0 && !browseError && (() => {
                     const currentProviderType = browseProvider === 'github' ? 'github' : 'gitlab'
+                    const currentInstance = browseProvider === 'github' ? null : (browseProvider === 'gitlab.com' ? null : `https://${browseProvider}`)
                     const visibleCount = browseRepos.filter(
-                      (repo) => !repos.some((tracked) => tracked.fullName === repo.fullName && tracked.provider === currentProviderType)
+                      (repo) => !repos.some((tracked) => tracked.fullName === repo.fullName && tracked.provider === currentProviderType &&
+                        (currentProviderType !== 'gitlab' || (tracked.instanceUrl ?? null) === currentInstance))
                     ).length
                     return visibleCount === 0 ? (
                       <div className="empty-state"><p>All repositories are already tracked.</p></div>
