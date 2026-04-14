@@ -5,6 +5,88 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0](https://github.com/svengraziani/vibe-and-conquer/compare/v1.2.0...v1.3.0) (2026-04-14)
+
+
+### ### Added
+
+* **#340:** version notification banner + Docker-native update script ([0d92bcd](https://github.com/svengraziani/vibe-and-conquer/commit/0d92bcdaf351be61b953f902280866b17e9dffe5))
+* add animated SVG connection lines for Source Relay building ([8080af5](https://github.com/svengraziani/vibe-and-conquer/commit/8080af5b0ddb2e549a679dac8ce0ead18e59f03d))
+* add Authelia, Authentik, and generic OIDC auth providers ([0e4efc6](https://github.com/svengraziani/vibe-and-conquer/commit/0e4efc6e9419abf5ec844906d549b04d51c7710b))
+* add database export/import (backup & restore) ([c70e8a8](https://github.com/svengraziani/vibe-and-conquer/commit/c70e8a81ec15a0cd3261a2cad6dbdb0935f5223f)), closes [#343](https://github.com/svengraziani/vibe-and-conquer/issues/343)
+* add further buildings ([22e5e57](https://github.com/svengraziani/vibe-and-conquer/commit/22e5e57c7230322c338d5d66679dd03ee19677fb))
+* add further buildings ([c6a4753](https://github.com/svengraziani/vibe-and-conquer/commit/c6a4753ee77f965106acdef0ca5a48004ec83abb))
+* add Source Relay building for AI context bundles ([f31c46b](https://github.com/svengraziani/vibe-and-conquer/commit/f31c46bbdceb1bef7746db2a97d454b242d1b39a))
+* allow GitHub and GitLab PAT configuration in application settings ([8d2f581](https://github.com/svengraziani/vibe-and-conquer/commit/8d2f58138b4c60769006c7e6db6603f4ead15c7a))
+* allow GitHub and GitLab PAT configuration in application settings ([cd0c01a](https://github.com/svengraziani/vibe-and-conquer/commit/cd0c01a2eb64e89035cf914d46c3778165e0466e))
+* **auth:** add Authelia, Authentik, and generic OIDC provider support ([4d31953](https://github.com/svengraziani/vibe-and-conquer/commit/4d31953f256c0d825607e15e7f6dd7871e7657e5)), closes [#337](https://github.com/svengraziani/vibe-and-conquer/issues/337)
+* Database Export / Import (Backup & Restore) ([334a956](https://github.com/svengraziani/vibe-and-conquer/commit/334a9564fb0d067d6a137215903baaf26199b63a))
+* finish Terminal UX/UI ([2eeebd0](https://github.com/svengraziani/vibe-and-conquer/commit/2eeebd0049811d2016593b68fc8042bfe6be05a1))
+* finish Terminal UX/UI — Set as Default, font controls, clear buffer, tab dropdown ([e343640](https://github.com/svengraziani/vibe-and-conquer/commit/e343640e246c4d3302c30069ce2da1810b1dcebd))
+* group buildings ([d77f84a](https://github.com/svengraziani/vibe-and-conquer/commit/d77f84a45cc4c7734d54d0f28935553523b1fc49))
+* group buildings ([d9c63dd](https://github.com/svengraziani/vibe-and-conquer/commit/d9c63dd7ebe09c8cc0fb693451fe5c9b0ac24c9c))
+* hide already-tracked repos from Add Repository browse list ([6575087](https://github.com/svengraziani/vibe-and-conquer/commit/65750879291000c20d73a9f27b660d15127cbb5b)), closes [#384](https://github.com/svengraziani/vibe-and-conquer/issues/384)
+* Hide tracked repositories from Add Repository list ([f89bb35](https://github.com/svengraziani/vibe-and-conquer/commit/f89bb35508af2672b85bb19aa961ef110230b7ef))
+* replace individual HUD buttons with TOOLS and PANELS dropdowns ([831cca9](https://github.com/svengraziani/vibe-and-conquer/commit/831cca93c3fcd77414d31f4b40acef6a14954184))
+* **settings:** introduce tabbed layout for repositories screen ([113cb3d](https://github.com/svengraziani/vibe-and-conquer/commit/113cb3d1bb7cbec8e14882e8674077f81dfab26f))
+
+
+### ### Fixed
+
+* [Mobile] Build panel PLACE button no longer clipped on mobile ([5407094](https://github.com/svengraziani/vibe-and-conquer/commit/54070940c5ac0d81304d4c663fe9f9b3be503055))
+* **#344:** address CodeRabbit review findings ([1c41135](https://github.com/svengraziani/vibe-and-conquer/commit/1c411356a34406d117599845ecba23b41dc899b4))
+* add missing settings table to test-db fixture ([6e956d0](https://github.com/svengraziani/vibe-and-conquer/commit/6e956d0004b0bd931cf70dc1424c26ad39d825e7))
+* address CodeRabbit security and correctness findings in backup routes ([30afd5e](https://github.com/svengraziani/vibe-and-conquer/commit/30afd5e1bfaee82fa0593c965742cd3bbf615d20))
+* allow Keyboard Shortcuts dialog to be closed on mobile ([a8e3bce](https://github.com/svengraziani/vibe-and-conquer/commit/a8e3bcee9b850f4a80ae15c70325634952e1e7f9)), closes [#375](https://github.com/svengraziani/vibe-and-conquer/issues/375)
+* **auth:** harden auth config per CodeRabbit security review ([559e7e7](https://github.com/svengraziani/vibe-and-conquer/commit/559e7e7b9b1130edae54ca8e37ebf67b27aec8d9))
+* **auth:** normalize Keycloak URLs and require OIDC_AUDIENCE for generic OIDC ([0143b49](https://github.com/svengraziani/vibe-and-conquer/commit/0143b497e24f6aaa3f2f795ba78bc6f7fa811648))
+* backpressure gh ([505ea3b](https://github.com/svengraziani/vibe-and-conquer/commit/505ea3b98be90d7804f88ac2c7aac6c98b5dd551))
+* backpressure gh ([614201b](https://github.com/svengraziani/vibe-and-conquer/commit/614201be81b4c05ed79bbb2f800540ca4dd8d528))
+* Battlefield Tools & Panels on click show nothing ([34d6daa](https://github.com/svengraziani/vibe-and-conquer/commit/34d6daafb1d24a03e0edee7576231e3cd8588a55))
+* clear orientation timeout on cleanup in BattlefieldView ([29cb25b](https://github.com/svengraziani/vibe-and-conquer/commit/29cb25bee7c2ade077463c463684038d946cd78e))
+* close side panels when rotating to mobile landscape ([075f136](https://github.com/svengraziani/vibe-and-conquer/commit/075f13639145394fd4fe5c849f0ef2bd5a4ee0cf)), closes [#336](https://github.com/svengraziani/vibe-and-conquer/issues/336)
+* close TOOLS/PANELS dropdowns after clicking items so panels are visible ([f5be284](https://github.com/svengraziani/vibe-and-conquer/commit/f5be2846778aa5b681802a65c3d363a7e9de982c))
+* gitlab connector ([5dfba67](https://github.com/svengraziani/vibe-and-conquer/commit/5dfba67724375811a07082de36f250d51bf5fb1d))
+* gitlab connector ([5ef06af](https://github.com/svengraziani/vibe-and-conquer/commit/5ef06af371b3fb3539f41f5256bf0956c35b6564))
+* hot fixes on claw, copilot and buildings ([e4664a3](https://github.com/svengraziani/vibe-and-conquer/commit/e4664a3dfb9c80c04b6a2b2a0f48a9875da47131))
+* hot fixes on claw, copilot and buildings ([ca8a737](https://github.com/svengraziani/vibe-and-conquer/commit/ca8a7374dbdafafd7b63a8fd36c752ffb04890f6))
+* improve mobile touch accessibility on battlefield ([8b23ac0](https://github.com/svengraziani/vibe-and-conquer/commit/8b23ac0e6f7c99abfe9850f2f6154e2d4a8be8bf)), closes [#348](https://github.com/svengraziani/vibe-and-conquer/issues/348)
+* include instanceUrl in tracked-repo filter to distinguish GitLab instances ([d7b6afd](https://github.com/svengraziani/vibe-and-conquer/commit/d7b6afde5c9d49fe5c2c47202809ee88a9c3f5dc))
+* Keyboard Shortcuts dialog cannot be closed on mobile ([#375](https://github.com/svengraziani/vibe-and-conquer/issues/375)) ([8ea1222](https://github.com/svengraziani/vibe-and-conquer/commit/8ea1222385a27e2cea4af58b6a047a9528a2c763))
+* made aud claim optional for clerk support ([cb163b6](https://github.com/svengraziani/vibe-and-conquer/commit/cb163b685871762f01608784282f9089505cc9d4))
+* made aud claim optional for clerk support ([09eddad](https://github.com/svengraziani/vibe-and-conquer/commit/09eddadb27519571d9c461dbbdd404d5d850dfaa))
+* mobile improvements ([0a9d933](https://github.com/svengraziani/vibe-and-conquer/commit/0a9d933571b975f834b8201016ed0dd90f0991c0))
+* mobile improvements ([f8002e2](https://github.com/svengraziani/vibe-and-conquer/commit/f8002e27a1d86a3a4ee8f4c447141570d4a0837f))
+* **mobile:** add missing panels to touch exclusion list ([8072764](https://github.com/svengraziani/vibe-and-conquer/commit/8072764165b9ec59137205a5f0d1670f08a98fd1))
+* **mobile:** add missing panels to touch exclusion list in useBattlefieldCamera ([cd466a8](https://github.com/svengraziani/vibe-and-conquer/commit/cd466a82ebdf3e0b482151f53be21fb573ed5f0c)), closes [#373](https://github.com/svengraziani/vibe-and-conquer/issues/373)
+* **mobile:** prevent PLACE button from being clipped in Build panel ([a724ba5](https://github.com/svengraziani/vibe-and-conquer/commit/a724ba5456b45c50ea44d42f3774a75cf5c153d4)), closes [#372](https://github.com/svengraziani/vibe-and-conquer/issues/372)
+* **mobile:** resolve merge conflicts with main - preserve dt-panel and base-detail-side-panel additions ([89ec935](https://github.com/svengraziani/vibe-and-conquer/commit/89ec93505017f49c3951b7948a000555d3232b56))
+* **mobile:** restore close-button tap for all SidePanel-based panels ([942acb4](https://github.com/svengraziani/vibe-and-conquer/commit/942acb4658a2f84628effc992211a319de55f728))
+* **mobile:** restore close-button tap for all SidePanel-based panels ([4a715f5](https://github.com/svengraziani/vibe-and-conquer/commit/4a715f5f2adc33b1ab57f52dddd789f23eb1ab45)), closes [#374](https://github.com/svengraziani/vibe-and-conquer/issues/374)
+* pass primitive positionX/positionY to BuildingRenderer to stabilize memo ([0de53f7](https://github.com/svengraziani/vibe-and-conquer/commit/0de53f757ed950f02b262f553f45c26afe4f4314))
+* pin bun version ([de42012](https://github.com/svengraziani/vibe-and-conquer/commit/de42012545b4abe6d04d0b1ba3df8e44e3d03840))
+* pin bun version ([fe09952](https://github.com/svengraziani/vibe-and-conquer/commit/fe0995288e2da6fe33144a360888b5c318708ae2))
+* prevent snailbox mail reload on battlefield pan/zoom ([10318e9](https://github.com/svengraziani/vibe-and-conquer/commit/10318e985ab9eb0bb12d6cd8c224d21c4a61ac1b))
+* prevent snailbox mail reload on every battlefield pan/zoom ([e2f4f0e](https://github.com/svengraziani/vibe-and-conquer/commit/e2f4f0e5613661bea7f3afe50d0ad7ff149595d2))
+* resolve 15 frontend bugs and inconsistencies (issue [#349](https://github.com/svengraziani/vibe-and-conquer/issues/349)) ([9128ae0](https://github.com/svengraziani/vibe-and-conquer/commit/9128ae0ac2275310da9b2c733b062ea9d9e6a1f2))
+* resolve all 15 frontend bugs and inconsistencies from issue [#349](https://github.com/svengraziani/vibe-and-conquer/issues/349) ([a5d48fd](https://github.com/svengraziani/vibe-and-conquer/commit/a5d48fded16a5f49864ebf8f5fff5a973b9062e2))
+* show logout screen after user logs out ([015205f](https://github.com/svengraziani/vibe-and-conquer/commit/015205fe390750ec7b1a5750dabe72395671c51b))
+* stabilize building callbacks via memoized BuildingRenderer component ([4945072](https://github.com/svengraziani/vibe-and-conquer/commit/494507245914e5f5d503b19ff10889d38a8a0393))
+* **tests:** add missing settings table to test-db helper ([db1e515](https://github.com/svengraziani/vibe-and-conquer/commit/db1e515a76a6518dc7386a9733f0641471e46882))
+* **tests:** add settings table to test-db createTestDb() ([29ae4d8](https://github.com/svengraziani/vibe-and-conquer/commit/29ae4d89f5f9cda79b9f9c925759a5cf1d3c7bf6))
+* tool dropdowns ([dcab73c](https://github.com/svengraziani/vibe-and-conquer/commit/dcab73c1d8bdf7117095c994e49a10c896df550f))
+* tool dropdowns ([389a8d4](https://github.com/svengraziani/vibe-and-conquer/commit/389a8d4f45ebc37bcb1d4667f768801b7983985c))
+
+
+### ### Changed
+
+* deduplicate browse repo filter predicate into single visibleBrowseRepos array ([e0439ac](https://github.com/svengraziani/vibe-and-conquer/commit/e0439acbc256ab7631b015c771fcd2891995c089))
+
+
+### ### Documentation
+
+* update BaseDialog and SidePanel comments to mention touch events ([1f0144c](https://github.com/svengraziani/vibe-and-conquer/commit/1f0144c7cbe3c0553da11a704b80a8a74b99a3b3))
+
 ## [1.2.0](https://github.com/svengraziani/vibe-and-conquer/compare/v1.1.0...v1.2.0) (2026-04-03)
 
 
