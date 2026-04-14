@@ -376,8 +376,10 @@ app.get(
         }
 
         conn.on('ready', () => {
+          console.log(`[shell] SSH ready for building ${buildingId} conn ${connectionId}, opening PTY`)
           conn.shell({ term: 'xterm-256color', cols: 80, rows: 24 }, (err: Error | null, stream: any) => {
             if (err) {
+              console.error(`[shell] PTY open error for building ${buildingId}:`, err.message)
               ws.send(JSON.stringify({ type: 'status', state: 'error', error: err.message }))
               ws.close()
               return
@@ -407,6 +409,7 @@ app.get(
         })
 
         conn.on('error', (err: Error) => {
+          console.error(`[shell] SSH error for building ${buildingId} conn ${connectionId}:`, err.message)
           try {
             ws.send(JSON.stringify({ type: 'status', state: 'error', error: err.message }))
             ws.close()

@@ -63,7 +63,7 @@ app.route('/api/badges', badgesRouter)
 app.route('/api/timers', timersRouter)
 app.route('/api/contacts', contactsRouter)
 app.route('/api/settings', settingsRouter)
-app.route('/api/shell', shellRouter)
+app.route('/api/buildings', shellRouter)
 app.route('/api/source-relay', sourceRelayRouter)
 
 // Public source-relay fetch endpoint — no auth required

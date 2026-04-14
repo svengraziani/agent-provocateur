@@ -231,7 +231,7 @@ export interface ClawComConfig {
   enablePermissionRelay?: boolean
   /** Copilot: GitHub OAuth token (from `gh auth token` — PATs not supported) */
   githubToken?: string
-  /** Copilot: model name (default: gpt-4o) */
+  /** Copilot: model name (default: gpt-4.1) */
   copilotModel?: string
 }
 

@@ -191,7 +191,7 @@ export function RemoteShellTerminalTab({
     term.loadAddon(linksAddon)
     term.loadAddon(searchAddon)
     term.open(containerRef.current)
-    fitAddon.fit()
+    requestAnimationFrame(() => { try { fitAddon.fit() } catch { /* renderer not ready */ } })
 
     termRef.current     = term
     fitAddonRef.current  = fitAddon
@@ -269,6 +269,10 @@ export function RemoteShellTerminalTab({
     }
 
     return () => {
+      ws.onopen    = null
+      ws.onmessage = null
+      ws.onerror   = null
+      ws.onclose   = null
       ws.close()
       term.dispose()
       wsRef.current  = null
@@ -298,7 +302,7 @@ export function RemoteShellTerminalTab({
   useEffect(() => {
     if (isActive) {
       termRef.current?.focus()
-      fitAddonRef.current?.fit()
+      requestAnimationFrame(() => { try { fitAddonRef.current?.fit() } catch { /* ignore */ } })
     }
   }, [isActive])
 

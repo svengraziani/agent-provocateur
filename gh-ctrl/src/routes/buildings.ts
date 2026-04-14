@@ -210,7 +210,7 @@ app.post('/:id/messages', async (c) => {
             'openai-intent': 'conversation-panel',
           },
           body: JSON.stringify({
-            model: config.copilotModel || 'gpt-4o',
+            model: config.copilotModel || 'gpt-4.1',
             messages,
             stream: false,
           }),

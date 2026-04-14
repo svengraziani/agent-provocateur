@@ -32,8 +32,10 @@ export function RemoteShellTerminalDialog({
   })()
 
   useEffect(() => {
+    let cancelled = false
     api.listShellConnections(building.id)
       .then((conns) => {
+        if (cancelled) return
         setConnections(conns)
         // Open default (or first) connection as the initial tab
         const defaultConn = conns.find((c) => c.id === config.defaultConnectionId) ?? conns[0]
@@ -43,8 +45,9 @@ export function RemoteShellTerminalDialog({
           setActiveTabId(firstTab.id)
         }
       })
-      .catch(() => addToast('Failed to load connections', 'error'))
-      .finally(() => setLoading(false))
+      .catch(() => { if (!cancelled) addToast('Failed to load connections', 'error') })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [building.id])
 
