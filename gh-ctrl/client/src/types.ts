@@ -436,13 +436,13 @@ export interface SshSessionLog {
 
 export type ShellStatus = 'idle' | 'connecting' | 'connected' | 'disconnected' | 'error'
 
-export interface SourceRelayConfig {
+interface SourceRelayConfig {
   configured: boolean
 }
 
 export type SourceRelayConnectorType = 'git' | 'private_git' | 'website'
 
-export interface SourceRelayConnectorConfig {
+interface SourceRelayConnectorConfig {
   url: string
   branch?: string
   token?: string | true // true = token exists but is redacted by API

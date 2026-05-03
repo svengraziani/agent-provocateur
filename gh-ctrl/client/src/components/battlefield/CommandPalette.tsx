@@ -8,7 +8,7 @@ import type { Position } from './battlefieldConstants'
 
 export type CommandCategory = 'BASE' | 'BUILDING' | 'ACTION' | 'NAV' | 'CREATE'
 
-export interface PaletteCommand {
+interface PaletteCommand {
   id: string
   category: CommandCategory
   label: string

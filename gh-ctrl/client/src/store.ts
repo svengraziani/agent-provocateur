@@ -39,7 +39,7 @@ export function selectBattlefieldUsers(entries: DashboardEntry[]): BattlefieldUs
 
 type ToastType = 'success' | 'error' | 'info'
 
-export interface Toast {
+interface Toast {
   id: number
   message: string
   type: ToastType
