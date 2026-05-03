@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { db } from '../db'
 import { settings } from '../db/schema'
 import { eq } from 'drizzle-orm'
+import { invalidateGithubTokenCache } from './github'
 
 const router = new Hono()
 
@@ -31,6 +32,7 @@ router.put('/:key', async (c) => {
   await db.insert(settings)
     .values({ key, value: body.value, updatedAt: now })
     .onConflictDoUpdate({ target: settings.key, set: { value: body.value, updatedAt: now } })
+  if (key === 'GITHUB_TOKEN') invalidateGithubTokenCache()
   return c.json({ key, value: body.value })
 })
 
@@ -38,6 +40,7 @@ router.put('/:key', async (c) => {
 router.delete('/:key', async (c) => {
   const key = c.req.param('key')
   await db.delete(settings).where(eq(settings.key, key))
+  if (key === 'GITHUB_TOKEN') invalidateGithubTokenCache()
   return c.json({ ok: true })
 })
 

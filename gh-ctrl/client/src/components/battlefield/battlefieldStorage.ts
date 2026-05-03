@@ -3,7 +3,7 @@ import type { Position } from './battlefieldConstants'
 import { COLS, ISO_MAP_CENTER_X, ISO_MAP_OFFSET_Y, ISO_HALF_W, ISO_HALF_H } from './battlefieldConstants'
 import { api } from '../../api'
 
-export function loadActiveMapId(): number | null {
+function loadActiveMapId(): number | null {
   try {
     const stored = localStorage.getItem('battlefield-active-map-id')
     return stored ? parseInt(stored, 10) : null

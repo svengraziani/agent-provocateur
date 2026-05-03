@@ -131,6 +131,7 @@ interface CompareData {
   behind: number
 }
 
+// fallow-ignore-next-line unused-export
 export function BranchBuilding({ branch, position, repoFullName, defaultBranch }: BranchBuildingProps) {
   const state = getBranchState(branch.committedDate)
   const daysSince = getDaysSince(branch.committedDate)

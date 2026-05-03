@@ -9,13 +9,13 @@ export const ISO_HALF_H = 180
 export const COLS = 4
 export const ISO_MAP_CENTER_X = 600
 export const ISO_MAP_OFFSET_Y = 120
-export const MAP_PADDING = 100
+const MAP_PADDING = 100
 export const ZOOM_MIN = 0.05
 export const ZOOM_MAX = 2.5
 export const ZOOM_FACTOR = 1.15
 
 // Seeded PRNG (LCG) for stable terrain layout across renders
-export function seededRng(seed: number) {
+function seededRng(seed: number) {
   let s = seed >>> 0
   return () => {
     s = (Math.imul(s, 1664525) + 1013904223) >>> 0
@@ -45,7 +45,7 @@ export const MAP_TILE_W = 64
 export const MAP_TILE_H = 32
 export const MAP_TILE_DEPTH = 14
 
-export function hexToRgb(hex: string): [number, number, number] {
+function hexToRgb(hex: string): [number, number, number] {
   const c = hex.replace('#', '')
   if (c.length !== 6) return [80, 80, 80]
   return [parseInt(c.slice(0, 2), 16), parseInt(c.slice(2, 4), 16), parseInt(c.slice(4, 6), 16)]

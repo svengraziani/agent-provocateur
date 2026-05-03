@@ -7,7 +7,8 @@ import { createCipheriv, createDecipheriv, randomBytes, createHash } from 'node:
 import { Client } from 'ssh2'
 import type { ConnectConfig } from 'ssh2'
 
-export const { upgradeWebSocket, websocket: shellWebsocket } = createBunWebSocket()
+const { upgradeWebSocket, websocket: shellWebsocket } = createBunWebSocket()
+export { shellWebsocket }
 
 const app = new Hono()
 
