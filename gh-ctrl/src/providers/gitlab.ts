@@ -223,7 +223,7 @@ function normalizePipelineStatus(status: string): NormalizedPipeline['status'] {
   return map[status] ?? 'unknown'
 }
 
-export function normalizePipeline(gl: any, projectUrl: string): NormalizedPipeline {
+function normalizePipeline(gl: any, projectUrl: string): NormalizedPipeline {
   return {
     id: gl.id,
     name: gl.name ?? `Pipeline #${gl.id}`,

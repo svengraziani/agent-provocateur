@@ -76,6 +76,7 @@ export function RefreshIcon({ size = 14, className, title }: IconProps) {
   )
 }
 
+// fallow-ignore-next-line unused-export
 export function BranchIcon({ size = 12, className, title }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" className={className} aria-hidden={!title} role={title ? 'img' : undefined}>
