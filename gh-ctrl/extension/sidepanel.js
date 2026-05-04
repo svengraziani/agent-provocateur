@@ -1,3 +1,4 @@
+// fallow-ignore-file unused-file
 const frame = document.getElementById("app-frame");
 const offline = document.getElementById("offline");
 
