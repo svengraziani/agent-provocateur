@@ -1,4 +1,4 @@
-import type { Repo, DashboardEntry, RepoData, GHLabel, BranchesData, IssueDetail, PRDetail, GameMap, RepoMeta, FeedData, SetupStatus, Building, ClawComMessage, Badge, PlacedBadge, HealthcheckResult, DeadlineTimer, ChannelEvent, MailMessage, ResearchJob, Contact, SshConnection, SshSessionLog, SourceRelayConnector, SourceRelayFetcher, SourceRelayGitFile } from './types'
+import type { Repo, DashboardEntry, RepoData, GHLabel, BranchesData, IssueDetail, PRDetail, GameMap, RepoMeta, FeedData, SetupStatus, Building, ClawComMessage, Badge, PlacedBadge, HealthcheckResult, DeadlineTimer, ChannelEvent, MailMessage, ResearchJob, Contact, SshConnection, SshSessionLog, TmuxWindow, SourceRelayConnector, SourceRelayFetcher, SourceRelayGitFile } from './types'
 
 export function getServerUrl(): string {
   return localStorage.getItem('serverUrl')?.replace(/\/$/, '') ?? ''
@@ -687,6 +687,11 @@ export const api = {
   getShellTmuxSessions: (buildingId: number, connectionId: number) =>
     request<{ ok: boolean; sessions: string[]; error?: string }>(
       `/buildings/${buildingId}/shell/connections/${connectionId}/tmux-sessions`
+    ),
+
+  getShellTmuxWindows: (buildingId: number, connectionId: number, session?: string) =>
+    request<{ ok: boolean; windows: TmuxWindow[]; error?: string }>(
+      `/buildings/${buildingId}/shell/connections/${connectionId}/tmux-windows${session ? `?session=${encodeURIComponent(session)}` : ''}`
     ),
 
   // ── Source Relay ──────────────────────────────────────────────────────────

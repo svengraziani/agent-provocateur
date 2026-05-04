@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { getShellWsUrl } from '../api'
-import type { SshConnection, ShellStatus } from '../types'
+import { getShellWsUrl, api } from '../api'
+import type { SshConnection, ShellStatus, TmuxWindow } from '../types'
 // @ts-ignore — installed via npm, types included
 import { Terminal } from '@xterm/xterm'
 // @ts-ignore
@@ -119,6 +119,12 @@ export function RemoteShellTerminalTab({
   const [searchQuery, setSearchQuery]     = useState('')
   const searchInputRef = useRef<HTMLInputElement>(null)
 
+  // Tmux windows panel
+  const [showWindows, setShowWindows]     = useState(false)
+  const [tmuxWindows, setTmuxWindows]     = useState<TmuxWindow[]>([])
+  const [windowsLoading, setWindowsLoading] = useState(false)
+  const windowsPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
   // Push current terminal dimensions to the server. Call after the WS reaches OPEN
   // — initial fit() runs while the WS is still CONNECTING, so the early resize is lost.
   const sendCurrentSize = useCallback((ws: WebSocket) => {
@@ -130,6 +136,28 @@ export function RemoteShellTerminalTab({
       }
     } catch { /* ignore */ }
   }, [])
+
+  // ── Tmux window list ───────────────────────────────────────────────────────
+  const fetchTmuxWindows = useCallback(async () => {
+    if (!connection.tmuxSession) return
+    setWindowsLoading(true)
+    try {
+      const res = await api.getShellTmuxWindows(buildingId, connection.id, connection.tmuxSession)
+      if (res.ok) setTmuxWindows(res.windows)
+    } catch { /* ignore */ } finally {
+      setWindowsLoading(false)
+    }
+  }, [buildingId, connection.id, connection.tmuxSession])
+
+  // Poll for window list while panel is open and terminal is connected
+  useEffect(() => {
+    if (!showWindows || !connection.tmuxSession) return
+    fetchTmuxWindows()
+    windowsPollRef.current = setInterval(fetchTmuxWindows, 5_000)
+    return () => {
+      if (windowsPollRef.current) clearInterval(windowsPollRef.current)
+    }
+  }, [showWindows, connection.tmuxSession, fetchTmuxWindows])
 
   // ── Connect / Reconnect ────────────────────────────────────────────────────
   const connectWS = useCallback(() => {
@@ -383,6 +411,12 @@ export function RemoteShellTerminalTab({
     }
   }
 
+  function jumpToWindow(index: number) {
+    // Ctrl+B + window-index number (supports 0–9 via \x020...\x029)
+    sendTmux(`\x02${index}`)
+    termRef.current?.focus()
+  }
+
   const statusColor = {
     idle:         '#888',
     connecting:   '#ffaa00',
@@ -398,27 +432,83 @@ export function RemoteShellTerminalTab({
 
       {/* Tmux quick-action toolbar — only shown when tmuxSession is configured */}
       {connection.tmuxSession && (
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 4,
-          padding: '2px 10px', background: '#0a0a1a', borderBottom: '1px solid #1a1a2e',
-          flexShrink: 0,
-        }}>
-          <span style={{ fontSize: 9, color: '#4488ff', marginRight: 4, fontWeight: 700 }}>
-            TMUX:{connection.tmuxSession}
-          </span>
-          {TMUX_ACTIONS.map((action) => (
+        <>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 4,
+            padding: '2px 10px', background: '#0a0a1a', borderBottom: showWindows ? 'none' : '1px solid #1a1a2e',
+            flexShrink: 0,
+          }}>
+            <span style={{ fontSize: 9, color: '#4488ff', marginRight: 4, fontWeight: 700 }}>
+              TMUX:{connection.tmuxSession}
+            </span>
+            {TMUX_ACTIONS.map((action) => (
+              <button
+                key={action.seq}
+                className="hud-btn"
+                style={{ fontSize: 9, padding: '1px 6px', color: '#88aaff' }}
+                title={action.title}
+                disabled={!isActive || status !== 'connected'}
+                onClick={() => sendTmux(action.seq)}
+              >
+                {action.label}
+              </button>
+            ))}
+            {/* Window list toggle */}
             <button
-              key={action.seq}
               className="hud-btn"
-              style={{ fontSize: 9, padding: '1px 6px', color: '#88aaff' }}
-              title={action.title}
-              disabled={!isActive || status !== 'connected'}
-              onClick={() => sendTmux(action.seq)}
+              style={{
+                fontSize: 9, padding: '1px 6px', marginLeft: 4,
+                color: showWindows ? '#00ff88' : '#88aaff',
+                borderColor: showWindows ? '#00ff88' : undefined,
+              }}
+              title="Show tmux windows"
+              onClick={() => setShowWindows((v) => !v)}
             >
-              {action.label}
+              WINS {showWindows ? '▲' : '▼'}
             </button>
-          ))}
-        </div>
+          </div>
+
+          {/* Tmux window list panel */}
+          {showWindows && (
+            <div style={{
+              display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 4,
+              padding: '4px 10px', background: '#060616', borderBottom: '1px solid #1a1a2e',
+              flexShrink: 0,
+            }}>
+              {windowsLoading && tmuxWindows.length === 0 ? (
+                <span style={{ fontSize: 9, color: '#4488ff' }}>Loading…</span>
+              ) : tmuxWindows.length === 0 ? (
+                <span style={{ fontSize: 9, color: '#444' }}>No windows found</span>
+              ) : (
+                tmuxWindows.map((win) => (
+                  <button
+                    key={win.index}
+                    className="hud-btn"
+                    title={`Jump to window ${win.index}: ${win.name} (Ctrl+B ${win.index})`}
+                    disabled={!isActive || status !== 'connected'}
+                    onClick={() => jumpToWindow(win.index)}
+                    style={{
+                      fontSize: 9, padding: '1px 7px',
+                      color: win.active ? '#00ff88' : '#88aaff',
+                      borderColor: win.active ? '#00ff88' : undefined,
+                      fontWeight: win.active ? 700 : undefined,
+                    }}
+                  >
+                    {win.index}:{win.name}{win.active ? ' ●' : ''}
+                  </button>
+                ))
+              )}
+              <button
+                className="hud-btn"
+                style={{ fontSize: 9, padding: '1px 5px', color: '#444', marginLeft: 'auto' }}
+                title="Refresh window list"
+                onClick={fetchTmuxWindows}
+              >
+                ⟳
+              </button>
+            </div>
+          )}
+        </>
       )}
 
       {/* Status bar */}
