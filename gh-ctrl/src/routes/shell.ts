@@ -48,6 +48,9 @@ function maskProfile(p: typeof sshConnections.$inferSelect) {
   return { ...rest, hasCredentials: !!_ }
 }
 
+// Building types that own SSH connection profiles (RemoteShell + ClawCom share this UI)
+const SHELL_BUILDING_TYPES = new Set(['remoteShell', 'clawcom'])
+
 // ── Connection profile CRUD ──────────────────────────────────────────────────
 
 // GET /:id/shell/connections — list connection profiles for building
@@ -55,7 +58,7 @@ app.get('/:id/shell/connections', async (c) => {
   const buildingId = Number(c.req.param('id'))
   const building = await db.select().from(buildings).where(eq(buildings.id, buildingId)).limit(1)
   if (building.length === 0) return c.json({ error: 'Building not found' }, 404)
-  if (building[0].type !== 'remoteShell') return c.json({ error: 'Not a remoteShell building' }, 400)
+  if (!SHELL_BUILDING_TYPES.has(building[0].type)) return c.json({ error: 'Building does not support shell connections' }, 400)
 
   const profiles = await db.select().from(sshConnections)
     .where(eq(sshConnections.buildingId, buildingId))
@@ -68,7 +71,7 @@ app.post('/:id/shell/connections', async (c) => {
   const buildingId = Number(c.req.param('id'))
   const building = await db.select().from(buildings).where(eq(buildings.id, buildingId)).limit(1)
   if (building.length === 0) return c.json({ error: 'Building not found' }, 404)
-  if (building[0].type !== 'remoteShell') return c.json({ error: 'Not a remoteShell building' }, 400)
+  if (!SHELL_BUILDING_TYPES.has(building[0].type)) return c.json({ error: 'Building does not support shell connections' }, 400)
 
   const body = await c.req.json()
   const { label, host, port = 22, username, authType = 'password', password, privateKey, tmuxSession } = body
@@ -429,16 +432,22 @@ app.get(
         if (!sshStream) return
         const { data } = evt
         if (typeof data === 'string') {
-          try {
-            const msg = JSON.parse(data)
-            if (msg.type === 'resize' && typeof msg.cols === 'number' && typeof msg.rows === 'number') {
-              sshStream.setWindow?.(msg.rows, msg.cols, 0, 0)
-            }
-            // Other JSON control messages are silently handled (no SSH write)
-          } catch {
-            // Not JSON — forward raw string as keyboard input
-            sshStream.write(data)
+          // Only treat the message as a control envelope when it looks like one
+          // (`{...}` with a known `type`). JSON.parse succeeds on bare values like
+          // "1", "true", "null" — those are keystrokes, not control messages.
+          let handled = false
+          if (data.length > 0 && data.charCodeAt(0) === 0x7B /* '{' */) {
+            try {
+              const msg = JSON.parse(data)
+              if (msg && typeof msg === 'object' && !Array.isArray(msg) && typeof msg.type === 'string') {
+                if (msg.type === 'resize' && typeof msg.cols === 'number' && typeof msg.rows === 'number') {
+                  sshStream.setWindow?.(msg.rows, msg.cols, 0, 0)
+                }
+                handled = true
+              }
+            } catch { /* malformed JSON — fall through to keystroke forward */ }
           }
+          if (!handled) sshStream.write(data)
         } else if (data instanceof ArrayBuffer) {
           sshStream.write(Buffer.from(data))
         } else if (data instanceof Uint8Array) {
