@@ -191,7 +191,10 @@ export function RemoteShellTerminalTab({
     term.loadAddon(linksAddon)
     term.loadAddon(searchAddon)
     term.open(containerRef.current)
-    requestAnimationFrame(() => { try { fitAddon.fit() } catch { /* renderer not ready */ } })
+    // Double RAF: first frame attaches the canvas, second frame has correct dimensions
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => { try { fitAddon.fit() } catch { /* renderer not ready */ } })
+    })
 
     termRef.current     = term
     fitAddonRef.current  = fitAddon
@@ -285,12 +288,13 @@ export function RemoteShellTerminalTab({
   useEffect(() => {
     if (!containerRef.current) return
     const obs = new ResizeObserver(() => {
-      if (!fitAddonRef.current || !wsRef.current) return
+      if (!fitAddonRef.current) return
       try {
         fitAddonRef.current.fit()
         const term = termRef.current
-        if (term && wsRef.current.readyState === WebSocket.OPEN) {
-          wsRef.current.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }))
+        const ws = wsRef.current
+        if (term && ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }))
         }
       } catch { /* ignore */ }
     })
