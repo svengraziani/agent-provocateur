@@ -1,4 +1,5 @@
 #!/usr/bin/env bun
+// fallow-ignore-file unused-file
 /**
  * Claude Channel Server for ClawCom
  *
