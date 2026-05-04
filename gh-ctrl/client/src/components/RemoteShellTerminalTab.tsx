@@ -119,6 +119,18 @@ export function RemoteShellTerminalTab({
   const [searchQuery, setSearchQuery]     = useState('')
   const searchInputRef = useRef<HTMLInputElement>(null)
 
+  // Push current terminal dimensions to the server. Call after the WS reaches OPEN
+  // — initial fit() runs while the WS is still CONNECTING, so the early resize is lost.
+  const sendCurrentSize = useCallback((ws: WebSocket) => {
+    try {
+      fitAddonRef.current?.fit()
+      const t = termRef.current
+      if (t && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'resize', cols: t.cols, rows: t.rows }))
+      }
+    } catch { /* ignore */ }
+  }, [])
+
   // ── Connect / Reconnect ────────────────────────────────────────────────────
   const connectWS = useCallback(() => {
     if (!containerRef.current || !termRef.current) return
@@ -142,6 +154,7 @@ export function RemoteShellTerminalTab({
             if (msg.state === 'connected') {
               setStatus('connected')
               setStatusMsg('')
+              sendCurrentSize(ws)
             } else if (msg.state === 'disconnected') {
               setStatus('disconnected')
               setStatusMsg(msg.error ?? '')
@@ -169,7 +182,7 @@ export function RemoteShellTerminalTab({
     ws.onclose = () => {
       setStatus((prev) => (prev === 'error' ? 'error' : 'disconnected'))
     }
-  }, [buildingId, connection.id, connection.label])
+  }, [buildingId, connection.id, connection.label, sendCurrentSize])
 
   // ── Terminal initialization ────────────────────────────────────────────────
   useEffect(() => {
@@ -243,6 +256,7 @@ export function RemoteShellTerminalTab({
             if (msg.state === 'connected') {
               setStatus('connected')
               setStatusMsg('')
+              sendCurrentSize(ws)
             } else if (msg.state === 'disconnected') {
               setStatus('disconnected')
               setStatusMsg(msg.error ?? '')
