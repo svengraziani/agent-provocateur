@@ -2,9 +2,9 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { api } from '../api'
 import { useAppStore } from '../store'
-import type { Building, ClawComConfig, ClawComMessage } from '../types'
-import { ClawComSetupDialog } from './ClawComSetupDialog'
-import { ClawComChatDialog } from './ClawComChatDialog'
+import type { Building, RemoteShellConfig } from '../types'
+import { RemoteShellSetupDialog } from './RemoteShellSetupDialog'
+import { RemoteShellTerminalDialog } from './RemoteShellTerminalDialog'
 
 interface Position {
   x: number
@@ -40,7 +40,6 @@ function useColorizedImage(src: string, color: string): string | null {
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
       const data = imageData.data
 
-      // Parse target color
       const hex = color.replace('#', '')
       const tr = parseInt(hex.slice(0, 2), 16)
       const tg = parseInt(hex.slice(2, 4), 16)
@@ -48,7 +47,6 @@ function useColorizedImage(src: string, color: string): string | null {
 
       for (let i = 0; i < data.length; i += 4) {
         const r = data[i], g = data[i + 1], b = data[i + 2]
-        // Green dominant: g > r*1.3 && g > b*1.3 && g > 80
         if (g > r * 1.3 && g > b * 1.3 && g > 80) {
           const ratio = g / 255
           data[i] = Math.round(tr * ratio)
@@ -76,16 +74,13 @@ export function ClawComBuilding({
   onSelect,
   onDeselect,
 }: ClawComBuildingProps) {
-  const loadBuildings = useAppStore((s) => s.loadBuildings)
   const deleteBuilding = useAppStore((s) => s.deleteBuilding)
   const updateBuildingColor = useAppStore((s) => s.updateBuildingColor)
 
   const [showSetup, setShowSetup] = useState(false)
-  const [showChat, setShowChat] = useState(false)
+  const [showTerminal, setShowTerminal] = useState(false)
   const [currentBuilding, setCurrentBuilding] = useState(building)
-  const [incomingCount, setIncomingCount] = useState(0)
-  const [lastSeenMsgId, setLastSeenMsgId] = useState<number | null>(null)
-  const [showColorPicker, setShowColorPicker] = useState(false)
+  const [connectionCount, setConnectionCount] = useState(0)
   const colorInputRef = useRef<HTMLInputElement>(null)
 
   const colorizedSrc = useColorizedImage('/buildings/clawcom.png', currentBuilding.color ?? '#00ff88')
@@ -104,7 +99,7 @@ export function ClawComBuilding({
   useEffect(() => {
     let timeout: ReturnType<typeof setTimeout>
     function scheduleNext() {
-      const delay = 8000 + Math.random() * 12000 // 8–20s
+      const delay = 8000 + Math.random() * 12000 // 8–20s between animations
       timeout = setTimeout(() => {
         const [src, duration] = IDLE_ANIMS[Math.floor(Math.random() * IDLE_ANIMS.length)]
         setIdleAnimSrc(src)
@@ -118,51 +113,40 @@ export function ClawComBuilding({
     return () => clearTimeout(timeout)
   }, [])
 
-  // Sync building prop changes (e.g., after store update)
   useEffect(() => {
     setCurrentBuilding(building)
   }, [building])
 
-  let config: Partial<ClawComConfig> = {}
-  try { config = JSON.parse(currentBuilding.config) } catch { /* empty */ }
+  const config: Partial<RemoteShellConfig> = (() => {
+    try { return JSON.parse(currentBuilding.config) } catch { return {} }
+  })()
 
-  const isConfigured = config.configured === true
-
-  // Poll for incoming messages when configured
-  const pollMessages = useCallback(async () => {
-    if (!isConfigured) return
+  const fetchConnectionCount = useCallback(async () => {
     try {
-      const msgs = await api.getBuildingMessages(currentBuilding.id)
-      const incoming = msgs.filter((m) => m.direction === 'in')
-      const latestIn = incoming.length > 0 ? incoming[incoming.length - 1] : null
-      if (latestIn && latestIn.id !== lastSeenMsgId) {
-        const newCount = lastSeenMsgId === null ? 0 : incoming.filter((m) => m.id > (lastSeenMsgId ?? 0)).length
-        if (newCount > 0) setIncomingCount((c) => c + newCount)
-        setLastSeenMsgId(latestIn.id)
-      }
+      const conns = await api.listShellConnections(currentBuilding.id)
+      setConnectionCount(conns.length)
     } catch { /* ignore */ }
-  }, [currentBuilding.id, isConfigured, lastSeenMsgId])
+  }, [currentBuilding.id])
 
   useEffect(() => {
-    if (!isConfigured) return
-    const interval = setInterval(pollMessages, 15000)
-    return () => clearInterval(interval)
-  }, [isConfigured, pollMessages])
+    fetchConnectionCount()
+  }, [fetchConnectionCount])
 
-  // Open/close panel in sync with selection state
+  // Configured when the flag is set AND at least one SSH connection profile exists
+  const isConfigured = config.configured === true && connectionCount > 0
+
   useEffect(() => {
     if (isSelected) {
       if (!isConfigured) {
         setShowSetup(true)
-        setShowChat(false)
+        setShowTerminal(false)
       } else {
-        setIncomingCount(0)
-        setShowChat(true)
+        setShowTerminal(true)
         setShowSetup(false)
       }
     } else {
       setShowSetup(false)
-      setShowChat(false)
+      setShowTerminal(false)
     }
   }, [isSelected, isConfigured])
 
@@ -190,6 +174,8 @@ export function ClawComBuilding({
     setCurrentBuilding((b) => ({ ...b, color: newColor }))
     await updateBuildingColor(currentBuilding.id, newColor)
   }
+
+  const buildingColor = currentBuilding.color ?? '#00ff88'
 
   return (
     <>
@@ -240,14 +226,14 @@ export function ClawComBuilding({
             <div style={{ width: 100, height: 100, background: 'var(--bg-panel)', borderRadius: 4 }} />
           )}
 
-          {/* Incoming message badge */}
-          {incomingCount > 0 && (
+          {/* Connection count badge */}
+          {connectionCount > 0 && (
             <div style={{
               position: 'absolute',
               top: -4,
               right: -4,
-              background: '#ff4444',
-              color: '#fff',
+              background: buildingColor,
+              color: '#000',
               borderRadius: '50%',
               width: 20,
               height: 20,
@@ -257,41 +243,31 @@ export function ClawComBuilding({
               alignItems: 'center',
               justifyContent: 'center',
               border: '2px solid var(--bg-darker)',
-              animation: 'blink 1s infinite',
             }}>
-              {incomingCount > 9 ? '9+' : incomingCount}
+              {connectionCount > 9 ? '9+' : connectionCount}
             </div>
           )}
 
-          {/* Status indicator */}
+          {/* Status dot */}
           <div style={{
             position: 'absolute',
             bottom: 2,
             right: 2,
             width: 8,
             height: 8,
-            borderRadius: config.clawType === 'claudechannel' || config.clawType === 'copilot' ? '2px' : '50%',
-            background: isConfigured
-              ? config.clawType === 'claudechannel' ? '#a78bfa'
-              : config.clawType === 'copilot' ? '#4493f8'
-              : 'var(--green-neon)'
-              : '#888',
+            borderRadius: '50%',
+            background: isConfigured ? 'var(--green-neon)' : '#888',
             border: '1px solid var(--bg-darker)',
-          }} title={isConfigured
-            ? config.clawType === 'claudechannel' ? 'Claude Channel active'
-            : config.clawType === 'copilot' ? 'GitHub Copilot active'
-            : 'Connected'
-            : 'Not configured'
-          } />
+          }} title={isConfigured ? 'Ready' : 'Not configured'} />
         </div>
 
         {/* Name label */}
         <div style={{
           fontSize: 11,
           fontWeight: 700,
-          color: currentBuilding.color ?? 'var(--green-neon)',
+          color: buildingColor,
           textAlign: 'center',
-          textShadow: `0 0 8px ${currentBuilding.color ?? 'var(--green-neon)'}44`,
+          textShadow: `0 0 8px ${buildingColor}44`,
           maxWidth: 130,
           overflow: 'hidden',
           textOverflow: 'ellipsis',
@@ -303,11 +279,7 @@ export function ClawComBuilding({
         {/* Status text */}
         <div style={{ fontSize: 9, color: 'var(--text-dim)', textAlign: 'center' }}>
           {isConfigured
-            ? config.clawType === 'claudechannel'
-              ? '✦ CLAUDE ● ACTIVE'
-              : config.clawType === 'copilot'
-              ? '◎ COPILOT ● ACTIVE'
-              : `${config.clawType?.toUpperCase() ?? 'CLAW'} ● ONLINE`
+            ? `▣ ${connectionCount} CONN${connectionCount !== 1 ? 'S' : ''} ● READY`
             : '⚙ SETUP REQUIRED'}
         </div>
 
@@ -329,7 +301,7 @@ export function ClawComBuilding({
             <input
               ref={colorInputRef}
               type="color"
-              value={currentBuilding.color ?? '#00ff88'}
+              value={buildingColor}
               onChange={handleColorChange}
               style={{ width: 0, height: 0, opacity: 0, position: 'absolute', pointerEvents: 'none' }}
             />
@@ -347,28 +319,33 @@ export function ClawComBuilding({
 
       {/* Setup dialog — portaled to body to escape battlefield transform context */}
       {showSetup && createPortal(
-        <ClawComSetupDialog
+        <RemoteShellSetupDialog
           building={currentBuilding}
           onClose={() => onDeselect?.()}
           onConfigured={(updated) => {
             setCurrentBuilding(updated)
+            fetchConnectionCount()
             addToast(`${updated.name} configured successfully!`, 'success')
+          }}
+          onOpenTerminal={() => {
+            setShowSetup(false)
+            setShowTerminal(true)
           }}
           onError={(msg) => addToast(msg, 'error')}
         />,
         document.body
       )}
 
-      {/* Chat dialog — portaled to body to escape battlefield transform context */}
-      {showChat && createPortal(
-        <ClawComChatDialog
+      {/* Terminal dialog — portaled to body to escape battlefield transform context */}
+      {showTerminal && createPortal(
+        <RemoteShellTerminalDialog
           building={currentBuilding}
           onClose={() => onDeselect?.()}
           onReconfigure={() => {
-            setShowChat(false)
+            setShowTerminal(false)
             setShowSetup(true)
           }}
-          onError={(msg) => addToast(msg, 'error')}
+          addToast={addToast}
         />,
         document.body
       )}
