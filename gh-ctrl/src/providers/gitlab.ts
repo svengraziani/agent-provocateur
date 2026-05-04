@@ -16,7 +16,6 @@ import type {
 import {db} from "../db";
 import {repos} from "../db/schema";
 import {eq} from "drizzle-orm";
-import app from "../routes/gitlab";
 
 const CLAUDE_LABELS = ['claude', 'ai', 'ai-fix', 'ai-feature']
 
