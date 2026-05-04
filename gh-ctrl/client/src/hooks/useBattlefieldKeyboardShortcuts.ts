@@ -126,6 +126,8 @@ export function useBattlefieldKeyboardShortcuts({
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable || target.getAttribute?.('contenteditable') === 'true') return
       // Don't fire if a modal/dialog is open
       if (target.closest?.('.modal-overlay, .map-dialog-overlay, [class*="dialog"], [class*="overlay"]')) return
+      // Don't fire if the SSH terminal dialog is open — all keystrokes belong to xterm
+      if (document.querySelector('[data-remote-shell-terminal]')) return
 
       // Handle assignment mode
       if (assigningFor) {

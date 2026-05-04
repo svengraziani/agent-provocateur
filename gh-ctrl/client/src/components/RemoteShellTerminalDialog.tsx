@@ -77,6 +77,7 @@ export function RemoteShellTerminalDialog({
 
   return (
     <div
+      data-remote-shell-terminal="true"
       style={{
         position: 'fixed', inset: 0, zIndex: 1100,
         display: 'flex', flexDirection: 'column',
