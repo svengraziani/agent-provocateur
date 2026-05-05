@@ -694,6 +694,21 @@ export const api = {
       `/buildings/${buildingId}/shell/connections/${connectionId}/tmux-windows${session ? `?session=${encodeURIComponent(session)}` : ''}`
     ),
 
+  renameShellTmuxWindow: (
+    buildingId: number,
+    connectionId: number,
+    windowIndex: number,
+    name: string,
+    session?: string,
+  ) =>
+    request<{ ok: boolean; name?: string; error?: string }>(
+      `/buildings/${buildingId}/shell/connections/${connectionId}/tmux-windows/${windowIndex}/rename`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ name, session }),
+      }
+    ),
+
   // ── Source Relay ──────────────────────────────────────────────────────────
 
   listSourceRelayConnectors: (buildingId: number) =>

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { getShellWsUrl, api } from '../api'
+import { useAppStore } from '../store'
 import type { SshConnection, ShellStatus, TmuxWindow } from '../types'
 // @ts-ignore — installed via npm, types included
 import { Terminal } from '@xterm/xterm'
@@ -18,6 +19,9 @@ interface RemoteShellTerminalTabProps {
   fontSize?: number
   fontFamily?: string
   isActive: boolean
+  /** When set, send Ctrl+B + index to jump to that tmux window once the
+   *  shell reaches the connected state, then clear via consumeTmuxJump. */
+  pendingWindowIndex?: number
 }
 
 const THEMES = {
@@ -101,7 +105,9 @@ export function RemoteShellTerminalTab({
   fontSize = 14,
   fontFamily = 'monospace',
   isActive,
+  pendingWindowIndex,
 }: RemoteShellTerminalTabProps) {
+  const consumeTmuxJump = useAppStore((s) => s.consumeTmuxJump)
   const containerRef   = useRef<HTMLDivElement>(null)
   const termRef        = useRef<Terminal | null>(null)
   const fitAddonRef    = useRef<FitAddon | null>(null)
@@ -109,6 +115,11 @@ export function RemoteShellTerminalTab({
   const wsRef          = useRef<WebSocket | null>(null)
   const [status, setStatus] = useState<ShellStatus>('connecting')
   const [statusMsg, setStatusMsg] = useState('')
+  // Timestamp of when the SSH/PTY went 'connected'. The backend writes the
+  // `tmux new-session -A -s …` command right after sending the connected
+  // status, so the PTY is actually still bash for a moment. Used by the
+  // tmux-jump effect to delay sending the prefix until tmux is attached.
+  const connectedAtRef = useRef<number | null>(null)
 
   // Local font size override (per-tab, starts from prop, changed via +/- buttons)
   const [localFontSize, setLocalFontSize] = useState(fontSize)
@@ -182,6 +193,7 @@ export function RemoteShellTerminalTab({
             if (msg.state === 'connected') {
               setStatus('connected')
               setStatusMsg('')
+              connectedAtRef.current = Date.now()
               sendCurrentSize(ws)
             } else if (msg.state === 'disconnected') {
               setStatus('disconnected')
@@ -284,6 +296,7 @@ export function RemoteShellTerminalTab({
             if (msg.state === 'connected') {
               setStatus('connected')
               setStatusMsg('')
+              connectedAtRef.current = Date.now()
               sendCurrentSize(ws)
             } else if (msg.state === 'disconnected') {
               setStatus('disconnected')
@@ -390,6 +403,47 @@ export function RemoteShellTerminalTab({
     }
   }
 
+  // ── Pending tmux window jump ──────────────────────────────────────────────
+  // When a battlefield tmux satellite is clicked, the store sets
+  // pendingTmuxJump. The dialog routes the windowIndex to the matching tab
+  // via prop; here we send Ctrl+B + index once the shell is actually
+  // connected and tmux has had a moment to attach, then clear the pending
+  // jump.
+  //
+  // Why the delay: the backend sends `status: connected` immediately after
+  // opening the PTY and only THEN writes `tmux new-session -A -s …` into
+  // the stream. If we send the prefix too early it goes to bash and gets
+  // dropped. We wait at least TMUX_ATTACH_DELAY_MS since the connected
+  // moment — for a tab that's been connected for a while (the common case
+  // where the user clicks a satellite while the dialog is already open)
+  // this is a no-op and we send immediately.
+  useEffect(() => {
+    if (pendingWindowIndex == null) return
+    if (status !== 'connected') return
+    const ws = wsRef.current
+    if (!ws || ws.readyState !== WebSocket.OPEN) return
+
+    const TMUX_ATTACH_DELAY_MS = 1000
+    const idx = pendingWindowIndex
+    const sinceConnected = Date.now() - (connectedAtRef.current ?? 0)
+    const wait = Math.max(0, TMUX_ATTACH_DELAY_MS - sinceConnected)
+
+    const send = () => {
+      const w = wsRef.current
+      if (!w || w.readyState !== WebSocket.OPEN) return
+      w.send(`\x02${idx}`)
+      consumeTmuxJump()
+      termRef.current?.focus()
+    }
+
+    if (wait === 0) {
+      send()
+      return
+    }
+    const timeout = setTimeout(send, wait)
+    return () => clearTimeout(timeout)
+  }, [pendingWindowIndex, status, consumeTmuxJump])
+
   // ── Reconnect ──────────────────────────────────────────────────────────────
   function handleReconnect() {
     wsRef.current?.close()
@@ -415,6 +469,34 @@ export function RemoteShellTerminalTab({
     // Ctrl+B + window-index number (supports 0–9 via \x020...\x029)
     sendTmux(`\x02${index}`)
     termRef.current?.focus()
+  }
+
+  async function handleRenameWindow(win: TmuxWindow) {
+    if (!connection.tmuxSession) return
+    const next = window.prompt(`Rename tmux window ${win.index}:`, win.name)
+    if (next == null) return
+    const trimmed = next.trim()
+    if (!trimmed || trimmed === win.name) return
+    try {
+      const res = await api.renameShellTmuxWindow(
+        buildingId,
+        connection.id,
+        win.index,
+        trimmed,
+        connection.tmuxSession,
+      )
+      if (res.ok) {
+        // Optimistically update the local list, then re-fetch for truth
+        setTmuxWindows((prev) =>
+          prev.map((w) => (w.index === win.index ? { ...w, name: res.name ?? trimmed } : w))
+        )
+        fetchTmuxWindows()
+      } else {
+        window.alert(`Rename failed: ${res.error ?? 'unknown error'}`)
+      }
+    } catch (err) {
+      window.alert(`Rename failed: ${err instanceof Error ? err.message : String(err)}`)
+    }
   }
 
   const statusColor = {
@@ -481,21 +563,38 @@ export function RemoteShellTerminalTab({
                 <span style={{ fontSize: 9, color: '#444' }}>No windows found</span>
               ) : (
                 tmuxWindows.map((win) => (
-                  <button
-                    key={win.index}
-                    className="hud-btn"
-                    title={`Jump to window ${win.index}: ${win.name} (Ctrl+B ${win.index})`}
-                    disabled={!isActive || status !== 'connected'}
-                    onClick={() => jumpToWindow(win.index)}
-                    style={{
-                      fontSize: 9, padding: '1px 7px',
-                      color: win.active ? '#00ff88' : '#88aaff',
-                      borderColor: win.active ? '#00ff88' : undefined,
-                      fontWeight: win.active ? 700 : undefined,
-                    }}
-                  >
-                    {win.index}:{win.name}{win.active ? ' ●' : ''}
-                  </button>
+                  <span key={win.index} style={{ display: 'inline-flex', alignItems: 'stretch', gap: 0 }}>
+                    <button
+                      className="hud-btn"
+                      title={`Jump to window ${win.index}: ${win.name} (Ctrl+B ${win.index})`}
+                      disabled={!isActive || status !== 'connected'}
+                      onClick={() => jumpToWindow(win.index)}
+                      style={{
+                        fontSize: 9, padding: '1px 7px',
+                        color: win.active ? '#00ff88' : '#88aaff',
+                        borderColor: win.active ? '#00ff88' : undefined,
+                        fontWeight: win.active ? 700 : undefined,
+                        borderTopRightRadius: 0, borderBottomRightRadius: 0,
+                        borderRight: 'none',
+                      }}
+                    >
+                      {win.index}:{win.name}{win.active ? ' ●' : ''}
+                    </button>
+                    <button
+                      className="hud-btn"
+                      title={`Rename window ${win.index}`}
+                      disabled={!isActive || status !== 'connected'}
+                      onClick={() => handleRenameWindow(win)}
+                      style={{
+                        fontSize: 9, padding: '1px 5px',
+                        color: win.active ? '#00ff88' : '#666',
+                        borderColor: win.active ? '#00ff88' : undefined,
+                        borderTopLeftRadius: 0, borderBottomLeftRadius: 0,
+                      }}
+                    >
+                      ✎
+                    </button>
+                  </span>
                 ))
               )}
               <button

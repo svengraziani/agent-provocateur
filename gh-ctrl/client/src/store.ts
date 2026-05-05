@@ -55,6 +55,12 @@ function getStoredRefreshInterval(): number {
   return stored ? parseInt(stored, 10) : DEFAULT_REFRESH_INTERVAL
 }
 
+export interface PendingTmuxJump {
+  buildingId: number
+  connectionId: number
+  windowIndex: number
+}
+
 interface AppStore {
   // Data
   repos: Repo[]
@@ -69,10 +75,15 @@ interface AppStore {
   placedBadges: PlacedBadge[]
   deadlineTimers: DeadlineTimer[]
   contacts: Contact[]
+  pendingTmuxJump: PendingTmuxJump | null
 
   // Toast
   addToast: (message: string, type?: ToastType) => void
   removeToast: (id: number) => void
+
+  // Tmux jump (satellite click on battlefield routes through this)
+  setPendingTmuxJump: (jump: PendingTmuxJump | null) => void
+  consumeTmuxJump: () => void
 
   // Async actions
   loadSettings: () => Promise<void>
@@ -121,6 +132,10 @@ export const useAppStore = create<AppStore>((set, get) => ({
   placedBadges: [],
   deadlineTimers: [],
   contacts: [],
+  pendingTmuxJump: null,
+
+  setPendingTmuxJump: (jump) => set({ pendingTmuxJump: jump }),
+  consumeTmuxJump: () => set({ pendingTmuxJump: null }),
 
   addToast: (message, type = 'info') => {
     const id = nextToastId++

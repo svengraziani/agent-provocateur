@@ -1,10 +1,34 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { api } from '../api'
 import { useAppStore } from '../store'
-import type { Building, RemoteShellConfig } from '../types'
+import type { Building, RemoteShellConfig, SshConnection } from '../types'
+import { useClawComTmuxWindows } from '../hooks/useClawComTmuxWindows'
 import { RemoteShellSetupDialog } from './RemoteShellSetupDialog'
 import { RemoteShellTerminalDialog } from './RemoteShellTerminalDialog'
+import { TmuxWindowSatellite } from './TmuxWindowSatellite'
+
+// Orbit radius for tmux-window satellites around a ClawCom building.
+// Tuned to clear the 100px building image and the labels below it.
+const SATELLITE_ORBIT_RADIUS = 130
+// Switch to a wider second ring once the first orbit gets crowded.
+const SATELLITE_SECOND_RING_RADIUS = 200
+const SATELLITE_FIRST_RING_CAPACITY = 8
+
+function satelliteOffset(index: number, count: number): { dx: number; dy: number } {
+  // Place satellites preferentially on the upper ring so the label area
+  // below the building stays readable. Satellites still complete the orbit
+  // when count > capacity, just on a wider ring.
+  const onSecondRing = index >= SATELLITE_FIRST_RING_CAPACITY
+  const ringIndex = onSecondRing ? index - SATELLITE_FIRST_RING_CAPACITY : index
+  const ringCount = onSecondRing
+    ? Math.max(1, count - SATELLITE_FIRST_RING_CAPACITY)
+    : Math.min(count, SATELLITE_FIRST_RING_CAPACITY)
+  const radius = onSecondRing ? SATELLITE_SECOND_RING_RADIUS : SATELLITE_ORBIT_RADIUS
+  // Start at top (-π/2), go clockwise
+  const theta = (2 * Math.PI * ringIndex) / ringCount - Math.PI / 2
+  return { dx: radius * Math.cos(theta), dy: radius * Math.sin(theta) }
+}
 
 interface Position {
   x: number
@@ -76,12 +100,16 @@ export function ClawComBuilding({
 }: ClawComBuildingProps) {
   const deleteBuilding = useAppStore((s) => s.deleteBuilding)
   const updateBuildingColor = useAppStore((s) => s.updateBuildingColor)
+  const setPendingTmuxJump = useAppStore((s) => s.setPendingTmuxJump)
 
   const [showSetup, setShowSetup] = useState(false)
   const [showTerminal, setShowTerminal] = useState(false)
   const [currentBuilding, setCurrentBuilding] = useState(building)
-  const [connectionCount, setConnectionCount] = useState(0)
+  const [connections, setConnections] = useState<SshConnection[]>([])
   const colorInputRef = useRef<HTMLInputElement>(null)
+  const wrapperRef = useRef<HTMLDivElement>(null)
+  const [inViewport, setInViewport] = useState(false)
+  const connectionCount = connections.length
 
   const colorizedSrc = useColorizedImage('/buildings/clawcom.png', currentBuilding.color ?? '#00ff88')
 
@@ -124,7 +152,7 @@ export function ClawComBuilding({
   const fetchConnectionCount = useCallback(async () => {
     try {
       const conns = await api.listShellConnections(currentBuilding.id)
-      setConnectionCount(conns.length)
+      setConnections(conns)
     } catch { /* ignore */ }
   }, [currentBuilding.id])
 
@@ -134,6 +162,51 @@ export function ClawComBuilding({
 
   // Configured when the flag is set AND at least one SSH connection profile exists
   const isConfigured = config.configured === true && connectionCount > 0
+
+  // Track whether this building is on screen — the tmux satellites poll
+  // SSH commands on the remote host, so we only want to do that for
+  // buildings the user is actually looking at.
+  useEffect(() => {
+    if (!wrapperRef.current) return
+    const obs = new IntersectionObserver(
+      (entries) => setInViewport(entries[0]?.isIntersecting === true),
+      { threshold: 0.01 }
+    )
+    obs.observe(wrapperRef.current)
+    return () => obs.disconnect()
+  }, [])
+
+  const tmuxData = useClawComTmuxWindows({
+    buildingId: currentBuilding.id,
+    connections,
+    enabled: isConfigured && inViewport && !isRelocateMode,
+  })
+
+  const satellites = useMemo(
+    () =>
+      tmuxData.flatMap(({ connection, windows }) =>
+        windows.map((win) => ({
+          key: `${connection.id}-${win.index}`,
+          connection,
+          window: win,
+        }))
+      ),
+    [tmuxData]
+  )
+
+  const handleSatelliteClick = useCallback(
+    (connectionId: number, windowIndex: number) => {
+      setPendingTmuxJump({
+        buildingId: currentBuilding.id,
+        connectionId,
+        windowIndex,
+      })
+      // Open the terminal dialog if it's not already open. If it is, the
+      // dialog will pick up the new pendingTmuxJump and switch tabs/jump.
+      if (!isSelected) onSelect?.()
+    },
+    [currentBuilding.id, isSelected, onSelect, setPendingTmuxJump]
+  )
 
   useEffect(() => {
     if (isSelected) {
@@ -180,6 +253,7 @@ export function ClawComBuilding({
   return (
     <>
       <div
+        ref={wrapperRef}
         className={`base-node clawcom-building${isSelected ? ' clawcom-selected' : ''}`}
         style={{
           position: 'absolute',
@@ -316,6 +390,24 @@ export function ClawComBuilding({
           </div>
         )}
       </div>
+
+      {/* Tmux window satellites — orbit around the ClawCom when the building
+          is configured and visible. Rendered as siblings of the building
+          wrapper so they sit in the map's coordinate space. */}
+      {!isRelocateMode && satellites.map((sat, i) => {
+        const { dx, dy } = satelliteOffset(i, satellites.length)
+        return (
+          <TmuxWindowSatellite
+            key={sat.key}
+            connection={sat.connection}
+            window={sat.window}
+            buildingColor={buildingColor}
+            x={position.x + dx}
+            y={position.y + dy}
+            onClick={handleSatelliteClick}
+          />
+        )
+      })}
 
       {/* Setup dialog — portaled to body to escape battlefield transform context */}
       {showSetup && createPortal(

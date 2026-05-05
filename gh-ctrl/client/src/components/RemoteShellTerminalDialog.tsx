@@ -1,5 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { api } from '../api'
+import { useAppStore } from '../store'
 import type { Building, SshConnection, RemoteShellConfig } from '../types'
 import { RemoteShellTerminalTab } from './RemoteShellTerminalTab'
 
@@ -26,10 +28,19 @@ export function RemoteShellTerminalDialog({
   const [activeTabId, setActiveTabId]     = useState<string>('')
   const [loading, setLoading]             = useState(true)
   const [showNewTabMenu, setShowNewTabMenu] = useState(false)
+  // Anchor for the +TAB dropdown — the menu is portaled to body to escape
+  // the tab bar's overflow:auto, so it needs an absolute screen position.
+  const newTabBtnRef = useRef<HTMLButtonElement>(null)
+  const [newTabMenuPos, setNewTabMenuPos] = useState<{ left: number; top: number } | null>(null)
+
+  const pendingTmuxJump = useAppStore((s) => s.pendingTmuxJump)
+  const matchingJump = pendingTmuxJump?.buildingId === building.id ? pendingTmuxJump : null
 
   const config: Partial<RemoteShellConfig> = (() => {
     try { return JSON.parse(building.config) } catch { return {} }
   })()
+
+  const tabsStorageKey = `clawcom-tabs:${building.id}`
 
   useEffect(() => {
     let cancelled = false
@@ -37,19 +48,102 @@ export function RemoteShellTerminalDialog({
       .then((conns) => {
         if (cancelled) return
         setConnections(conns)
-        // Open default (or first) connection as the initial tab
-        const defaultConn = conns.find((c) => c.id === config.defaultConnectionId) ?? conns[0]
-        if (defaultConn) {
-          const firstTab: TabSession = { id: `tab-${Date.now()}`, connection: defaultConn }
-          setTabs([firstTab])
-          setActiveTabId(firstTab.id)
+
+        // Restore previously open tabs from localStorage, dropping any
+        // connections that no longer exist.
+        const validIds = new Set(conns.map((c) => c.id))
+        let restoredTabs: TabSession[] = []
+        let restoredActiveIndex = 0
+        try {
+          const raw = localStorage.getItem(tabsStorageKey)
+          if (raw) {
+            const parsed = JSON.parse(raw) as { tabConnectionIds?: number[]; activeIndex?: number }
+            if (Array.isArray(parsed.tabConnectionIds)) {
+              restoredTabs = parsed.tabConnectionIds
+                .map(Number)
+                .filter((id) => validIds.has(id))
+                .map((id, i) => ({
+                  id: `tab-${Date.now()}-${i}`,
+                  connection: conns.find((c) => c.id === id)!,
+                }))
+              restoredActiveIndex = Math.min(
+                Math.max(0, Number(parsed.activeIndex) || 0),
+                Math.max(0, restoredTabs.length - 1)
+              )
+            }
+          }
+        } catch { /* ignore corrupt storage */ }
+
+        // If a satellite click is pending for this building, ensure its
+        // connection is in the list and active.
+        const jump = useAppStore.getState().pendingTmuxJump
+        const jumpConn = jump?.buildingId === building.id
+          ? conns.find((c) => c.id === jump.connectionId)
+          : null
+        if (jumpConn) {
+          const existingIdx = restoredTabs.findIndex((t) => t.connection.id === jumpConn.id)
+          if (existingIdx >= 0) {
+            restoredActiveIndex = existingIdx
+          } else {
+            restoredTabs = [
+              ...restoredTabs,
+              { id: `tab-${Date.now()}-jump`, connection: jumpConn },
+            ]
+            restoredActiveIndex = restoredTabs.length - 1
+          }
         }
+
+        // Final fallback: open the configured default (or first) connection.
+        if (restoredTabs.length === 0) {
+          const initialConn = conns.find((c) => c.id === config.defaultConnectionId) ?? conns[0]
+          if (initialConn) {
+            restoredTabs = [{ id: `tab-${Date.now()}-default`, connection: initialConn }]
+            restoredActiveIndex = 0
+          }
+        }
+
+        setTabs(restoredTabs)
+        setActiveTabId(restoredTabs[restoredActiveIndex]?.id ?? '')
       })
       .catch(() => { if (!cancelled) addToast('Failed to load connections', 'error') })
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [building.id])
+
+  // Persist the open tab list whenever it changes after the initial load.
+  useEffect(() => {
+    if (loading) return
+    const tabConnectionIds = tabs.map((t) => t.connection.id)
+    const activeIndex = Math.max(0, tabs.findIndex((t) => t.id === activeTabId))
+    try {
+      if (tabConnectionIds.length === 0) {
+        localStorage.removeItem(tabsStorageKey)
+      } else {
+        localStorage.setItem(tabsStorageKey, JSON.stringify({ tabConnectionIds, activeIndex }))
+      }
+    } catch { /* localStorage quota / unavailable — non-fatal */ }
+  }, [tabs, activeTabId, loading, tabsStorageKey])
+
+  // When a satellite click changes the pending tmux jump while the dialog is
+  // already open, ensure the matching connection's tab is active. The tab
+  // itself reads the windowIndex and sends the Ctrl+B sequence once connected.
+  useEffect(() => {
+    if (!matchingJump || loading) return
+    const conn = connections.find((c) => c.id === matchingJump.connectionId)
+    if (!conn) return
+    const existing = [...tabs].reverse().find((t) => t.connection.id === conn.id)
+    if (existing) {
+      if (activeTabId !== existing.id) setActiveTabId(existing.id)
+    } else {
+      const newTab: TabSession = { id: `tab-${Date.now()}`, connection: conn }
+      setTabs((prev) => [...prev, newTab])
+      setActiveTabId(newTab.id)
+    }
+  // tabs/activeTabId intentionally omitted to avoid re-firing on tab churn
+  // — we only want to react when the jump target itself changes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [matchingJump?.connectionId, matchingJump?.windowIndex, connections, loading])
 
   // Close the new-tab dropdown when clicking outside
   useEffect(() => {
@@ -155,34 +249,22 @@ export function RemoteShellTerminalDialog({
                 title={`New tab: ${connections[0].label}`}
               >+ TAB</button>
             ) : (
-              <>
-                <button
-                  className="hud-btn"
-                  style={{ fontSize: 11, padding: '2px 8px', color: showNewTabMenu ? '#00ff88' : '#888' }}
-                  title="Open new tab"
-                  onClick={(e) => { e.stopPropagation(); setShowNewTabMenu((v) => !v) }}
-                >+ TAB ▾</button>
-                {showNewTabMenu && (
-                  <div style={{
-                    position: 'absolute', top: '100%', left: 0, marginTop: 2,
-                    background: '#111', border: '1px solid #333', borderRadius: 3,
-                    zIndex: 200, minWidth: 160,
-                  }}>
-                    {connections.map((c) => (
-                      <div
-                        key={c.id}
-                        style={{
-                          padding: '5px 10px', cursor: 'pointer',
-                          fontSize: 11, color: '#aaa', whiteSpace: 'nowrap',
-                        }}
-                        onMouseEnter={(e) => { e.currentTarget.style.background = '#222'; e.currentTarget.style.color = '#00ff88' }}
-                        onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#aaa' }}
-                        onClick={() => { openNewTab(c); setShowNewTabMenu(false) }}
-                      >▸ {c.label}</div>
-                    ))}
-                  </div>
-                )}
-              </>
+              <button
+                ref={newTabBtnRef}
+                className="hud-btn"
+                style={{ fontSize: 11, padding: '2px 8px', color: showNewTabMenu ? '#00ff88' : '#888' }}
+                title="Open new tab"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  if (showNewTabMenu) {
+                    setShowNewTabMenu(false)
+                    return
+                  }
+                  const rect = newTabBtnRef.current?.getBoundingClientRect()
+                  if (rect) setNewTabMenuPos({ left: rect.left, top: rect.bottom + 2 })
+                  setShowNewTabMenu(true)
+                }}
+              >+ TAB ▾</button>
             )}
           </div>
         )}
@@ -227,10 +309,45 @@ export function RemoteShellTerminalDialog({
               fontSize={config.fontSize}
               fontFamily={config.fontFamily}
               isActive={activeTabId === tab.id}
+              pendingWindowIndex={
+                matchingJump && matchingJump.connectionId === tab.connection.id && activeTabId === tab.id
+                  ? matchingJump.windowIndex
+                  : undefined
+              }
             />
           </div>
         ))}
       </div>
+
+      {/* +TAB dropdown — portaled so it isn't clipped by the tab bar's
+          overflow:auto. Positioned via getBoundingClientRect of the button. */}
+      {showNewTabMenu && newTabMenuPos && createPortal(
+        <div
+          style={{
+            position: 'fixed',
+            left: newTabMenuPos.left,
+            top: newTabMenuPos.top,
+            background: '#111', border: '1px solid #333', borderRadius: 3,
+            zIndex: 1200, minWidth: 160,
+            boxShadow: '0 4px 14px rgba(0,0,0,0.6)',
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {connections.map((c) => (
+            <div
+              key={c.id}
+              style={{
+                padding: '5px 10px', cursor: 'pointer',
+                fontSize: 11, color: '#aaa', whiteSpace: 'nowrap',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = '#222'; e.currentTarget.style.color = '#00ff88' }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#aaa' }}
+              onClick={() => { openNewTab(c); setShowNewTabMenu(false) }}
+            >▸ {c.label}</div>
+          ))}
+        </div>,
+        document.body
+      )}
     </div>
   )
 }
