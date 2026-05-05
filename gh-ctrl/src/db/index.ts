@@ -202,10 +202,12 @@ sqlite.exec(`
     auth_type TEXT DEFAULT 'password',
     encrypted_creds TEXT,
     tmux_session TEXT,
+    window_repo_links TEXT,
     created_at INTEGER DEFAULT (unixepoch()),
     updated_at INTEGER DEFAULT (unixepoch())
   )
 `)
+try { sqlite.exec(`ALTER TABLE ssh_connections ADD COLUMN window_repo_links TEXT`) } catch {}
 
 sqlite.exec(`
   CREATE TABLE IF NOT EXISTS ssh_session_log (

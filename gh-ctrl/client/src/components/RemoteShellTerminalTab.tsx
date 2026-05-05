@@ -604,7 +604,7 @@ export function RemoteShellTerminalTab({
                         borderColor: win.active ? '#00ff88' : undefined,
                         fontWeight: win.active ? 700 : undefined,
                         borderTopRightRadius: 0, borderBottomRightRadius: 0,
-                        borderRight: 'none',
+                        borderRightWidth: 0, borderRightStyle: 'none',
                       }}
                     >
                       {win.index}:{win.name}{win.active ? ' ●' : ''}
