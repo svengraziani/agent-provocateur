@@ -709,6 +709,17 @@ export const api = {
       }
     ),
 
+  updateShellWindowRepoLinks: (
+    buildingId: number,
+    connectionId: number,
+    windowIndex: number,
+    repoIds: number[],
+  ) =>
+    request<SshConnection>(
+      `/buildings/${buildingId}/shell/connections/${connectionId}/window-repo-links`,
+      { method: 'PATCH', body: JSON.stringify({ windowIndex, repoIds }) }
+    ),
+
   // ── Source Relay ──────────────────────────────────────────────────────────
 
   listSourceRelayConnectors: (buildingId: number) =>

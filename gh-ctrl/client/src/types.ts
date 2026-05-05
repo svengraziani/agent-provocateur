@@ -406,6 +406,7 @@ export interface SshConnection {
   authType: string | null
   hasCredentials: boolean
   tmuxSession: string | null
+  windowRepoLinks: Record<string, number[]> | null
   createdAt: string | number | null
   updatedAt: string | number | null
 }

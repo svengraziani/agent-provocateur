@@ -16,6 +16,7 @@ import { SourceRelayBuilding } from '../SourceRelayBuilding'
 import { BadgeMarker } from '../BadgeMarker'
 import { UserUnit } from './UserUnit'
 import { SourceRelayConnectionsLayer } from './SourceRelayConnectionsLayer'
+import { ClawComSatelliteConnectionsLayer } from './ClawComSatelliteConnectionsLayer'
 import type { Repo } from '../../types'
 
 interface BuildingRendererProps {
@@ -301,6 +302,11 @@ export function BattlefieldMapLayer({
       <SourceRelayConnectionsLayer
         buildingPositions={buildingPositions}
         visibleEntries={visibleEntries}
+        positions={positions}
+      />
+      {/* ClawCom satellite→repo splines */}
+      <ClawComSatelliteConnectionsLayer
+        buildingPositions={buildingPositions}
         positions={positions}
       />
     </div>
