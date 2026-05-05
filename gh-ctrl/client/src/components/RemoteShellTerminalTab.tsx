@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback, forwardRef, useImperativeHandle } from 'react'
 import { getShellWsUrl, api } from '../api'
 import { useAppStore } from '../store'
 import type { SshConnection, ShellStatus, TmuxWindow } from '../types'
@@ -11,6 +11,10 @@ import { WebLinksAddon } from '@xterm/addon-web-links'
 // @ts-ignore
 import { SearchAddon } from '@xterm/addon-search'
 import '@xterm/xterm/css/xterm.css'
+
+export interface RemoteShellTerminalTabHandle {
+  send(text: string): void
+}
 
 interface RemoteShellTerminalTabProps {
   buildingId: number
@@ -98,7 +102,8 @@ const TMUX_ACTIONS = [
   { label: '⏏ DETACH', title: 'Detach tmux session (Ctrl+B d)',  seq: '\x02d' },
 ]
 
-export function RemoteShellTerminalTab({
+export const RemoteShellTerminalTab = forwardRef<RemoteShellTerminalTabHandle, RemoteShellTerminalTabProps>(
+function RemoteShellTerminalTab({
   buildingId,
   connection,
   theme = 'dark',
@@ -106,13 +111,23 @@ export function RemoteShellTerminalTab({
   fontFamily = 'monospace',
   isActive,
   pendingWindowIndex,
-}: RemoteShellTerminalTabProps) {
+}: RemoteShellTerminalTabProps, ref) {
   const consumeTmuxJump = useAppStore((s) => s.consumeTmuxJump)
   const containerRef   = useRef<HTMLDivElement>(null)
   const termRef        = useRef<Terminal | null>(null)
   const fitAddonRef    = useRef<FitAddon | null>(null)
   const searchAddonRef = useRef<SearchAddon | null>(null)
   const wsRef          = useRef<WebSocket | null>(null)
+
+  useImperativeHandle(ref, () => ({
+    send(text: string) {
+      const ws = wsRef.current
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(text)
+        termRef.current?.focus()
+      }
+    },
+  }))
   const [status, setStatus] = useState<ShellStatus>('connecting')
   const [statusMsg, setStatusMsg] = useState('')
   // Timestamp of when the SSH/PTY went 'connected'. The backend writes the
@@ -708,4 +723,4 @@ export function RemoteShellTerminalTab({
       <div ref={containerRef} style={{ flex: 1, overflow: 'hidden' }} />
     </div>
   )
-}
+})
