@@ -368,10 +368,14 @@ app.get('/:id/shell/connections/:cid/tmux-windows', async (c) => {
           const windows = output.trim().split('\n')
             .filter((line) => line.trim() && !line.startsWith('error:'))
             .map((line) => {
+              // Format: "<index> <name…> <active 0|1>"
+              // The name itself can contain spaces, so we anchor on the
+              // first token (index) and the last token (active flag) and
+              // join everything between them.
               const parts = line.trim().split(' ')
               const index  = parseInt(parts[0] ?? '0', 10)
               const active = parts[parts.length - 1] === '1'
-              const name   = parts.slice(1, active ? parts.length - 1 : undefined).join(' ') || `win${index}`
+              const name   = parts.slice(1, parts.length - 1).join(' ') || `win${index}`
               return { index, name, active }
             })
             .filter((w) => !isNaN(w.index))
@@ -400,6 +404,97 @@ app.get('/:id/shell/connections/:cid/tmux-windows', async (c) => {
     try { conn.connect(authOptions) } catch (err: any) {
       clearTimeout(timeout)
       resolve(c.json({ ok: false, error: err.message, windows: [] }))
+    }
+  })
+})
+
+// POST /:id/shell/connections/:cid/tmux-windows/:idx/rename — rename a window
+app.post('/:id/shell/connections/:cid/tmux-windows/:idx/rename', async (c) => {
+  const buildingId  = Number(c.req.param('id'))
+  const cid         = Number(c.req.param('cid'))
+  const windowIndex = Number(c.req.param('idx'))
+
+  let body: { name?: string; session?: string } = {}
+  try { body = await c.req.json() } catch { /* default */ }
+  const rawName = (body.name ?? '').toString()
+  // Allow letters, numbers, space, and a small set of punctuation. Anything
+  // shell-special (quotes, $, backticks, ;, &, |, etc.) gets dropped so the
+  // value can safely be embedded in single quotes.
+  const safeName = rawName.replace(/[^a-zA-Z0-9 _.\-:/]/g, '').trim().slice(0, 64)
+  if (!safeName) return c.json({ ok: false, error: 'Invalid window name' }, 400)
+  if (!Number.isInteger(windowIndex) || windowIndex < 0) {
+    return c.json({ ok: false, error: 'Invalid window index' }, 400)
+  }
+
+  const profiles = await db.select().from(sshConnections)
+    .where(and(eq(sshConnections.id, cid), eq(sshConnections.buildingId, buildingId)))
+    .limit(1)
+  if (profiles.length === 0) return c.json({ ok: false, error: 'Connection not found' }, 404)
+
+  const profile = profiles[0]
+  let creds: { password?: string; privateKey?: string } = {}
+  if (profile.encryptedCreds) {
+    try { creds = JSON.parse(decryptCreds(profile.encryptedCreds)) } catch { /* ignore */ }
+  }
+
+  const targetSession = body.session ?? profile.tmuxSession ?? null
+  const safeSession   = targetSession ? targetSession.replace(/[^a-zA-Z0-9_-]/g, '') : null
+  if (!safeSession) return c.json({ ok: false, error: 'No tmux session configured' }, 400)
+
+  const cmd = `tmux rename-window -t '${safeSession}:${windowIndex}' '${safeName}' 2>&1`
+
+  return new Promise((resolve) => {
+    const conn = new Client()
+    const timeout = setTimeout(() => {
+      conn.end()
+      resolve(c.json({ ok: false, error: 'Connection timed out' }))
+    }, 10_000)
+
+    conn.on('ready', () => {
+      conn.exec(cmd, (err, stream) => {
+        if (err) {
+          clearTimeout(timeout)
+          conn.end()
+          resolve(c.json({ ok: false, error: err.message }))
+          return
+        }
+        let output = ''
+        let exitCode: number | null = null
+        stream.on('data', (data: Buffer) => { output += data.toString() })
+        stream.stderr.on('data', (data: Buffer) => { output += data.toString() })
+        stream.on('exit', (code: number) => { exitCode = code })
+        stream.on('close', () => {
+          clearTimeout(timeout)
+          conn.end()
+          if (exitCode === 0) {
+            resolve(c.json({ ok: true, name: safeName }))
+          } else {
+            resolve(c.json({ ok: false, error: output.trim() || `tmux exited ${exitCode}` }))
+          }
+        })
+      })
+    })
+
+    conn.on('error', (err) => {
+      clearTimeout(timeout)
+      resolve(c.json({ ok: false, error: err.message }))
+    })
+
+    const authOptions: ConnectConfig = {
+      host:         profile.host,
+      port:         profile.port ?? 22,
+      username:     profile.username,
+      readyTimeout: 10_000,
+    }
+    if (profile.authType === 'key' && creds.privateKey) {
+      authOptions.privateKey = creds.privateKey
+    } else if (creds.password) {
+      authOptions.password = creds.password
+    }
+
+    try { conn.connect(authOptions) } catch (err: any) {
+      clearTimeout(timeout)
+      resolve(c.json({ ok: false, error: err.message }))
     }
   })
 })
