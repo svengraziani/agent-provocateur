@@ -471,3 +471,25 @@ export interface SourceRelayGitFile {
   path: string
   size?: number
 }
+
+export interface ObeliskFile {
+  id: number
+  buildingId: number
+  path: string
+  content?: string
+  isDirectory: boolean
+  createdAt: number | null
+  updatedAt: number | null
+}
+
+export interface ObeliskSearchResult {
+  path: string
+  snippet: string
+  updatedAt: number | null
+}
+
+export interface ObeliskConfig {
+  configured: boolean
+  vaultName?: string
+  defaultView?: 'edit' | 'preview' | 'split'
+}
