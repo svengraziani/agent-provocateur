@@ -10,12 +10,12 @@ import { TmuxWindowSatellite } from './TmuxWindowSatellite'
 
 // Orbit radius for tmux-window satellites around a ClawCom building.
 // Tuned to clear the 100px building image and the labels below it.
-const SATELLITE_ORBIT_RADIUS = 130
+export const SATELLITE_ORBIT_RADIUS = 130
 // Switch to a wider second ring once the first orbit gets crowded.
-const SATELLITE_SECOND_RING_RADIUS = 200
-const SATELLITE_FIRST_RING_CAPACITY = 8
+export const SATELLITE_SECOND_RING_RADIUS = 200
+export const SATELLITE_FIRST_RING_CAPACITY = 8
 
-function satelliteOffset(index: number, count: number): { dx: number; dy: number } {
+export function satelliteOffset(index: number, count: number): { dx: number; dy: number } {
   // Place satellites preferentially on the upper ring so the label area
   // below the building stays readable. Satellites still complete the orbit
   // when count > capacity, just on a wider ring.

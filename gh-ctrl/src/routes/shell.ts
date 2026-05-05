@@ -42,10 +42,12 @@ function decryptCreds(stored: string): string {
   return (decipher.update(Buffer.from(data, 'hex')) as Buffer).toString('utf8') + decipher.final('utf8')
 }
 
-// Return profile without secret fields
+// Return profile without secret fields; parse windowRepoLinks JSON for client convenience
 function maskProfile(p: typeof sshConnections.$inferSelect) {
-  const { encryptedCreds: _, ...rest } = p
-  return { ...rest, hasCredentials: !!_ }
+  const { encryptedCreds: _, windowRepoLinks: wrlRaw, ...rest } = p
+  let windowRepoLinks: Record<string, number[]> | null = null
+  try { if (wrlRaw) windowRepoLinks = JSON.parse(wrlRaw) } catch { /* ignore */ }
+  return { ...rest, windowRepoLinks, hasCredentials: !!_ }
 }
 
 // Building types that own SSH connection profiles (RemoteShell + ClawCom share this UI)
@@ -175,6 +177,42 @@ app.delete('/:id/shell/connections/:cid', async (c) => {
   }
 
   return c.json({ ok: true })
+})
+
+// PATCH /:id/shell/connections/:cid/window-repo-links — set repo links for one tmux window
+app.patch('/:id/shell/connections/:cid/window-repo-links', async (c) => {
+  const buildingId = Number(c.req.param('id'))
+  const cid        = Number(c.req.param('cid'))
+
+  const existing = await db.select().from(sshConnections)
+    .where(and(eq(sshConnections.id, cid), eq(sshConnections.buildingId, buildingId)))
+    .limit(1)
+  if (existing.length === 0) return c.json({ error: 'Connection not found' }, 404)
+
+  const body = await c.req.json()
+  const windowIndex = Number(body.windowIndex)
+  if (!Number.isInteger(windowIndex) || windowIndex < 0) {
+    return c.json({ error: 'Invalid window index' }, 400)
+  }
+  const repoIds: number[] = Array.isArray(body.repoIds)
+    ? body.repoIds.map(Number).filter((n: number) => Number.isInteger(n) && n > 0)
+    : []
+
+  let map: Record<string, number[]> = {}
+  try { if (existing[0].windowRepoLinks) map = JSON.parse(existing[0].windowRepoLinks) } catch { /* ignore */ }
+
+  if (repoIds.length === 0) {
+    delete map[String(windowIndex)]
+  } else {
+    map[String(windowIndex)] = repoIds
+  }
+
+  const [updated] = await db.update(sshConnections)
+    .set({ windowRepoLinks: JSON.stringify(map), updatedAt: new Date() })
+    .where(eq(sshConnections.id, cid))
+    .returning()
+
+  return c.json(maskProfile(updated))
 })
 
 // POST /:id/shell/connections/test — test a connection without opening a PTY
