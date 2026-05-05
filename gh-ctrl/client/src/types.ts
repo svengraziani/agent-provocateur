@@ -422,6 +422,12 @@ export interface SshSessionLog {
 
 export type ShellStatus = 'idle' | 'connecting' | 'connected' | 'disconnected' | 'error'
 
+export interface TmuxWindow {
+  index: number
+  name: string
+  active: boolean
+}
+
 interface SourceRelayConfig {
   configured: boolean
 }

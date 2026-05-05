@@ -317,6 +317,93 @@ app.get('/:id/shell/connections/:cid/tmux-sessions', async (c) => {
   })
 })
 
+// GET /:id/shell/connections/:cid/tmux-windows — list windows in a tmux session
+app.get('/:id/shell/connections/:cid/tmux-windows', async (c) => {
+  const buildingId = Number(c.req.param('id'))
+  const cid        = Number(c.req.param('cid'))
+  const session    = c.req.query('session') ?? null
+
+  const profiles = await db.select().from(sshConnections)
+    .where(and(eq(sshConnections.id, cid), eq(sshConnections.buildingId, buildingId)))
+    .limit(1)
+  if (profiles.length === 0) return c.json({ error: 'Connection not found' }, 404)
+
+  const profile = profiles[0]
+  let creds: { password?: string; privateKey?: string } = {}
+  if (profile.encryptedCreds) {
+    try { creds = JSON.parse(decryptCreds(profile.encryptedCreds)) } catch { /* ignore */ }
+  }
+
+  const targetSession = session ?? profile.tmuxSession ?? null
+  const safeSession   = targetSession ? targetSession.replace(/[^a-zA-Z0-9_-]/g, '') : null
+  const cmd = safeSession
+    ? `tmux list-windows -t '${safeSession}' -F '#{window_index} #{window_name} #{window_active}' 2>/dev/null || echo "__NO_TMUX__"`
+    : `tmux list-windows -F '#{window_index} #{window_name} #{window_active}' 2>/dev/null || echo "__NO_TMUX__"`
+
+  return new Promise((resolve) => {
+    const conn = new Client()
+    const timeout = setTimeout(() => {
+      conn.end()
+      resolve(c.json({ ok: false, error: 'Connection timed out', windows: [] }))
+    }, 10_000)
+
+    conn.on('ready', () => {
+      conn.exec(cmd, (err, stream) => {
+        if (err) {
+          clearTimeout(timeout)
+          conn.end()
+          resolve(c.json({ ok: false, error: err.message, windows: [] }))
+          return
+        }
+        let output = ''
+        stream.on('data', (data: Buffer) => { output += data.toString() })
+        stream.stderr.on('data', (data: Buffer) => { output += data.toString() })
+        stream.on('close', () => {
+          clearTimeout(timeout)
+          conn.end()
+          if (output.includes('__NO_TMUX__') || output.includes('no server running')) {
+            resolve(c.json({ ok: true, windows: [] }))
+            return
+          }
+          const windows = output.trim().split('\n')
+            .filter((line) => line.trim() && !line.startsWith('error:'))
+            .map((line) => {
+              const parts = line.trim().split(' ')
+              const index  = parseInt(parts[0] ?? '0', 10)
+              const active = parts[parts.length - 1] === '1'
+              const name   = parts.slice(1, active ? parts.length - 1 : undefined).join(' ') || `win${index}`
+              return { index, name, active }
+            })
+            .filter((w) => !isNaN(w.index))
+          resolve(c.json({ ok: true, windows }))
+        })
+      })
+    })
+
+    conn.on('error', (err) => {
+      clearTimeout(timeout)
+      resolve(c.json({ ok: false, error: err.message, windows: [] }))
+    })
+
+    const authOptions: ConnectConfig = {
+      host:         profile.host,
+      port:         profile.port ?? 22,
+      username:     profile.username,
+      readyTimeout: 10_000,
+    }
+    if (profile.authType === 'key' && creds.privateKey) {
+      authOptions.privateKey = creds.privateKey
+    } else if (creds.password) {
+      authOptions.password = creds.password
+    }
+
+    try { conn.connect(authOptions) } catch (err: any) {
+      clearTimeout(timeout)
+      resolve(c.json({ ok: false, error: err.message, windows: [] }))
+    }
+  })
+})
+
 // ── WebSocket PTY bridge ─────────────────────────────────────────────────────
 
 app.get(
