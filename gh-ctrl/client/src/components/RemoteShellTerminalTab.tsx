@@ -113,6 +113,7 @@ function RemoteShellTerminalTab({
   pendingWindowIndex,
 }: RemoteShellTerminalTabProps, ref) {
   const consumeTmuxJump = useAppStore((s) => s.consumeTmuxJump)
+  const repos = useAppStore((s) => s.repos)
   const containerRef   = useRef<HTMLDivElement>(null)
   const termRef        = useRef<Terminal | null>(null)
   const fitAddonRef    = useRef<FitAddon | null>(null)
@@ -150,6 +151,12 @@ function RemoteShellTerminalTab({
   const [tmuxWindows, setTmuxWindows]     = useState<TmuxWindow[]>([])
   const [windowsLoading, setWindowsLoading] = useState(false)
   const windowsPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // Repo link picker
+  const [linkPickerWindow, setLinkPickerWindow] = useState<number | null>(null)
+  const [winRepoLinks, setWinRepoLinks] = useState<Record<string, number[]>>(
+    () => connection.windowRepoLinks ?? {}
+  )
 
   // Push current terminal dimensions to the server. Call after the WS reaches OPEN
   // — initial fit() runs while the WS is still CONNECTING, so the early resize is lost.
@@ -514,6 +521,28 @@ function RemoteShellTerminalTab({
     }
   }
 
+  function toggleRepoLink(windowIndex: number, repoId: number) {
+    setWinRepoLinks((prev) => {
+      const key = String(windowIndex)
+      const current = prev[key] ?? []
+      const next = current.includes(repoId)
+        ? current.filter((id) => id !== repoId)
+        : [...current, repoId]
+      return { ...prev, [key]: next }
+    })
+  }
+
+  async function saveLinkForWindow(windowIndex: number) {
+    const repoIds = winRepoLinks[String(windowIndex)] ?? []
+    try {
+      const updated = await api.updateShellWindowRepoLinks(buildingId, connection.id, windowIndex, repoIds)
+      setWinRepoLinks(updated.windowRepoLinks ?? {})
+      setLinkPickerWindow(null)
+    } catch (err) {
+      window.alert(`Failed to save links: ${err instanceof Error ? err.message : String(err)}`)
+    }
+  }
+
   const statusColor = {
     idle:         '#888',
     connecting:   '#ffaa00',
@@ -590,7 +619,7 @@ function RemoteShellTerminalTab({
                         borderColor: win.active ? '#00ff88' : undefined,
                         fontWeight: win.active ? 700 : undefined,
                         borderTopRightRadius: 0, borderBottomRightRadius: 0,
-                        borderRight: 'none',
+                        borderRightWidth: 0, borderRightStyle: 'none',
                       }}
                     >
                       {win.index}:{win.name}{win.active ? ' ●' : ''}
@@ -605,9 +634,24 @@ function RemoteShellTerminalTab({
                         color: win.active ? '#00ff88' : '#666',
                         borderColor: win.active ? '#00ff88' : undefined,
                         borderTopLeftRadius: 0, borderBottomLeftRadius: 0,
+                        borderRight: 'none',
                       }}
                     >
                       ✎
+                    </button>
+                    <button
+                      className="hud-btn"
+                      title={`Link repos to window ${win.index}`}
+                      onClick={() => setLinkPickerWindow((p) => p === win.index ? null : win.index)}
+                      style={{
+                        fontSize: 9, padding: '1px 5px',
+                        color: (winRepoLinks[String(win.index)]?.length ?? 0) > 0 ? '#00aaff' : '#555',
+                        borderColor: (winRepoLinks[String(win.index)]?.length ?? 0) > 0 ? '#00aaff' : undefined,
+                        borderTopLeftRadius: 0, borderBottomLeftRadius: 0,
+                        borderLeft: 'none',
+                      }}
+                    >
+                      ⛓
                     </button>
                   </span>
                 ))
@@ -619,6 +663,51 @@ function RemoteShellTerminalTab({
                 onClick={fetchTmuxWindows}
               >
                 ⟳
+              </button>
+            </div>
+          )}
+
+          {/* Repo link picker — expands below window list when ⛓ is clicked */}
+          {showWindows && linkPickerWindow !== null && (
+            <div style={{
+              display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center',
+              padding: '4px 10px', background: '#07071a', borderBottom: '1px solid #1a1a2e',
+              fontSize: 9, flexShrink: 0,
+            }}>
+              <span style={{ color: '#666', marginRight: 2 }}>win {linkPickerWindow} →</span>
+              {repos.length === 0 && (
+                <span style={{ color: '#444' }}>No repos configured</span>
+              )}
+              {repos.map((repo) => {
+                const linked = winRepoLinks[String(linkPickerWindow)]?.includes(repo.id) ?? false
+                return (
+                  <button
+                    key={repo.id}
+                    className="hud-btn"
+                    onClick={() => toggleRepoLink(linkPickerWindow, repo.id)}
+                    style={{
+                      fontSize: 9, padding: '1px 6px',
+                      color: linked ? '#00aaff' : '#555',
+                      borderColor: linked ? '#00aaff' : undefined,
+                    }}
+                  >
+                    {linked ? '✓ ' : ''}{repo.fullName}
+                  </button>
+                )
+              })}
+              <button
+                className="hud-btn"
+                onClick={() => saveLinkForWindow(linkPickerWindow)}
+                style={{ fontSize: 9, padding: '1px 6px', color: '#00ff88', marginLeft: 4 }}
+              >
+                Save
+              </button>
+              <button
+                className="hud-btn"
+                onClick={() => setLinkPickerWindow(null)}
+                style={{ fontSize: 9, padding: '1px 5px', color: '#888' }}
+              >
+                ✕
               </button>
             </div>
           )}

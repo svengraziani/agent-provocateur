@@ -13,9 +13,11 @@ import { MailboxBuilding } from '../MailboxBuilding'
 import { ResearchCenterBuilding } from '../ResearchCenterBuilding'
 import { RemoteShellBuilding } from '../RemoteShellBuilding'
 import { SourceRelayBuilding } from '../SourceRelayBuilding'
+import { ObeliskBuilding } from '../ObeliskBuilding'
 import { BadgeMarker } from '../BadgeMarker'
 import { UserUnit } from './UserUnit'
 import { SourceRelayConnectionsLayer } from './SourceRelayConnectionsLayer'
+import { ClawComSatelliteConnectionsLayer } from './ClawComSatelliteConnectionsLayer'
 import type { Repo } from '../../types'
 
 interface BuildingRendererProps {
@@ -73,6 +75,7 @@ const BuildingRenderer = memo(function BuildingRenderer({
   if (building.type === 'research') return <ResearchCenterBuilding {...commonProps} />
   if (building.type === 'remoteShell') return <RemoteShellBuilding {...commonProps} />
   if (building.type === 'sourceRelay') return <SourceRelayBuilding {...commonProps} />
+  if (building.type === 'obelisk') return <ObeliskBuilding {...commonProps} />
   return <ClawComBuilding {...commonProps} />
 })
 
@@ -244,7 +247,9 @@ export function BattlefieldMapLayer({
                 ? '/buildings/construct_6s_research.gif'
                 : building.type === 'sourceRelay'
                   ? '/buildings/construct_6s_source_relay.gif'
-                  : '/buildings/construct_3s_clawcom.gif'
+                  : building.type === 'obelisk'
+                    ? '/buildings/construct_6s_source_relay.gif'
+                    : '/buildings/construct_3s_clawcom.gif'
           return (
             <div
               key={`building-${building.id}`}
@@ -301,6 +306,11 @@ export function BattlefieldMapLayer({
       <SourceRelayConnectionsLayer
         buildingPositions={buildingPositions}
         visibleEntries={visibleEntries}
+        positions={positions}
+      />
+      {/* ClawCom satellite→repo splines */}
+      <ClawComSatelliteConnectionsLayer
+        buildingPositions={buildingPositions}
         positions={positions}
       />
     </div>

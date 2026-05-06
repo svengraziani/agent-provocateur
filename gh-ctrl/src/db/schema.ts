@@ -150,6 +150,7 @@ export const sshConnections = sqliteTable('ssh_connections', {
   authType:       text('auth_type').default('password'), // 'password' | 'key'
   encryptedCreds: text('encrypted_creds'),               // AES-256-GCM encrypted JSON
   tmuxSession:    text('tmux_session'),                  // null = no tmux, string = session name
+  windowRepoLinks: text('window_repo_links'),             // JSON: { [windowIndex: string]: number[] }
   createdAt:      integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
   updatedAt:      integer('updated_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
 })
@@ -202,4 +203,15 @@ export const promptTemplates = sqliteTable('prompt_templates', {
   sortOrder: integer('sort_order').default(0),
   createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
+})
+
+// Obelisk: markdown files / directory tree per building
+export const obeliskFiles = sqliteTable('obelisk_files', {
+  id:          integer('id').primaryKey({ autoIncrement: true }),
+  buildingId:  integer('building_id').notNull().references(() => buildings.id, { onDelete: 'cascade' }),
+  path:        text('path').notNull(),
+  content:     text('content').notNull().default(''),
+  isDirectory: integer('is_directory', { mode: 'boolean' }).notNull().default(false),
+  createdAt:   integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
+  updatedAt:   integer('updated_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
 })

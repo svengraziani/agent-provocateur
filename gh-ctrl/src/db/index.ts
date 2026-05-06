@@ -202,10 +202,12 @@ sqlite.exec(`
     auth_type TEXT DEFAULT 'password',
     encrypted_creds TEXT,
     tmux_session TEXT,
+    window_repo_links TEXT,
     created_at INTEGER DEFAULT (unixepoch()),
     updated_at INTEGER DEFAULT (unixepoch())
   )
 `)
+try { sqlite.exec(`ALTER TABLE ssh_connections ADD COLUMN window_repo_links TEXT`) } catch {}
 
 sqlite.exec(`
   CREATE TABLE IF NOT EXISTS ssh_session_log (
@@ -259,6 +261,19 @@ sqlite.exec(`
     sort_order INTEGER DEFAULT 0,
     created_at INTEGER DEFAULT (unixepoch()),
     updated_at INTEGER DEFAULT (unixepoch())
+  )
+`)
+
+sqlite.exec(`
+  CREATE TABLE IF NOT EXISTS obelisk_files (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    building_id INTEGER NOT NULL REFERENCES buildings(id) ON DELETE CASCADE,
+    path TEXT NOT NULL,
+    content TEXT NOT NULL DEFAULT '',
+    is_directory INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER DEFAULT (unixepoch()),
+    updated_at INTEGER DEFAULT (unixepoch()),
+    UNIQUE(building_id, path)
   )
 `)
 

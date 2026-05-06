@@ -1,4 +1,4 @@
-import type { Repo, DashboardEntry, RepoData, GHLabel, BranchesData, IssueDetail, PRDetail, GameMap, RepoMeta, FeedData, SetupStatus, Building, ClawComMessage, Badge, PlacedBadge, HealthcheckResult, DeadlineTimer, ChannelEvent, MailMessage, ResearchJob, Contact, SshConnection, SshSessionLog, TmuxWindow, SourceRelayConnector, SourceRelayFetcher, SourceRelayGitFile } from './types'
+import type { Repo, DashboardEntry, RepoData, GHLabel, BranchesData, IssueDetail, PRDetail, GameMap, RepoMeta, FeedData, SetupStatus, Building, ClawComMessage, Badge, PlacedBadge, HealthcheckResult, DeadlineTimer, ChannelEvent, MailMessage, ResearchJob, Contact, SshConnection, SshSessionLog, TmuxWindow, SourceRelayConnector, SourceRelayFetcher, SourceRelayGitFile, ObeliskFile, ObeliskSearchResult } from './types'
 
 export function getServerUrl(): string {
   return localStorage.getItem('serverUrl')?.replace(/\/$/, '') ?? ''
@@ -709,6 +709,17 @@ export const api = {
       }
     ),
 
+  updateShellWindowRepoLinks: (
+    buildingId: number,
+    connectionId: number,
+    windowIndex: number,
+    repoIds: number[],
+  ) =>
+    request<SshConnection>(
+      `/buildings/${buildingId}/shell/connections/${connectionId}/window-repo-links`,
+      { method: 'PATCH', body: JSON.stringify({ windowIndex, repoIds }) }
+    ),
+
   // ── Source Relay ──────────────────────────────────────────────────────────
 
   listSourceRelayConnectors: (buildingId: number) =>
@@ -857,6 +868,33 @@ export const api = {
 
   deletePromptTemplate: (id: number) =>
     request<{ ok: boolean }>(`/prompts/${id}`, { method: 'DELETE' }),
+
+  // ── Obelisk ──────────────────────────────────────────────────────────────
+  getObeliskFiles: (id: number) =>
+    request<ObeliskFile[]>(`/buildings/${id}/obelisk/files`),
+
+  getObeliskFile: (id: number, path: string) =>
+    request<ObeliskFile>(`/buildings/${id}/obelisk/file?path=${encodeURIComponent(path)}`),
+
+  createObeliskFile: (id: number, path: string, content?: string, isDirectory?: boolean) =>
+    request<ObeliskFile>(`/buildings/${id}/obelisk/files`, {
+      method: 'POST',
+      body: JSON.stringify({ path, content: content ?? '', isDirectory: isDirectory ?? false }),
+    }),
+
+  saveObeliskFile: (id: number, path: string, content: string) =>
+    request<ObeliskFile>(`/buildings/${id}/obelisk/file?path=${encodeURIComponent(path)}`, {
+      method: 'PUT',
+      body: JSON.stringify({ content }),
+    }),
+
+  deleteObeliskFile: (id: number, path: string) =>
+    request<{ ok: boolean }>(`/buildings/${id}/obelisk/file?path=${encodeURIComponent(path)}`, {
+      method: 'DELETE',
+    }),
+
+  searchObeliskFiles: (id: number, q: string) =>
+    request<ObeliskSearchResult[]>(`/buildings/${id}/obelisk/search?q=${encodeURIComponent(q)}`),
 }
 
 export async function exportBackup(): Promise<Blob> {

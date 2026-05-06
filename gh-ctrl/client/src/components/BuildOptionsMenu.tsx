@@ -59,6 +59,14 @@ const AVAILABLE_BUILDINGS: BuildingDef[] = [
     buildImage: '/buildings/build_base.png',
     defaultColor: '#00ff88',
   },
+  {
+    type: 'obelisk',
+    name: 'Obelisk',
+    description:
+      'A markdown knowledge base — create notes, wikis, and documentation directly on the battlefield. Supports directory trees, live preview, WikiLinks, full-text & fuzzy search, and a knowledge graph view.',
+    buildImage: '/buildings/build_obelisk.png',
+    defaultColor: '#c8a060',
+  },
 ]
 
 export interface PlacementParams {
