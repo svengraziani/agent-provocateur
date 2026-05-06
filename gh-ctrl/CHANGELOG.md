@@ -5,6 +5,44 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0](https://github.com/svengraziani/vibe-and-conquer/compare/v1.3.0...v1.4.0) (2026-05-06)
+
+
+### ### Added
+
+* Add Obelisk building — Obsidian-style markdown knowledge base ([91e3886](https://github.com/svengraziani/vibe-and-conquer/commit/91e388635edcc1f7891b01cc894c93352396b451))
+* Add Obelisk building — Obsidian-style markdown knowledge base ([b8a3556](https://github.com/svengraziani/vibe-and-conquer/commit/b8a35567eeec982127e7c19300bac18334fd91df))
+* add Prompt Toolbox for reusable terminal prompt templates ([5c1f65a](https://github.com/svengraziani/vibe-and-conquer/commit/5c1f65a7cc19f3966df3a6e2e302e2d5e6692498)), closes [#417](https://github.com/svengraziani/vibe-and-conquer/issues/417)
+* add tmux window panel to RemoteShell/ClawCom terminal ([3e843f4](https://github.com/svengraziani/vibe-and-conquer/commit/3e843f4c6a5f7bbad2f294bace792dbf5f3b93df))
+* add tmux window panel to RemoteShell/ClawCom terminal ([2425d16](https://github.com/svengraziani/vibe-and-conquer/commit/2425d160df5b83624b68c402500ecbe6def79f70)), closes [#412](https://github.com/svengraziani/vibe-and-conquer/issues/412)
+* link ClawCom satellite windows to codebases ([18f866e](https://github.com/svengraziani/vibe-and-conquer/commit/18f866e3c3751f9c3104ad6ade3295f0210ae840))
+* link ClawCom satellite windows to codebases with spline visualization ([3966020](https://github.com/svengraziani/vibe-and-conquer/commit/396602055d18026e982b4b5f9d9c01db34914137))
+* merge ClawCom building with RemotePost functionality ([b98c536](https://github.com/svengraziani/vibe-and-conquer/commit/b98c536595ec8bc3d07375c7b48bdccc1464d1ed))
+* merge ClawCom building with RemotePost functionality ([a4442bd](https://github.com/svengraziani/vibe-and-conquer/commit/a4442bd9bedf4a5d354e47a04c2399519cd666df)), closes [#396](https://github.com/svengraziani/vibe-and-conquer/issues/396)
+* Prompt Toolbox for reusable terminal prompt templates ([6151062](https://github.com/svengraziani/vibe-and-conquer/commit/615106237ecdc404405af30abf4827751de9c36a))
+* tmux naming and satellite ([0185b48](https://github.com/svengraziani/vibe-and-conquer/commit/0185b489445824259fae7f5da19182ef9803f649))
+* tmux naming and satellite ([ece8331](https://github.com/svengraziani/vibe-and-conquer/commit/ece833121cde1ccd8f7377725435032a4f2cf4fd))
+
+
+### ### Fixed
+
+* clean up 9 unused exports flagged by fallow ([2effca8](https://github.com/svengraziani/vibe-and-conquer/commit/2effca8bf69db4f7ea3601245457f74c9be40a1d))
+* clean up 9 unused exports flagged by fallow static analysis ([c712e14](https://github.com/svengraziani/vibe-and-conquer/commit/c712e14e04e5041c717ef8eca1af5788337c4259)), closes [#393](https://github.com/svengraziani/vibe-and-conquer/issues/393)
+* disable battlefield shortcuts while SSH terminal is open ([8870802](https://github.com/svengraziani/vibe-and-conquer/commit/88708024928198b09c5056fab3dfa9953e5f4f87))
+* disable battlefield shortcuts while SSH terminal is open ([bac54e4](https://github.com/svengraziani/vibe-and-conquer/commit/bac54e4686b9d69239a045a632c7fdda8c39e4e9))
+* docker caching issues ([059b34c](https://github.com/svengraziani/vibe-and-conquer/commit/059b34c84dbcf2014738696391163a1e70302daf))
+* docker caching issues ([cf3cd13](https://github.com/svengraziani/vibe-and-conquer/commit/cf3cd134184d2fb59b31c69e106da5433c2bfcf6))
+* remove export from 4 unused exported types ([9c9034e](https://github.com/svengraziani/vibe-and-conquer/commit/9c9034e74bfb0e4860efa90bc0be8f7fe3b5651a))
+* remove unused import of route app from gitlab provider ([d94c2db](https://github.com/svengraziani/vibe-and-conquer/commit/d94c2db73c4fa1be6d3e1e840f07e59c473ce22b)), closes [#395](https://github.com/svengraziani/vibe-and-conquer/issues/395)
+* remove unused route import from gitlab provider (breaks circular dep) ([d6f750f](https://github.com/svengraziani/vibe-and-conquer/commit/d6f750f9886f9fd905a3b49e6fd4b23f1473f178))
+* satellite connections ([eb099bf](https://github.com/svengraziani/vibe-and-conquer/commit/eb099bfa59a048c271665e49b8f3a4c93da0d3da))
+* satellite connections ([6c505c4](https://github.com/svengraziani/vibe-and-conquer/commit/6c505c4de197dbbca5e0fa2177c0271e5a9d2cb7))
+* terminal initial size too small until browser resize ([7f01b45](https://github.com/svengraziani/vibe-and-conquer/commit/7f01b459c185a3ed16023ed520edd52beaa8fdce))
+* terminal initial size too small until browser resize ([8d405a6](https://github.com/svengraziani/vibe-and-conquer/commit/8d405a6512644197df00bd148221175801247d6f))
+* terminal resize, numbers over sockets ([1858a8d](https://github.com/svengraziani/vibe-and-conquer/commit/1858a8d64d9adb20f2dcef908d81dae5d9320370))
+* terminal resize, numbers over sockets ([b3bf84c](https://github.com/svengraziani/vibe-and-conquer/commit/b3bf84cbdfb8a6033680d48744d918d62015f8b3))
+* **types:** remove export from 4 unused exported types ([f40224c](https://github.com/svengraziani/vibe-and-conquer/commit/f40224c7269b6fe165341e2d67e3de52acf517a1)), closes [#394](https://github.com/svengraziani/vibe-and-conquer/issues/394)
+
 ## [1.3.0](https://github.com/svengraziani/vibe-and-conquer/compare/v1.2.0...v1.3.0) (2026-04-14)
 
 
