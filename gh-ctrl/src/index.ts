@@ -14,6 +14,7 @@ import contactsRouter from './routes/contacts'
 import settingsRouter from './routes/settings'
 import shellRouter, { shellWebsocket } from './routes/shell'
 import sourceRelayRouter, { sourceRelayPublicRouter } from './routes/source-relay'
+import promptTemplatesRouter from './routes/promptTemplates'
 import versionRouter from './routes/version'
 import backupRouter from './routes/backup'
 import { existsSync, mkdirSync } from 'node:fs'
@@ -65,6 +66,7 @@ app.route('/api/contacts', contactsRouter)
 app.route('/api/settings', settingsRouter)
 app.route('/api/buildings', shellRouter)
 app.route('/api/source-relay', sourceRelayRouter)
+app.route('/api/prompts', promptTemplatesRouter)
 
 // Public source-relay fetch endpoint — no auth required
 app.route('/source-relay', sourceRelayPublicRouter)

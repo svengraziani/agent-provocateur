@@ -194,6 +194,17 @@ export const sourceRelayConnectorFiles = sqliteTable('source_relay_connector_fil
   createdAt:   integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
 })
 
+// Prompt Toolbox: reusable prompt/command templates for terminal sessions
+export const promptTemplates = sqliteTable('prompt_templates', {
+  id:        integer('id').primaryKey({ autoIncrement: true }),
+  title:     text('title').notNull(),
+  content:   text('content').notNull(),
+  category:  text('category'),
+  sortOrder: integer('sort_order').default(0),
+  createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
+})
+
 // Obelisk: markdown files / directory tree per building
 export const obeliskFiles = sqliteTable('obelisk_files', {
   id:          integer('id').primaryKey({ autoIncrement: true }),

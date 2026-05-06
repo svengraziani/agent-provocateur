@@ -253,6 +253,18 @@ sqlite.exec(`
 `)
 
 sqlite.exec(`
+  CREATE TABLE IF NOT EXISTS prompt_templates (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    content TEXT NOT NULL,
+    category TEXT,
+    sort_order INTEGER DEFAULT 0,
+    created_at INTEGER DEFAULT (unixepoch()),
+    updated_at INTEGER DEFAULT (unixepoch())
+  )
+`)
+
+sqlite.exec(`
   CREATE TABLE IF NOT EXISTS obelisk_files (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     building_id INTEGER NOT NULL REFERENCES buildings(id) ON DELETE CASCADE,

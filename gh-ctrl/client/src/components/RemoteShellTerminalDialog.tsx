@@ -3,7 +3,8 @@ import { createPortal } from 'react-dom'
 import { api } from '../api'
 import { useAppStore } from '../store'
 import type { Building, SshConnection, RemoteShellConfig } from '../types'
-import { RemoteShellTerminalTab } from './RemoteShellTerminalTab'
+import { RemoteShellTerminalTab, type RemoteShellTerminalTabHandle } from './RemoteShellTerminalTab'
+import { PromptToolboxPanel } from './PromptToolboxPanel'
 
 interface RemoteShellTerminalDialogProps {
   building: Building
@@ -28,10 +29,13 @@ export function RemoteShellTerminalDialog({
   const [activeTabId, setActiveTabId]     = useState<string>('')
   const [loading, setLoading]             = useState(true)
   const [showNewTabMenu, setShowNewTabMenu] = useState(false)
+  const [showToolbox, setShowToolbox]     = useState(false)
   // Anchor for the +TAB dropdown — the menu is portaled to body to escape
   // the tab bar's overflow:auto, so it needs an absolute screen position.
   const newTabBtnRef = useRef<HTMLButtonElement>(null)
   const [newTabMenuPos, setNewTabMenuPos] = useState<{ left: number; top: number } | null>(null)
+  // Map tabId -> tab handle for sending text to the active terminal
+  const tabHandles = useRef<Map<string, RemoteShellTerminalTabHandle>>(new Map())
 
   const pendingTmuxJump = useAppStore((s) => s.pendingTmuxJump)
   const matchingJump = pendingTmuxJump?.buildingId === building.id ? pendingTmuxJump : null
@@ -191,6 +195,12 @@ export function RemoteShellTerminalDialog({
         <div style={{ flex: 1 }} />
         <button
           className="hud-btn"
+          style={{ fontSize: 10, color: showToolbox ? '#00ff88' : undefined, borderColor: showToolbox ? '#00ff88' : undefined }}
+          onClick={() => setShowToolbox((v) => !v)}
+          title="Toggle Prompt Toolbox"
+        >⬡ TOOLBOX</button>
+        <button
+          className="hud-btn"
           style={{ fontSize: 10 }}
           onClick={onReconfigure}
           title="Manage connections"
@@ -270,53 +280,67 @@ export function RemoteShellTerminalDialog({
         )}
       </div>
 
-      {/* Terminal area */}
-      <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
-        {loading && (
-          <div style={{
-            position: 'absolute', inset: 0, display: 'flex',
-            alignItems: 'center', justifyContent: 'center',
-            color: '#00ff88', fontSize: 12,
-          }}>
-            Loading connections...
-          </div>
-        )}
+      {/* Terminal area + optional toolbox side panel */}
+      <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'row' }}>
+        <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
+          {loading && (
+            <div style={{
+              position: 'absolute', inset: 0, display: 'flex',
+              alignItems: 'center', justifyContent: 'center',
+              color: '#00ff88', fontSize: 12,
+            }}>
+              Loading connections...
+            </div>
+          )}
 
-        {!loading && tabs.length === 0 && (
-          <div style={{
-            position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
-            alignItems: 'center', justifyContent: 'center',
-            color: '#555', fontSize: 12, gap: 10,
-          }}>
-            <div>No connections available.</div>
-            <button className="hud-btn" onClick={onReconfigure}>⚙ Manage Connections</button>
-          </div>
-        )}
+          {!loading && tabs.length === 0 && (
+            <div style={{
+              position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center',
+              color: '#555', fontSize: 12, gap: 10,
+            }}>
+              <div>No connections available.</div>
+              <button className="hud-btn" onClick={onReconfigure}>⚙ Manage Connections</button>
+            </div>
+          )}
 
-        {tabs.map((tab) => (
-          <div
-            key={tab.id}
-            style={{
-              position: 'absolute', inset: 0,
-              display: activeTabId === tab.id ? 'flex' : 'none',
-              flexDirection: 'column',
+          {tabs.map((tab) => (
+            <div
+              key={tab.id}
+              style={{
+                position: 'absolute', inset: 0,
+                display: activeTabId === tab.id ? 'flex' : 'none',
+                flexDirection: 'column',
+              }}
+            >
+              <RemoteShellTerminalTab
+                ref={(handle) => {
+                  if (handle) tabHandles.current.set(tab.id, handle)
+                  else tabHandles.current.delete(tab.id)
+                }}
+                buildingId={building.id}
+                connection={tab.connection}
+                theme={config.theme}
+                fontSize={config.fontSize}
+                fontFamily={config.fontFamily}
+                isActive={activeTabId === tab.id}
+                pendingWindowIndex={
+                  matchingJump && matchingJump.connectionId === tab.connection.id && activeTabId === tab.id
+                    ? matchingJump.windowIndex
+                    : undefined
+                }
+              />
+            </div>
+          ))}
+        </div>
+
+        {showToolbox && (
+          <PromptToolboxPanel
+            onSend={(content) => {
+              tabHandles.current.get(activeTabId)?.send(content)
             }}
-          >
-            <RemoteShellTerminalTab
-              buildingId={building.id}
-              connection={tab.connection}
-              theme={config.theme}
-              fontSize={config.fontSize}
-              fontFamily={config.fontFamily}
-              isActive={activeTabId === tab.id}
-              pendingWindowIndex={
-                matchingJump && matchingJump.connectionId === tab.connection.id && activeTabId === tab.id
-                  ? matchingJump.windowIndex
-                  : undefined
-              }
-            />
-          </div>
-        ))}
+          />
+        )}
       </div>
 
       {/* +TAB dropdown — portaled so it isn't clipped by the tab bar's

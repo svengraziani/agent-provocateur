@@ -473,6 +473,16 @@ export interface SourceRelayGitFile {
   size?: number
 }
 
+export interface PromptTemplate {
+  id: number
+  title: string
+  content: string
+  category: string | null
+  sortOrder: number | null
+  createdAt: string | number | null
+  updatedAt: string | number | null
+}
+
 export interface ObeliskFile {
   id: number
   buildingId: number

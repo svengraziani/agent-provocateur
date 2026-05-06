@@ -851,6 +851,24 @@ export const api = {
     return { exitCode: -1, truncated: false, error: 'Could not parse update result' }
   },
 
+  listPromptTemplates: (category?: string) =>
+    request<import('./types').PromptTemplate[]>(`/prompts${category ? `?category=${encodeURIComponent(category)}` : ''}`),
+
+  createPromptTemplate: (data: { title: string; content: string; category?: string; sortOrder?: number }) =>
+    request<import('./types').PromptTemplate>('/prompts', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  updatePromptTemplate: (id: number, data: Partial<{ title: string; content: string; category: string | null; sortOrder: number }>) =>
+    request<import('./types').PromptTemplate>(`/prompts/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
+  deletePromptTemplate: (id: number) =>
+    request<{ ok: boolean }>(`/prompts/${id}`, { method: 'DELETE' }),
+
   // ── Obelisk ──────────────────────────────────────────────────────────────
   getObeliskFiles: (id: number) =>
     request<ObeliskFile[]>(`/buildings/${id}/obelisk/files`),
