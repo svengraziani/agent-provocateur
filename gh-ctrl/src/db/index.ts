@@ -264,18 +264,5 @@ sqlite.exec(`
   )
 `)
 
-sqlite.exec(`
-  CREATE TABLE IF NOT EXISTS obelisk_files (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    building_id INTEGER NOT NULL REFERENCES buildings(id) ON DELETE CASCADE,
-    path TEXT NOT NULL,
-    content TEXT NOT NULL DEFAULT '',
-    is_directory INTEGER NOT NULL DEFAULT 0,
-    created_at INTEGER DEFAULT (unixepoch()),
-    updated_at INTEGER DEFAULT (unixepoch()),
-    UNIQUE(building_id, path)
-  )
-`)
-
 export const db = drizzle(sqlite, { schema })
 export const sqliteDb = sqlite

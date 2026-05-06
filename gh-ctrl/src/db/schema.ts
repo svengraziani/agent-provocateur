@@ -205,13 +205,3 @@ export const promptTemplates = sqliteTable('prompt_templates', {
   updatedAt: integer('updated_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
 })
 
-// Obelisk: markdown files / directory tree per building
-export const obeliskFiles = sqliteTable('obelisk_files', {
-  id:          integer('id').primaryKey({ autoIncrement: true }),
-  buildingId:  integer('building_id').notNull().references(() => buildings.id, { onDelete: 'cascade' }),
-  path:        text('path').notNull(),
-  content:     text('content').notNull().default(''),
-  isDirectory: integer('is_directory', { mode: 'boolean' }).notNull().default(false),
-  createdAt:   integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
-  updatedAt:   integer('updated_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
-})

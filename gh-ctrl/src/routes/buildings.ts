@@ -1,8 +1,8 @@
 import { Hono } from 'hono'
 import { stream } from 'hono/streaming'
 import { db } from '../db'
-import { buildings, clawcomMessages, healthcheckResults, mailMessages, obeliskFiles } from '../db/schema'
-import { eq, desc, asc, and, like, or } from 'drizzle-orm'
+import { buildings, clawcomMessages, healthcheckResults, mailMessages } from '../db/schema'
+import { eq, desc, asc, and } from 'drizzle-orm'
 import { scheduleBuilding, unscheduleBuilding, getLatestResults } from '../healthcheck-service'
 import {
   scheduleMailbox,
@@ -651,141 +651,6 @@ app.patch('/:id/research/:issueNumber/complete', async (c) => {
   }
 
   return c.json({ ok: true })
-})
-
-// ── Obelisk routes ──────────────────────────────────────────────────────────
-
-// GET /:id/obelisk/files — list all files/dirs for this obelisk building
-app.get('/:id/obelisk/files', async (c) => {
-  const id = Number(c.req.param('id'))
-  const rows = await db
-    .select()
-    .from(obeliskFiles)
-    .where(eq(obeliskFiles.buildingId, id))
-    .orderBy(asc(obeliskFiles.path))
-  // Return tree without content to keep payload small
-  return c.json(rows.map((r) => ({ ...r, content: r.isDirectory ? '' : undefined })))
-})
-
-// GET /:id/obelisk/file?path= — get a single file with content
-app.get('/:id/obelisk/file', async (c) => {
-  const id = Number(c.req.param('id'))
-  const path = c.req.query('path')
-  if (!path) return c.json({ error: 'path required' }, 400)
-  const rows = await db
-    .select()
-    .from(obeliskFiles)
-    .where(and(eq(obeliskFiles.buildingId, id), eq(obeliskFiles.path, path)))
-  if (rows.length === 0) return c.json({ error: 'Not found' }, 404)
-  return c.json(rows[0])
-})
-
-// POST /:id/obelisk/files — create file or directory
-app.post('/:id/obelisk/files', async (c) => {
-  const id = Number(c.req.param('id'))
-  const body = await c.req.json()
-  const { path, content = '', isDirectory = false } = body
-  if (!path?.trim()) return c.json({ error: 'path required' }, 400)
-
-  // Ensure parent directories exist
-  const parts = String(path).split('/')
-  for (let i = 1; i < parts.length; i++) {
-    const parentPath = parts.slice(0, i).join('/')
-    if (!parentPath) continue
-    const existing = await db
-      .select({ id: obeliskFiles.id })
-      .from(obeliskFiles)
-      .where(and(eq(obeliskFiles.buildingId, id), eq(obeliskFiles.path, parentPath)))
-    if (existing.length === 0) {
-      await db.insert(obeliskFiles).values({
-        buildingId: id,
-        path: parentPath,
-        content: '',
-        isDirectory: true,
-      }).onConflictDoNothing()
-    }
-  }
-
-  const result = await db.insert(obeliskFiles).values({
-    buildingId: id,
-    path: String(path).trim(),
-    content: isDirectory ? '' : String(content),
-    isDirectory: Boolean(isDirectory),
-  }).returning()
-  return c.json(result[0], 201)
-})
-
-// PUT /:id/obelisk/file?path= — update file content
-app.put('/:id/obelisk/file', async (c) => {
-  const id = Number(c.req.param('id'))
-  const path = c.req.query('path')
-  if (!path) return c.json({ error: 'path required' }, 400)
-  const body = await c.req.json()
-  const { content = '' } = body
-  const result = await db
-    .update(obeliskFiles)
-    .set({ content: String(content), updatedAt: new Date() })
-    .where(and(eq(obeliskFiles.buildingId, id), eq(obeliskFiles.path, path)))
-    .returning()
-  if (result.length === 0) return c.json({ error: 'Not found' }, 404)
-  return c.json(result[0])
-})
-
-// DELETE /:id/obelisk/file?path= — delete file or directory (recursive)
-app.delete('/:id/obelisk/file', async (c) => {
-  const id = Number(c.req.param('id'))
-  const path = c.req.query('path')
-  if (!path) return c.json({ error: 'path required' }, 400)
-  // Delete the entry itself and all descendants (recursive directory delete)
-  await db.delete(obeliskFiles).where(
-    and(
-      eq(obeliskFiles.buildingId, id),
-      or(
-        eq(obeliskFiles.path, path),
-        like(obeliskFiles.path, `${path}/%`)
-      )
-    )
-  )
-  return c.json({ ok: true })
-})
-
-// GET /:id/obelisk/search?q= — full-text search across files
-app.get('/:id/obelisk/search', async (c) => {
-  const id = Number(c.req.param('id'))
-  const q = c.req.query('q')?.trim()
-  if (!q) return c.json([])
-
-  const rows = await db
-    .select()
-    .from(obeliskFiles)
-    .where(
-      and(
-        eq(obeliskFiles.buildingId, id),
-        eq(obeliskFiles.isDirectory, false),
-        or(
-          like(obeliskFiles.path, `%${q}%`),
-          like(obeliskFiles.content, `%${q}%`)
-        )
-      )
-    )
-    .orderBy(asc(obeliskFiles.path))
-    .limit(50)
-
-  // Build results with snippets
-  const results = rows.map((row) => {
-    const qLower = q.toLowerCase()
-    const contentLower = row.content.toLowerCase()
-    const idx = contentLower.indexOf(qLower)
-    let snippet = ''
-    if (idx !== -1) {
-      const start = Math.max(0, idx - 60)
-      const end = Math.min(row.content.length, idx + q.length + 60)
-      snippet = (start > 0 ? '…' : '') + row.content.slice(start, end) + (end < row.content.length ? '…' : '')
-    }
-    return { path: row.path, snippet, updatedAt: row.updatedAt }
-  })
-
-  return c.json(results)
 })
 
 export default app
